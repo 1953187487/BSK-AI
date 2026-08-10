@@ -5,15 +5,18 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <BottomNavigationView
-        android:id="@+id/nav_bar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:menu="@menu/nav_menu" />
-
     <FrameLayout
         android:id="@+id/container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
+
+    <BottomNavigationView
+        android:id="@+id/nav_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/white"
+        app:menu="@menu/nav_menu"
+        app:itemIconTint="@color/nav_tint"
+        app:itemTextColor="@color/nav_tint" />
 </LinearLayout>

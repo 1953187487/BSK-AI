@@ -1,17 +1,20 @@
 # FloatAI — 开源 Android AI 助手
 
-版本：0.1 测试版
-
 支持 Android 8 ~ 14（API 26 ~ 34），四核设备可运行。
 
 ## 功能
-- 导航栏：AI 聊天 / API 配置 / 设置
-- AI 聊天：支持自定义服务商 API，悬浮窗模式（可开关），进程查看
-- API 配置：输入服务商 URL / Key，测试模型连通性
-- 设置：颜色主题、导入字体、更换 UI 资源、悬浮窗授权（Shizuku / Dhizuku）
+- 底部导航：AI 聊天 / API 配置 / 设置
+- AI 聊天：悬浮窗（可开关）、系统进程查看
+- API 配置：支持所有 OpenAI 兼容 AI 服务商，测试模型连通性，保存配置
+- 设置：主题颜色、导入字体、Shizuku / Dhizuku 授权
+- 首次启动显示用户须知与开源协议
+- 内置检查更新，自动连接 GitHub Release 获取版本更新
 
 ## 下载
-- v0.1 APK（Debug 构建）：`app/build/outputs/apk/debug/app-debug.apk`
+前往 [GitHub Releases](https://github.com/1953187487/FloatAI/releases) 下载最新 APK。
+
+## 更新记录
+查看 [CHANGELOG.md](CHANGELOG.md)
 
 ## 构建
 ```bash
@@ -21,4 +24,4 @@ gradle assembleDebug
 ```
 
 ## 开源
-MIT License，仓库名：`FloatAI`
+MIT License，仓库：[https://github.com/1953187487/FloatAI](https://github.com/1953187487/FloatAI)

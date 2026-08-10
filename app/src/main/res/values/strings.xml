@@ -4,4 +4,21 @@
     <string name="tab_chat">AI 聊天</string>
     <string name="tab_api">API 配置</string>
     <string name="tab_settings">设置</string>
+
+    <string name="repo_url">https://github.com/1953187487/FloatAI</string>
+    <string name="repo_releases_url">https://github.com/1953187487/FloatAI/releases</string>
+    <string name="protocol_title">用户须知与开源协议</string>
+    <string name="protocol_agree">同意并继续</string>
+    <string name="protocol_exit">不同意退出</string>
+    <string name="protocol_repo">查看开源仓库</string>
+    <string name="protocol_user_notice">【用户须知】
+1. FloatAI 支持 Android 8~14（API 26~34）。
+2. 悬浮窗功能需要授予"显示在其他应用上层"权限。
+3. 进程查看功能需要 Shizuku / Dhizuku 授权。
+4. 使用 AI 功能需要自行配置服务商 API 地址与密钥。
+5. 请遵守当地法律法规，合法使用本应用。</string>
+    <string name="protocol_open_source">【开源协议】
+本项目基于 MIT License 开源，源代码托管于 GitHub 仓库：
+https://github.com/1953187487/FloatAI
+你可以自由使用、修改、分发，并保留原作者版权声明。</string>
 </resources>
