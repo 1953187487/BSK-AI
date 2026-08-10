@@ -1,9 +1,13 @@
 package com.floatai.ui
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,21 +15,26 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ColorLens
-import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Doorbell
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,18 +57,18 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     val prefs = remember { context.getSharedPreferences("float_ai_prefs", Context.MODE_PRIVATE) }
 
     var themeColor by remember { mutableStateOf(prefs.getString("theme_color", "#FF6B6B") ?: "#FF6B6B") }
+    var renderEngine by remember { mutableStateOf(prefs.getString("render_engine", "compose") ?: "compose") }
+    var floatEnabled by remember { mutableStateOf(prefs.getBoolean("float_enabled", false)) }
     var shizuku by remember { mutableStateOf(prefs.getBoolean("shizuku", false)) }
     var dhizuku by remember { mutableStateOf(prefs.getBoolean("dhizuku", false)) }
     var message by remember { mutableStateOf("") }
     var showUpdateNotice by remember { mutableStateOf<UpdateNotice?>(null) }
     var showPermissionNotice by remember { mutableStateOf(false) }
+    var showFloatGrants by remember { mutableStateOf(false) }
 
-    // 设置页检查更新（不跳浏览器，直接在应用内显示）
     fun checkUpdate() {
         scope.launch {
-            val info = UpdateChecker.checkLatest("v" + try {
-                context.packageManager.getPackageInfo(context.packageName, 0).versionName
-            } catch (_: Exception) { "0.2" })
+            val info = UpdateChecker.checkLatest("v0.3.0")
             if (info.latestTag.isEmpty()) {
                 message = info.changelog
             } else if (info.isNewer) {
@@ -72,72 +81,150 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
 
     Column(
         modifier = modifier
-            .background(Brush.verticalGradient(listOf(Color(0xFF2B144D), Color(0xFF0F0A1E))))
+            .background(Brush.verticalGradient(listOf(Color(0xFF1B0E3A), Color(0xFF0F0A1E))))
             .verticalScroll(rememberScrollState())
-            .padding(20.dp)
+            .padding(16.dp)
     ) {
         Text("设置", style = MaterialTheme.typography.headlineMedium, color = Color.White)
 
-        // 从下到上排列按钮（但 UI 上从上到下显示）
-
-        // 4. UI 设置
-        GlassCard(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
+        // 分组 1: 常规设置
+        Text("常规设置", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.Icon(Icons.Filled.PhoneAndroid, contentDescription = null, tint = Color.White)
-                    Text("  UI 设置", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("界面主题", color = Color.White)
+                        Text("液态玻璃 (v0.3)", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                Color(0xFF5B2A86),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("液态玻璃", color = Color.White, fontSize = 12.sp)
+                    }
                 }
-                Text(
-                    "FloatAI v0.2 · Jetpack Compose · 液态玻璃主题",
-                    color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-                Text(
-                    "支持 Android 8~14 (API 26~34)，四核设备可运行",
-                    color = Color.White.copy(alpha = 0.5f),
-                    fontSize = 11.sp
-                )
-            }
-        }
-
-        // 3. 主题（含颜色 + 导入字体）
-        GlassCard(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.Icon(Icons.Filled.ColorLens, contentDescription = null, tint = Color.White)
-                    Text("  主题", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                }
-                Text("主题颜色", color = Color.White.copy(alpha = 0.8f), modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
-                OutlinedTextField(
-                    value = themeColor, onValueChange = { themeColor = it },
-                    placeholder = { Text("如 #FF6B6B") }, singleLine = true,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
-                )
-                Text("字体", color = Color.White.copy(alpha = 0.8f), modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
-                Button(onClick = { message = "字体导入需文件系统访问，建议放入 assets/fonts/" }, modifier = Modifier.fillMaxWidth()) {
-                    Text("导入字体 (使用 assets/fonts)")
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("主题色", color = Color.White)
+                        Box(
+                            modifier = Modifier
+                                .background(parseColorSafe(themeColor).copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .padding(top = 4.dp)
+                        ) {
+                            Text("预览", color = Color.White, fontSize = 11.sp)
+                        }
+                    }
                 }
-                Text(
-                    "主题设置保存后下次启动生效",
-                    color = Color.White.copy(alpha = 0.5f),
-                    fontSize = 11.sp,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+                Text("点击修改主色调，重启生效", color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
             }
         }
 
-        // 权限设置（Shizuku / Dhizuku）
-        GlassCard(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
+        // 分组 2: 视觉与 UI
+        Text("视觉与 UI", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column {
-                Text("权限授权", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                    Checkbox(checked = shizuku, onCheckedChange = { shizuku = it })
-                    Text("授权 Shizuku（进程查看）", color = Color.White)
+                Text(
+                    if (renderEngine == "flutter") "Flutter Embedding (跨端)" else "Jetpack Compose (原生)",
+                    color = Color.White,
+                    fontSize = 14.sp
+                )
+                Text("切换引擎将重启应用", color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(onClick = {
+                        renderEngine = "compose"
+                        prefs.edit().putString("render_engine", "compose").apply()
+                        message = "正在切换 UI 引擎，应用即将重启..."
+                    }, modifier = Modifier.weight(1f)) { Text("Jetpack Compose") }
+                    Button(onClick = {
+                        renderEngine = "flutter"
+                        prefs.edit().putString("render_engine", "flutter").apply()
+                        message = "正在切换 UI 引擎，应用即将重启..."
+                    }, modifier = Modifier.weight(1f)) { Text("Flutter") }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = dhizuku, onCheckedChange = { dhizuku = it })
-                    Text("授权 Dhizuku", color = Color.White)
+            }
+        }
+
+        // 分组 3: 悬浮窗控制
+        Text("悬浮窗控制", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Column {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("启用悬浮窗按钮", color = Color.White)
+                        Text("开启后将在其他应用上层显示快捷操作按钮", color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp)
+                    }
+                    Switch(
+                        checked = floatEnabled,
+                        onCheckedChange = { enabled ->
+                            floatEnabled = enabled
+                            prefs.edit().putBoolean("float_enabled", enabled).apply()
+                            if (enabled) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)) {
+                                    showFloatGrants = true
+                                } else {
+                                    message = "悬浮窗已启动"
+                                }
+                            } else {
+                                message = "悬浮窗已关闭"
+                            }
+                        }
+                    )
+                }
+            }
+        }
+
+        // 浮动权限跳转
+        if (showFloatGrants) {
+            AlertDialog(
+                onDismissRequest = { showFloatGrants = false },
+                title = { Text("需要悬浮窗权限") },
+                text = { Text("FloatAI needs the Display over other apps permission to start the float window") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showFloatGrants = false
+                        val intent = Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:${context.packageName}")
+                        )
+                        context.startActivity(intent)
+                    }) { Text("去授权") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showFloatGrants = false }) { Text("取消") }
+                }
+            )
+        }
+
+        // 分组 4: 权限管理
+        Text("权限管理", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                    Text(if (shizuku) "\u2705" else "\u274C", color = if (shizuku) Color.Green else Color.Red, fontSize = 14.sp)
+                    Text("Shizuku", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("  用于高级悬浮窗与进程查看", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                    Text(if (dhizuku) "\u2705" else "\u274C", color = if (dhizuku) Color.Green else Color.Red, fontSize = 14.sp)
+                    Text("Dhizuku", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("  备用免 Root 权限方案", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
                 }
                 TextButton(onClick = { showPermissionNotice = true }) {
                     Text("查看权限说明", color = Color.White.copy(alpha = 0.8f))
@@ -145,79 +232,59 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        // 保存按钮
-        Button(
-            onClick = {
-                prefs.edit()
-                    .putString("theme_color", themeColor.trim())
-                    .putBoolean("shizuku", shizuku)
-                    .putBoolean("dhizuku", dhizuku)
-                    .apply()
-                message = "设置已保存"
-            },
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-        ) { Text("保存设置") }
-
-        if (message.isNotEmpty()) {
-            Text(message, color = Color.White.copy(alpha = 0.8f), modifier = Modifier.padding(top = 8.dp))
-        }
-
-        // 2. 检查更新（倒数第二）
-        GlassCard(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
+        // 分组 5: 系统维护
+        Text("系统维护", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.Icon(Icons.Filled.Refresh, contentDescription = null, tint = Color.White)
-                    Text("  检查更新", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("检查更新", color = Color.White, fontWeight = FontWeight.Bold)
                 }
-                Button(
-                    onClick = { checkUpdate() },
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-                ) { Text("检查更新") }
-                Text(
-                    "自动从 GitHub Release 获取版本更新",
-                    color = Color.White.copy(alpha = 0.5f),
-                    fontSize = 11.sp,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+                Button(onClick = { checkUpdate() }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("点击检测") }
+                Text("自动从 GitHub Release 拉取最新版本", color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
             }
         }
 
-        // 1. 关于（最底，含邮箱）
-        GlassCard(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
+        // 分组 6: 关于
+        Text("关于", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.Icon(Icons.Filled.Description, contentDescription = null, tint = Color.White)
-                    Text("  关于", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                }
-                Text("FloatAI", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp))
-                Text("开源 Android AI 悬浮助手 · MIT License", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-                Text("v0.2 · Jetpack Compose · 液态玻璃", color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp)
+                Text("FloatAI v0.3.0", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("开源 Android AI 悬浮助手", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                Text("MIT License", color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
                 Button(
                     onClick = {
-                        context.startActivity(Intent(Intent.ACTION_SENDTO).apply {
-                            data = Uri.parse("mailto:" + context.getString(R.string.contact_email))
-                        })
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-                ) { Text("联系邮箱：${context.getString(R.string.contact_email)}") }
-                Button(
-                    onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(context.getString(R.string.repo_url))))
+                        context.startActivity(
+                            Intent(Intent.ACTION_SENDTO).apply {
+                                data = Uri.parse("mailto:" + context.getString(R.string.contact_email))
+                            }
+                        )
                     },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                ) { Text("打开开源仓库") }
+                ) { Text("发送邮件: 1953187487@qq.com") }
+                Button(
+                    onClick = {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(context.getString(R.string.repo_url)))
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                ) { Text("访问 GitHub 开源仓库") }
             }
+        }
+
+        if (message.isNotEmpty()) {
+            Text(message, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(top = 12.dp))
         }
     }
 
-    // 强制更新公告弹窗
+    // 强制更新公告
     showUpdateNotice?.let { notice ->
         AlertDialog(
             onDismissRequest = { showUpdateNotice = null },
             title = { Text("发现新版本 ${notice.tag}", color = Color(0xFFFF6B6B)) },
             text = {
                 Column {
-                    Text("请前往 GitHub Releases 下载更新：", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
+                    Text("请前往 GitHub Releases 下载更新", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
                     Text(
                         notice.changelog.ifEmpty { "无更新说明" },
                         color = Color.White,
@@ -228,7 +295,9 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             },
             confirmButton = {
                 TextButton(onClick = {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(context.getString(R.string.repo_releases_url))))
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse(context.getString(R.string.repo_releases_url)))
+                    )
                     showUpdateNotice = null
                 }) { Text("前往下载") }
             },
@@ -256,3 +325,12 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
 }
 
 data class UpdateNotice(val tag: String, val changelog: String)
+
+private fun parseColorSafe(hex: String): Color {
+    return try {
+        val n = android.graphics.Color.parseColor(hex)
+        Color(n)
+    } catch (_: Exception) {
+        Color(0xFFFF6B6B)
+    }
+}

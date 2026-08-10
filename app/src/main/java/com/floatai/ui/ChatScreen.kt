@@ -2,20 +2,30 @@ package com.floatai.ui
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Doorbell
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +58,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
 
-data class ChatMessage(val role: String, val content: String)
+data class ChatMessage(val role: String, val content: String, val timestamp: Long = System.currentTimeMillis())
+data class ChatHistory(val id: String, val title: String, val messages: List<ChatMessage>, val time: Long)
 
 @Composable
 fun ChatScreen(modifier: Modifier = Modifier) {
@@ -58,28 +70,64 @@ fun ChatScreen(modifier: Modifier = Modifier) {
     var messages by remember { mutableStateOf(listOf<ChatMessage>()) }
     var input by remember { mutableStateOf("") }
     var selectedModel by remember {
-        mutableStateOf(prefs.getString("selected_model", prefs.getString("api_model", "gpt-4o") ?: "gpt-4o") ?: "gpt-4o")
+        mutableStateOf(prefs.getString("selected_model", prefs.getString("api_model", "gpt-4o") ?: "gpt-4o") ?: "auto")
     }
     var loading by remember { mutableStateOf(false) }
-    var showModelPicker by remember { mutableStateOf(false) }
+    var showDropdown by remember { mutableStateOf(false) }
+    var expandedDropdown by remember { mutableStateOf(false) }
 
     val savedUrl = prefs.getString("api_url", "") ?: ""
     val savedKey = prefs.getString("api_key", "") ?: ""
 
     Column(
         modifier = modifier
-            .background(Brush.verticalGradient(listOf(Color(0xFF2B144D), Color(0xFF0F0A1E))))
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF1B0E3A), Color(0xFF0F0A1E))
+                )
+            )
             .fillMaxSize()
     ) {
-        // 顶部标题栏 + 模型切换
+        // 顶部标题栏
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("AI 聊天", style = MaterialTheme.typography.headlineMedium, color = Color.White)
-            TextButton(onClick = { showModelPicker = true }) {
-                Text("模型: $selectedModel", color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp)
+            Text(
+                "FloatAI 助手",
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color.White
+            )
+            Column(horizontalAlignment = Alignment.End) {
+                Box {
+                    TextButton(onClick = { expandedDropdown = !expandedDropdown }) {
+                        Text("模型: $selectedModel", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                    }
+                    DropdownMenu(
+                        expanded = expandedDropdown,
+                        onDismissRequest = { expandedDropdown = false }
+                    ) {
+                        val common = listOf(
+                            "gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo",
+                            "deepseek-chat", "deepseek-reasoner",
+                            "claude-3-5-sonnet", "gemini-pro", "qwen-max", "glm-4"
+                        )
+                        common.forEach { model ->
+                            DropdownMenuItem(
+                                text = { Text(model) },
+                                onClick = {
+                                    selectedModel = model
+                                    prefs.edit().putString("selected_model", model).apply()
+                                    expandedDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+                if (selectedModel.isEmpty()) {
+                    Text("未选择", color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp)
+                }
             }
         }
 
@@ -89,11 +137,17 @@ fun ChatScreen(modifier: Modifier = Modifier) {
         ) {
             if (messages.isEmpty()) {
                 item {
-                    Text(
-                        "开始和 AI 对话吧",
-                        color = Color.White.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(vertical = 40.dp).align(Alignment.CenterHorizontally)
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 60.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "开始和 AI 对话吧",
+                            color = Color.White.copy(alpha = 0.4f),
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
             items(messages) { msg ->
@@ -101,7 +155,7 @@ fun ChatScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        // 输入框
+        // 底部输入框
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.Bottom
@@ -109,9 +163,17 @@ fun ChatScreen(modifier: Modifier = Modifier) {
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },
-                placeholder = { Text("输入消息...", color = Color.White.copy(alpha = 0.4f)) },
-                modifier = Modifier.weight(1f),
-                maxLines = 4
+                placeholder = {
+                    Text(
+                        "输入消息，按回车发送...",
+                        color = Color.White.copy(alpha = 0.35f)
+                    )
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                maxLines = 4,
+                enabled = !loading
             )
             IconButton(
                 onClick = {
@@ -137,21 +199,14 @@ fun ChatScreen(modifier: Modifier = Modifier) {
                 if (loading) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                 } else {
-                    Icon(Icons.Filled.Send, contentDescription = "发送", tint = Color.White)
+                    Icon(
+                        Icons.AutoMirrored.Filled.Send,
+                        contentDescription = null,
+                        tint = Color.White
+                    )
                 }
             }
         }
-    }
-
-    if (showModelPicker) {
-        ModelPickerDialog(
-            onDismiss = { showModelPicker = false },
-            onSelect = { model ->
-                selectedModel = model
-                prefs.edit().putString("selected_model", model).apply()
-                showModelPicker = false
-            }
-        )
     }
 }
 
@@ -162,44 +217,18 @@ fun ChatBubble(msg: ChatMessage) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
     ) {
-        androidx.compose.foundation.layout.Box(
+        Box(
             modifier = Modifier
                 .background(
-                    if (isUser) Color(0xFF6C3BA8)
-                    else Color.White.copy(alpha = 0.1f),
+                    if (isUser) Color(0xFF6C3BA8) else Color.White.copy(alpha = 0.1f),
                     RoundedCornerShape(16.dp)
                 )
                 .padding(12.dp)
-                .fillMaxWidth(0.75f)
+                .fillMaxWidth(0.8f)
         ) {
             Text(msg.content, color = Color.White, fontSize = 14.sp)
         }
     }
-}
-
-@Composable
-fun ModelPickerDialog(onDismiss: () -> Unit, onSelect: (String) -> Unit) {
-    val commonModels = listOf(
-        "gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo",
-        "deepseek-chat", "deepseek-reasoner",
-        "claude-3-5-sonnet", "gemini-pro", "qwen-max", "glm-4"
-    )
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("选择模型") },
-        text = {
-            Column {
-                commonModels.forEach { model ->
-                    TextButton(onClick = { onSelect(model) }, modifier = Modifier.fillMaxWidth()) {
-                        Text(model)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("自定义模型") }
-        }
-    )
 }
 
 private fun chatCompletions(url: String, key: String, model: String, history: List<ChatMessage>): String {
@@ -214,19 +243,20 @@ private fun chatCompletions(url: String, key: String, model: String, history: Li
         conn.doOutput = true
 
         val body = JSONObject()
-        body.put("model", model)
-        val messages = JSONArray()
+        body.put("model", if (model == "auto") "gpt-4o" else model)
+        val msgs = JSONArray()
         history.takeLast(20).forEach { m ->
-            val msg = JSONObject()
-            msg.put("role", if (m.role == "assistant") "assistant" else "user")
-            msg.put("content", m.content)
-            messages.put(msg)
+            val obj = JSONObject()
+            obj.put("role", if (m.role == "assistant") "assistant" else "user")
+            obj.put("content", m.content)
+            msgs.put(obj)
         }
-        messages.put(JSONObject().put("role", "user").put("content", history.lastOrNull()?.content ?: ""))
-        body.put("messages", messages)
+        val last = history.lastOrNull() ?: ChatMessage("", "Hello")
+        msgs.put(JSONObject().put("role", "user").put("content", last.content))
+        body.put("messages", msgs)
         body.put("max_tokens", 2048)
 
-        val os: OutputStream = conn.outputStream
+        val os = conn.outputStream
         os.write(body.toString().toByteArray(StandardCharsets.UTF_8))
         os.flush()
         os.close()

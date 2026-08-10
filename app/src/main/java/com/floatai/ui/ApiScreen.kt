@@ -56,12 +56,12 @@ fun ApiScreen(modifier: Modifier = Modifier) {
 
     var apiUrl by remember { mutableStateOf(prefs.getString("api_url", "") ?: "") }
     var apiKey by remember { mutableStateOf(prefs.getString("api_key", "") ?: "") }
-    var apiModel by remember { mutableStateOf(prefs.getString("api_model", "") ?: "") }
+    var apiModel by remember { mutableStateOf(prefs.getString("api_model", "auto") ?: "auto") }
     var models by remember { mutableStateOf<List<String>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
-    var result by remember { mutableStateOf("点击\"获取模型\"从服务商拉取可用模型列表") }
+    var result by remember { mutableStateOf("Click get model to pull available model list from server") }
     var showCustomDialog by remember { mutableStateOf(false) }
-    var customModel by remember { mutableStateOf("") }
+    var customModel by remember { mutableStateOf(apiModel) }
 
     val commonModels = listOf(
         "gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo",
@@ -71,23 +71,23 @@ fun ApiScreen(modifier: Modifier = Modifier) {
 
     Column(
         modifier = modifier
-            .background(Brush.verticalGradient(listOf(Color(0xFF2B144D), Color(0xFF0F0A1E))))
+            .background(Brush.verticalGradient(listOf(Color(0xFF1B0E3A), Color(0xFF0F0A1E))))
             .verticalScroll(rememberScrollState())
             .padding(20.dp)
     ) {
-        Text("API 配置", style = MaterialTheme.typography.headlineMedium, color = Color.White)
+        Text("API 配置中心", style = MaterialTheme.typography.headlineMedium, color = Color.White)
         Text(
-            "支持所有 OpenAI 兼容的 AI 服务商",
-            color = Color.White.copy(alpha = 0.7f),
+            "支持所有 OpenAI 兼容协议的 AI 服务商",
+            color = Color.White.copy(alpha = 0.6f),
             modifier = Modifier.padding(top = 4.dp)
         )
 
         GlassCard(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
             Column {
-                Text("服务商 Base URL", color = Color.White, modifier = Modifier.padding(bottom = 8.dp))
+                Text("Base URL", color = Color.White, modifier = Modifier.padding(bottom = 8.dp))
                 OutlinedTextField(
                     value = apiUrl, onValueChange = { apiUrl = it },
-                    placeholder = { Text("如 https://api.openai.com/v1") },
+                    placeholder = { Text("https://api.openai.com/v1") },
                     singleLine = true, modifier = Modifier.fillMaxWidth()
                 )
                 Text("API Key", color = Color.White, modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
@@ -148,17 +148,50 @@ fun ApiScreen(modifier: Modifier = Modifier) {
                         .pointerInput(Unit) {
                             detectTapGestures(
                                 onTap = {},
-                                onLongPress = { showCustomDialog = true }
+                                onLongPress = {
+                                    customModel = apiModel
+                                    showCustomDialog = true
+                                }
                             )
                         }
                         .padding(12.dp)
                 ) {
                     Text(
-                        if (apiModel.isEmpty()) "未选择 (长按输入自定义模型)" else apiModel,
+                        if (apiModel.isEmpty() || apiModel == "auto") "auto" else apiModel,
                         color = Color.White, fontSize = 16.sp
                     )
                 }
-                Text("长按输入自定义模型", color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+                Text("长按可自定义模型名称", color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+            }
+        }
+
+        // 常用模型
+        GlassCard(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
+            Column {
+                Text("常用模型（点击选择）", color = Color.White, modifier = Modifier.padding(bottom = 8.dp))
+                commonModels.chunked(2).forEach { row ->
+                    Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                        row.forEach { m ->
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 4.dp)
+                                    .background(
+                                        if (m == apiModel) Color(0xFF4ECDC4).copy(alpha = 0.4f) else Color.White.copy(alpha = 0.08f),
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable {
+                                        apiModel = m
+                                        prefs.edit().putString("api_model", m).apply()
+                                    }
+                                    .padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(m, color = Color.White, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -190,39 +223,9 @@ fun ApiScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        // 常用模型（长按选择）
+        // 底部提示
         GlassCard(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-            Column {
-                Text("常用模型（点击选择）", color = Color.White)
-                commonModels.chunked(2).forEach { row ->
-                    Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                        row.forEach { m ->
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(horizontal = 4.dp)
-                                    .background(
-                                        if (m == apiModel) Color(0xFF4ECDC4).copy(alpha = 0.4f) else Color.White.copy(alpha = 0.08f),
-                                        RoundedCornerShape(8.dp)
-                                    )
-                                    .clickable {
-                                        apiModel = m
-                                        prefs.edit().putString("api_model", m).apply()
-                                    }
-                                    .padding(vertical = 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(m, color = Color.White, fontSize = 12.sp)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // 结果提示
-        GlassCard(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-            Text(result, color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp)
+            Text(result, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
         }
     }
 
@@ -241,7 +244,6 @@ fun ApiScreen(modifier: Modifier = Modifier) {
                     if (customModel.isNotBlank()) {
                         apiModel = customModel.trim()
                         prefs.edit().putString("api_model", apiModel).apply()
-                        customModel = ""
                     }
                     showCustomDialog = false
                 }) { Text("确定") }

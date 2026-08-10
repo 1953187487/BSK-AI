@@ -109,7 +109,7 @@ fun LiquidGlassSplash() {
                 modifier = Modifier.padding(top = 12.dp)
             )
             Text(
-                text = "v0.2",
+                text = "v0.3.0",
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.5f),
                 modifier = Modifier.padding(top = 32.dp)

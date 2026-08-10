@@ -5,29 +5,85 @@
     <string name="repo_releases_url">https://github.com/1953187487/FloatAI/releases</string>
     <string name="contact_email">1953187487@qq.com</string>
 
-    <string name="protocol_title">用户须知协议与权限说明</string>
-    <string name="protocol_agree">同意并继续</string>
-    <string name="protocol_exit">不同意退出</string>
+    <string name="protocol_title">User Notice and Permissions</string>
+    <string name="protocol_agree">Agree and Continue</string>
+    <string name="protocol_exit">Disagree and Exit</string>
 
-    <string name="user_notice">【用户须知协议】
-1. FloatAI 支持 Android 8~14 (API 26~34)，四核设备可运行。
-2. 悬浮窗功能需要授予"显示在其他应用上层"权限。
-3. 进程查看功能需要 Shizuku / Dhizuku 授权。
-4. AI 功能需自行配置服务商 API 地址与密钥，本应用不存储任何模型或数据。
-5. 使用本应用时请遵守当地法律法规，合法合规使用。
-6. 本应用为开源软件，基于 MIT License 发布，无任何担保，使用风险自负。</string>
+    <string name="user_notice">[User Notice]\n\n1. FloatAI supports Android 8.0+ (API 26+).\n\n2. The float window requires the Display over other apps permission.\n\n3. Process viewing requires Shizuku / Dhizuku authorization.\n\n4. The AI feature requires you to configure the provider API URL and key. This app does not store any model or chat data.\n\n5. Use this app in compliance with local laws and regulations.\n\n6. This app is open-source under the MIT License. Use at your own risk.</string>
 
-    <string name="permission_notice">【权限协议】
-本应用会申请以下权限用于核心功能：
-• 显示在其他应用上层 — 用于 AI 悬浮窗功能
-• 前台服务 (FOREGROUND_SERVICE / DATA_SYNC) — 用于悬浮窗常驻
-• 发送通知 (POST_NOTIFICATIONS) — 用于悬浮窗服务通知
-• 联网 (INTERNET) — 用于调用 AI 服务商 API
-• 访问网络状态 (ACCESS_NETWORK_STATE) — 用于检测网络可用性
+    <string name="permission_notice">[Permissions]\n\nThis app requests the following permissions:\n\n Display over other apps -- for the AI float window.\n Foreground service (FOREGROUND_SERVICE / DATA_SYNC) -- to keep the float window alive.\n Post notifications (POST_NOTIFICATIONS) -- for the float window service.\n Internet (INTERNET) -- to call the AI provider API.\n Access network state (ACCESS_NETWORK_STATE) -- to check network availability.\n\nFor process viewing, additional authorization is needed:\n\n Shizuku -- provides ADB-level permissions to read process info.\n Dhizuku -- alternative for non-root devices.\n\nPlease confirm that you understand the risks before granting any permission.</string>
 
-如需使用进程查看功能，请额外授权：
-• Shizuku — 提供 ADB 级别权限以读取进程列表
-• Dhizuku — Dhizuku 服务授权用于无 ROOT 设备获取进程权限
+    <!-- Bottom nav labels -->
+    <string name="nav_ai_chat">AI Chat</string>
+    <string name="nav_api_config">API Config</string>
+    <string name="nav_settings">Settings</string>
 
-授权前请确认您已了解相关风险。</string>
+    <!-- Chat screen -->
+    <string name="chat_title">FloatAI Assistant</string>
+    <string name="chat_placeholder">Type a message, press Enter to send...</string>
+    <string name="chat_empty">Start chatting with AI</string>
+    <string name="chat_send">Send message</string>
+
+    <!-- API screen -->
+    <string name="api_title">API Config Center</string>
+    <string name="api_subtitle">Supports all OpenAI-compatible AI providers</string>
+    <string name="api_base_url_label">Provider Base URL</string>
+    <string name="api_base_url_hint">https://api.openai.com/v1</string>
+    <string name="api_key_label">API Key</string>
+    <string name="api_key_hint">sk-...</string>
+    <string name="api_fetch_models">Fetch Models</string>
+    <string name="api_save_config">Save Config</string>
+    <string name="api_current_model">Current Model</string>
+    <string name="api_auto_detect">Auto (auto)</string>
+    <string name="api_custom_hint">Long press to customize model name</string>
+    <string name="api_common_models">Common Models</string>
+    <string name="api_tip">Tip: click Fetch Models to pull the model list from the server</string>
+
+    <!-- Settings sections -->
+    <string name="settings_general">General</string>
+    <string name="settings_theme_title">Interface Theme</string>
+    <string name="settings_theme_value">Liquid Glass (v0.3)</string>
+    <string name="settings_theme_color">Theme Color</string>
+    <string name="settings_theme_color_hint">#FF6B6B</string>
+    <string name="settings_theme_restart">Tap to change primary color. Restart to apply.</string>
+    <string name="settings_render_section">Visuals and UI</string>
+    <string name="settings_render_title">UI Render Engine</string>
+    <string name="settings_render_compose">Jetpack Compose (native)</string>
+    <string name="settings_render_flutter">Flutter Embedding (cross-platform)</string>
+    <string name="settings_render_switch">Switching engine will restart the app</string>
+    <string name="settings_float_section">Float Window</string>
+    <string name="settings_float_title">Enable Float Window Button</string>
+    <string name="settings_float_desc">When enabled, a quick-action button will appear above other apps</string>
+    <string name="settings_float_grant_title">Float Window Permission Required</string>
+    <string name="settings_float_grant_msg">FloatAI needs the Display over other apps permission to start the float window</string>
+    <string name="settings_float_grant_btn">Grant</string>
+    <string name="settings_float_on">Float window started</string>
+    <string name="settings_float_off">Float window stopped</string>
+    <string name="settings_permission_section">Permissions</string>
+    <string name="settings_shizuku">Shizuku</string>
+    <string name="settings_shizuku_desc">For advanced float window and process viewing</string>
+    <string name="settings_dhizuku">Dhizuku</string>
+    <string name="settings_dhizuku_desc">Alternative for non-root devices</string>
+    <string name="settings_permission_notice">View Permission Notes</string>
+    <string name="settings_maintenance_section">Maintenance</string>
+    <string name="settings_check_update">Check Update</string>
+    <string name="settings_check_update_desc">Pull latest version from GitHub Releases</string>
+    <string name="settings_about_section">About</string>
+    <string name="settings_about_app">FloatAI v0.3.0</string>
+    <string name="settings_about_desc">Open-source Android AI Float Assistant</string>
+    <string name="settings_about_license">MIT License</string>
+    <string name="settings_contact_email">Send Email</string>
+    <string name="settings_open_repo">Open GitHub</string>
+
+    <!-- FloatService dialogs -->
+    <string name="float_process_none">No running foreground apps detected</string>
+    <string name="float_process_select_done">Selected</string>
+    <string name="float_process_change">Change Selected Process</string>
+    <string name="float_process_updated">Process config updated</string>
+    <string name="float_changelog">Changelog</string>
+    <string name="float_changelog_empty">No changelog yet</string>
+
+    <!-- Model picker -->
+    <string name="model_picker_empty">No model selected</string>
+    <string name="model_picker_dialog_title">Select Model</string>
 </resources>
