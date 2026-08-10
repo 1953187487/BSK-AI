@@ -5,7 +5,7 @@
         <item name="colorOnPrimary">@color/white</item>
         <item name="colorPrimaryContainer">@color/accent</item>
         <item name="colorSecondary">@color/accent</item>
-        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:statusBarColor">#0F0A1E</item>
         <item name="android:windowBackground">@color/background</item>
         <item name="android:navigationBarColor">@color/white</item>
         <item name="bottomNavigationStyle">@style/Widget.Material3.BottomNavigationView</item>

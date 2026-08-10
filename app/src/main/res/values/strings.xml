@@ -1,24 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">FloatAI</string>
-    <string name="tab_chat">AI 聊天</string>
-    <string name="tab_api">API 配置</string>
-    <string name="tab_settings">设置</string>
-
     <string name="repo_url">https://github.com/1953187487/FloatAI</string>
     <string name="repo_releases_url">https://github.com/1953187487/FloatAI/releases</string>
-    <string name="protocol_title">用户须知与开源协议</string>
+    <string name="contact_email">1953187487@qq.com</string>
+
+    <string name="protocol_title">用户须知协议与权限说明</string>
     <string name="protocol_agree">同意并继续</string>
     <string name="protocol_exit">不同意退出</string>
-    <string name="protocol_repo">查看开源仓库</string>
-    <string name="protocol_user_notice">【用户须知】
-1. FloatAI 支持 Android 8~14（API 26~34）。
+
+    <string name="user_notice">【用户须知协议】
+1. FloatAI 支持 Android 8~14 (API 26~34)，四核设备可运行。
 2. 悬浮窗功能需要授予"显示在其他应用上层"权限。
 3. 进程查看功能需要 Shizuku / Dhizuku 授权。
-4. 使用 AI 功能需要自行配置服务商 API 地址与密钥。
-5. 请遵守当地法律法规，合法使用本应用。</string>
-    <string name="protocol_open_source">【开源协议】
-本项目基于 MIT License 开源，源代码托管于 GitHub 仓库：
-https://github.com/1953187487/FloatAI
-你可以自由使用、修改、分发，并保留原作者版权声明。</string>
+4. AI 功能需自行配置服务商 API 地址与密钥，本应用不存储任何模型或数据。
+5. 使用本应用时请遵守当地法律法规，合法合规使用。
+6. 本应用为开源软件，基于 MIT License 发布，无任何担保，使用风险自负。</string>
+
+    <string name="permission_notice">【权限协议】
+本应用会申请以下权限用于核心功能：
+• 显示在其他应用上层 — 用于 AI 悬浮窗功能
+• 前台服务 (FOREGROUND_SERVICE / DATA_SYNC) — 用于悬浮窗常驻
+• 发送通知 (POST_NOTIFICATIONS) — 用于悬浮窗服务通知
+• 联网 (INTERNET) — 用于调用 AI 服务商 API
+• 访问网络状态 (ACCESS_NETWORK_STATE) — 用于检测网络可用性
+
+如需使用进程查看功能，请额外授权：
+• Shizuku — 提供 ADB 级别权限以读取进程列表
+• Dhizuku — Dhizuku 服务授权用于无 ROOT 设备获取进程权限
+
+授权前请确认您已了解相关风险。</string>
 </resources>
