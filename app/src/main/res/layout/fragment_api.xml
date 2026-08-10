@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="API 配置" android:textSize="24sp" android:textStyle="bold" />
+
+    <EditText android:id="@+id/api_url" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:hint="服务商 Base URL，如 https://api.example.com/v1" />
+
+    <EditText android:id="@+id/api_key" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:hint="API Key" android:inputType="textPassword" />
+
+    <EditText android:id="@+id/model_name" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:hint="模型名称，如 gpt-4o" />
+
+    <Button android:id="@+id/btn_test" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:text="测试模型" />
+
+    <TextView android:id="@+id/tv_result" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:text="支持所有 AI 服务商（OpenAI 兼容协议）" />
+</LinearLayout>

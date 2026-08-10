@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="设置" android:textSize="24sp" android:textStyle="bold" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="主题颜色" android:textSize="16sp" />
+
+        <EditText android:id="@+id/et_theme_color" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:hint="如 #FF6B6B" />
+
+        <Button android:id="@+id/btn_import_font" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="导入字体" />
+
+        <TextView android:id="@+id/tv_font_path" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="未导入字体" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="权限授权" android:textSize="16sp" android:layout_marginTop="16dp" />
+
+        <CheckBox android:id="@+id/cb_shizuku" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="授权 Shizuku（进程查看）" />
+
+        <CheckBox android:id="@+id/cb_dhizuku" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="授权 Dhizuku" />
+    </LinearLayout>
+</ScrollView>
