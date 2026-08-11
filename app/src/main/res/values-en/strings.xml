@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FloatAI</string>
+    <string name="repo_url">https://github.com/1953187487/FloatAI</string>
+    <string name="repo_releases_url">https://github.com/1953187487/FloatAI/releases</string>
+    <string name="contact_email">1953187487@qq.com</string>
+
+    <string name="user_notice_title">User Notice</string>
+    <string name="user_notice_body">1. FloatAI supports Android 8.0+ (API 26+).\n\n2. The float window requires the Display over other apps permission.\n\n3. Process viewing and ATK elevated operations require at least one of: Shizuku, Dhizuku, or Root.\n\n4. The AI feature requires you to configure the provider API URL and key. This app does not store any model or chat data.\n\n5. Use this app in compliance with local laws and regulations.\n\n6. This app is open-source under the MIT License. Use at your own risk.</string>
+
+    <string name="permission_notice_title">Permission Agreement</string>
+    <string name="permission_notice_body">This app requests the following permissions:\n\n• Display over other apps — for the AI float window.\n• Foreground service (FOREGROUND_SERVICE / DATA_SYNC) — to keep the float window alive.\n• Post notifications (POST_NOTIFICATIONS) — for the float window service.\n• Internet (INTERNET) — to call the AI provider API.\n• Access network state (ACCESS_NETWORK_STATE) — to check network availability.\n\nElevated permissions:\n• Shizuku — ADB-level permissions for process view and ATK.\n• Dhizuku — alternative for non-root devices.\n• Root — full device control.\n\nPlease confirm that you understand the risks before granting any permission.</string>
+
+    <string name="elevated_title">Choose a Grant Source</string>
+    <string name="elevated_intro">To use ATK and process viewing, please grant at least one elevated permission:</string>
+    <string name="elevated_shizuku">Shizuku</string>
+    <string name="elevated_shizuku_desc">ADB-started service, no root required.</string>
+    <string name="elevated_dhizuku">Dhizuku</string>
+    <string name="elevated_dhizuku_desc">Device-owner based, no root alternative.</string>
+    <string name="elevated_root">Root</string>
+    <string name="elevated_root_desc">Full device control, requires su binary.</string>
+    <string name="elevated_open">Open & Authorize</string>
+    <string name="elevated_recheck">Re-detect</string>
+    <string name="elevated_continue">Authorized, continue</string>
+    <string name="elevated_required">At least one elevated grant is required</string>
+    <string name="elevated_status">Current status: %1$s</string>
+
+    <string name="shizuku_intro_title">About Shizuku</string>
+    <string name="shizuku_intro_body">Shizuku is an open-source project that exposes a system-level service through ADB so normal apps can use ADB-level APIs.\n\nFloatAI uses Shizuku to:\n• Read running process info.\n• Execute ATK terminal commands.\n• Invoke build toolchains.\n\nAfter authorizing, please verify that FloatAI appears in Shizuku\'s authorized apps list.</string>
+    <string name="dhizuku_intro_title">About Dhizuku</string>
+    <string name="dhizuku_intro_body">Dhizuku is an open-source project by the AndroidIDE team. It uses Device Owner to delegate elevated permissions to normal apps without root.\n\nFloatAI uses Dhizuku to:\n• Run process operations on non-root devices.\n• Run ATK terminal commands.\n\nAfter authorizing, please verify that FloatAI appears in Dhizuku\'s trusted apps list.</string>
+
+    <string name="language_choose_title">Choose Language</string>
+    <string name="language_choose_body">Please select your language. All agreements and UI text will follow your selection.</string>
+    <string name="language_zh">简体中文</string>
+    <string name="language_en">English</string>
+
+    <string name="nav_ai_chat">AI Chat</string>
+    <string name="nav_atk">ATK</string>
+    <string name="nav_settings">Settings</string>
+
+    <string name="chat_title">FloatAI Assistant</string>
+    <string name="chat_placeholder">Type a message…</string>
+    <string name="chat_empty">Start chatting with AI</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_history">History</string>
+    <string name="chat_clear">Clear chat</string>
+    <string name="chat_manage_models">Manage models</string>
+    <string name="chat_select_model">Select Model</string>
+    <string name="chat_no_models">No models yet, tap Manage models below to fetch.</string>
+
+    <string name="api_title">Manage Models</string>
+    <string name="api_subtitle">Supports all OpenAI-compatible AI providers</string>
+    <string name="api_base_url_label">Base URL</string>
+    <string name="api_key_label">API Key</string>
+    <string name="api_fetch">Fetch Models</string>
+    <string name="api_save">Save</string>
+    <string name="api_custom_hint">Tap to enter a custom model name</string>
+    <string name="api_available">Available models (%1$d)</string>
+    <string name="api_selected">selected</string>
+
+    <string name="atk_title">ATK Dev Tools</string>
+    <string name="atk_subtitle">On-device builds, AI diagnostics, one-click open source release</string>
+    <string name="atk_terminal">Terminal</string>
+    <string name="atk_terminal_hint">Enter a shell command and press Run (device local only).</string>
+    <string name="atk_run">Run</string>
+    <string name="atk_stop">Stop</string>
+    <string name="atk_clear_log">Clear log</string>
+    <string name="atk_project">Project</string>
+    <string name="atk_new_project">New APK project</string>
+    <string name="atk_project_name">Project name</string>
+    <string name="atk_project_pkg">Package name</string>
+    <string name="atk_project_create">Generate scaffold</string>
+    <string name="atk_build_debug">Build Debug APK</string>
+    <string name="atk_build_release">Build Release APK</string>
+    <string name="atk_publish">Publish to GitHub</string>
+    <string name="atk_publish_repo">Repository</string>
+    <string name="atk_publish_desc">Description</string>
+    <string name="atk_publish_private">Private repo</string>
+    <string name="atk_ai_diagnose">AI diagnose build error</string>
+    <string name="atk_ai_fix">Generate fix</string>
+    <string name="atk_need_token">Configure a GitHub token in Settings first</string>
+    <string name="atk_no_project">Generate a project first</string>
+    <string name="atk_scaffold_done">Scaffold generated: %1$s</string>
+    <string name="atk_build_done">Build finished: %1$s</string>
+    <string name="atk_publish_done">Published to %1$s</string>
+
+    <string name="settings_general">General</string>
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_dynamic_color">Dynamic color</string>
+    <string name="settings_theme_color">Accent color</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_float_section">Float window</string>
+    <string name="settings_float_title">Enable float button</string>
+    <string name="settings_float_desc">Show a quick action button above other apps</string>
+    <string name="settings_permission_section">Permissions</string>
+    <string name="settings_permission_notice">View permission notes</string>
+    <string name="settings_github_section">Open Source</string>
+    <string name="settings_github_token">GitHub Personal Access Token</string>
+    <string name="settings_github_token_desc">Used to create repos, push code, and upload APKs. Stored locally only.</string>
+    <string name="settings_about_section">About</string>
+    <string name="settings_about_app">FloatAI v1.0.1</string>
+    <string name="settings_about_desc">Open-source Android AI Float Assistant</string>
+    <string name="settings_about_license">MIT License</string>
+    <string name="settings_contact_email">Send Email</string>
+    <string name="settings_open_repo">Open GitHub Repo</string>
+    <string name="settings_check_update">Check update</string>
+</resources>

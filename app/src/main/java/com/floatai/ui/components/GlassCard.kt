@@ -10,52 +10,54 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.floatai.ui.theme.DarkGlass
+import com.floatai.ui.theme.LightGlass
+import com.floatai.ui.theme.isLiquidGlassDark
 
 /**
- * 玻璃拟态卡片：M3 Surface + 半透明渐变背景 + 描边。
- * 在动态主题下跟随 surface 色，同时保留轻量玻璃质感。
+ * 液态玻璃卡片：surface 半透明 + 顶光高光 + 描边。
  */
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    cornerRadius: Int = 24,
+    cornerRadius: Int = 22,
     content: @Composable () -> Unit
 ) {
-    val surface = MaterialTheme.colorScheme.surface
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(cornerRadius.dp),
-        color = Color.Transparent
-    ) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(cornerRadius.dp))
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            surface.copy(alpha = 0.55f),
-                            surface.copy(alpha = 0.25f)
-                        )
+    val glass = if (isLiquidGlassDark()) DarkGlass else LightGlass
+    val shape = RoundedCornerShape(cornerRadius.dp)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        glass.blurBackground,
+                        glass.blurBackground.copy(alpha = glass.blurBackground.alpha * 0.6f)
                     )
                 )
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(cornerRadius.dp)
-                )
-                .padding(20.dp)
-        ) {
-            content()
-        }
+            )
+            .border(
+                width = 0.5.dp,
+                brush = Brush.verticalGradient(
+                    listOf(
+                        glass.highlight,
+                        glass.blurBorder
+                    )
+                ),
+                shape = shape
+            )
+            .padding(18.dp)
+    ) {
+        content()
     }
 }
 
@@ -73,10 +75,10 @@ fun SettingsRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(14.dp))
             .clickableSafe(onClick)
-            .padding(vertical = 12.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            .padding(vertical = 12.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
@@ -93,16 +95,13 @@ fun SettingsRow(
     }
 }
 
-/**
- * 分组标题。
- */
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.padding(top = 20.dp, bottom = 8.dp)
     )
 }

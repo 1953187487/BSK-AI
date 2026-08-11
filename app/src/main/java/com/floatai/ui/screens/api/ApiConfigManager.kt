@@ -1,11 +1,10 @@
-package com.floatai.ui.screens.api
+package com.floatai.data
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.floatai.data.SettingsRepository
 import com.floatai.data.model.ApiConfig
 import com.floatai.data.remote.OpenAiClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,10 +19,14 @@ data class ApiUiState(
     val model: String = "auto",
     val models: List<String> = emptyList(),
     val loading: Boolean = false,
-    val message: String = "填写服务商信息后点击「获取模型」"
+    val message: String = ""
 )
 
-class ApiViewModel(
+/**
+ * 模型管理 ViewModel：原独立 API 页的全部能力，
+ * 现作为 AI 聊天页的"管理模型"入口使用。
+ */
+class ApiConfigManager(
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
@@ -43,7 +46,9 @@ class ApiViewModel(
     }
 
     fun onModelChange(value: String) {
-        _uiState.update { it.copy(model = value) }
+        val normalized = value.trim().ifBlank { "auto" }
+        _uiState.update { it.copy(model = normalized) }
+        settingsRepository.updateApiConfig { it.copy(model = normalized) }
     }
 
     fun fetchModels() {
@@ -63,24 +68,30 @@ class ApiViewModel(
                     else "获取到 ${list.size} 个模型"
                 )
             }
+            if (list.isNotEmpty()) {
+                settingsRepository.updateApiConfig { it.copy(models = list) }
+            }
         }
     }
 
     fun saveConfig() {
         val state = _uiState.value
-        settingsRepository.updateApiConfig {
-            ApiConfig(
-                baseUrl = state.baseUrl.trim(),
-                apiKey = state.apiKey.trim(),
-                model = state.model.trim().ifBlank { "auto" }
-            )
-        }
+        val saved = ApiConfig(
+            baseUrl = state.baseUrl.trim(),
+            apiKey = state.apiKey.trim(),
+            model = state.model.trim().ifBlank { "auto" },
+            models = state.models
+        )
+        settingsRepository.updateApiConfig { saved }
         _uiState.update { it.copy(message = "配置已保存") }
     }
 
     fun selectModel(model: String) {
-        _uiState.update { it.copy(model = model) }
-        settingsRepository.updateApiConfig { it.copy(model = model) }
+        onModelChange(model)
+    }
+
+    fun dismissMessage() {
+        _uiState.update { it.copy(message = "") }
     }
 
     private fun syncFromConfig() {
@@ -88,14 +99,15 @@ class ApiViewModel(
         _uiState.value = ApiUiState(
             baseUrl = config.baseUrl,
             apiKey = config.apiKey,
-            model = config.model.ifBlank { "auto" }
+            model = config.model.ifBlank { "auto" },
+            models = config.models
         )
     }
 
     companion object {
         fun factory(settingsRepository: SettingsRepository): ViewModelProvider.Factory =
             viewModelFactory {
-                initializer { ApiViewModel(settingsRepository) }
+                initializer { ApiConfigManager(settingsRepository) }
             }
     }
 }

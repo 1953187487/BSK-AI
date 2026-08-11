@@ -12,59 +12,54 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColors = darkColorScheme(
-    primary = BrandPurple,
+    primary = BrandIndigo,
     onPrimary = Color.White,
-    primaryContainer = BrandDeepPurple,
-    onPrimaryContainer = Color(0xFFEDE3FF),
-    secondary = BrandCyan,
+    primaryContainer = Color(0xFF2C2C7A),
+    onPrimaryContainer = Color(0xFFDDD6FF),
+    secondary = BrandTeal,
     onSecondary = Color(0xFF00302C),
     secondaryContainer = Color(0xFF254E4A),
     onSecondaryContainer = Color(0xFFA8F2EA),
     tertiary = BrandPink,
+    onTertiary = Color.White,
     background = DarkBackground,
-    onBackground = Color(0xFFE8E2F4),
+    onBackground = Color.White,
     surface = DarkSurface,
-    onSurface = Color(0xFFE8E2F4),
-    surfaceVariant = DarkSurfaceHigh,
-    onSurfaceVariant = Color(0xFFC7BEDB),
-    outline = Color(0xFF8D83A5),
-    error = Color(0xFFFFB4AB),
-    errorContainer = Color(0xFF93000A),
+    onSurface = Color.White,
+    surfaceVariant = DarkSurfaceVariant,
+    onSurfaceVariant = Color(0xFFEBEBF5),
+    outline = Color(0xFF8E8E93),
+    error = Color(0xFFFF453A),
+    errorContainer = Color(0xFF7A1212),
 )
 
 private val LightColors = lightColorScheme(
-    primary = BrandPurple,
+    primary = BrandIndigo,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFEDE0FF),
-    onPrimaryContainer = Color(0xFF250045),
-    secondary = Color(0xFF3B6E69),
+    primaryContainer = Color(0xFFE0E0FF),
+    onPrimaryContainer = Color(0xFF1A1A4D),
+    secondary = Color(0xFF008F86),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFBFF4EC),
+    secondaryContainer = Color(0xFFB8F1EB),
     onSecondaryContainer = Color(0xFF00201D),
-    tertiary = Color(0xFFB3457B),
+    tertiary = Color(0xFFD63384),
+    onTertiary = Color.White,
     background = LightBackground,
-    onBackground = Color(0xFF1C1B20),
+    onBackground = Color(0xFF1C1C1E),
     surface = LightSurface,
-    onSurface = Color(0xFF1C1B20),
-    surfaceVariant = Color(0xFFE7E1F0),
-    onSurfaceVariant = Color(0xFF494353),
-    outline = Color(0xFF7B7386),
-    error = Color(0xFFBA1A1A),
+    onSurface = Color(0xFF1C1C1E),
+    surfaceVariant = LightSurfaceVariant,
+    onSurfaceVariant = Color(0xFF48484A),
+    outline = Color(0xFF8E8E93),
+    error = Color(0xFFFF3B30),
     errorContainer = Color(0xFFFFDAD6),
 )
 
-/**
- * 应用主题入口。
- *
- * @param darkTheme 是否使用深色主题
- * @param dynamicColor 是否启用 Android 12+ 动态取色（基于壁纸）
- * @param accentColor 自定义主题色（动态取色关闭时作为主色 seed）
- */
 @Composable
 fun FloatAITheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
-    accentColor: Color = BrandPurple,
+    accentColor: Color = BrandIndigo,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -72,8 +67,8 @@ fun FloatAITheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> DarkColors.copy(primary = accentColor)
-        else -> LightColors.copy(primary = accentColor)
+        darkTheme -> DarkColors.copy(primary = accentColor, tertiary = accentColor)
+        else -> LightColors.copy(primary = accentColor, tertiary = accentColor)
     }
 
     MaterialTheme(

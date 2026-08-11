@@ -6,11 +6,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -19,9 +21,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,6 +51,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.floatai.App
 import com.floatai.data.model.ChatHistory
 import com.floatai.data.model.ChatMessage
+import com.floatai.ui.i18n.localStrings
+import com.floatai.ui.screens.api.ApiManagementSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,13 +63,17 @@ fun ChatScreen(modifier: Modifier = Modifier) {
         factory = ChatViewModel.factory(app.settingsRepository, app.chatRepository)
     )
 
+    val strings = localStrings()
     val messages by vm.messages.collectAsStateWithLifecycle()
     val input by vm.input.collectAsStateWithLifecycle()
     val loading by vm.loading.collectAsStateWithLifecycle()
     val model by vm.model.collectAsStateWithLifecycle()
+    val availableModels by vm.availableModels.collectAsStateWithLifecycle()
     val histories by vm.histories.collectAsStateWithLifecycle()
 
     var showHistory by remember { mutableStateOf(false) }
+    var showModelPicker by remember { mutableStateOf(false) }
+    var showApiManagement by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
     LaunchedEffect(messages.size) {
@@ -80,16 +88,19 @@ fun ChatScreen(modifier: Modifier = Modifier) {
         TopAppBar(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("FloatAI 助手", style = MaterialTheme.typography.titleLarge)
-                    modelDropdown(model, vm::setModel)
+                    Text(strings.chat_title, style = MaterialTheme.typography.titleLarge)
+                    ModelPickerTrigger(
+                        selected = model,
+                        onClick = { showModelPicker = true }
+                    )
                 }
             },
             actions = {
                 IconButton(onClick = { showHistory = true }) {
-                    Icon(Icons.Filled.History, contentDescription = "历史记录")
+                    Icon(Icons.Filled.History, contentDescription = strings.chat_history)
                 }
                 IconButton(onClick = { vm.clearChat() }) {
-                    Icon(Icons.Filled.Delete, contentDescription = "清空对话")
+                    Icon(Icons.Filled.Delete, contentDescription = strings.chat_clear)
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -108,7 +119,7 @@ fun ChatScreen(modifier: Modifier = Modifier) {
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            "开始和 AI 对话吧",
+                            strings.chat_empty,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center
@@ -145,32 +156,156 @@ fun ChatScreen(modifier: Modifier = Modifier) {
             onClearAll = vm::clearAllHistories
         )
     }
+
+    if (showModelPicker) {
+        ModelPickerSheet(
+            models = availableModels,
+            selected = model,
+            onSelect = {
+                vm.setModel(it)
+            },
+            onManageModels = {
+                showModelPicker = false
+                showApiManagement = true
+            },
+            onDismiss = { showModelPicker = false }
+        )
+    }
+
+    if (showApiManagement) {
+        ApiManagementSheet(onDismiss = {
+            showApiManagement = false
+            vm.refreshConfig()
+        })
+    }
 }
 
+/**
+ * 顶栏上点击展开模型列表的触发按钮。
+ */
 @Composable
-private fun modelDropdown(selectedModel: String, onSelect: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        TextButton(onClick = { expanded = true }) {
+private fun ModelPickerTrigger(selected: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .padding(start = 8.dp)
+            .background(
+                MaterialTheme.colorScheme.surfaceVariant,
+                RoundedCornerShape(12.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            selected,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 140.dp)
+        )
+        Icon(
+            Icons.Filled.KeyboardArrowDown,
+            contentDescription = "展开模型列表",
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ModelPickerSheet(
+    models: List<String>,
+    selected: String,
+    onSelect: (String) -> Unit,
+    onManageModels: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val strings = localStrings()
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(strings.chat_select_model, style = MaterialTheme.typography.titleLarge)
+                TextButton(onClick = onDismiss) { Text("✕") }
+            }
             Text(
-                "模型: $selectedModel",
+                if (models.isEmpty()) strings.chat_no_models else "${models.size} models",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelSmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            val common = listOf(
-                "gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo",
-                "deepseek-chat", "deepseek-reasoner",
-                "claude-3-5-sonnet", "gemini-pro", "qwen-max", "glm-4"
-            )
-            common.forEach { m ->
-                DropdownMenuItem(text = { Text(m) }, onClick = {
-                    onSelect(m)
-                    expanded = false
-                })
+            LazyColumn(modifier = Modifier.heightIn(max = 460.dp)) {
+                items(models, key = { it }) { m ->
+                    val isSelected = m == selected
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 3.dp)
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+                                else MaterialTheme.colorScheme.surfaceVariant,
+                                RoundedCornerShape(12.dp)
+                            )
+                            .clickable {
+                                onSelect(m)
+                                onDismiss()
+                            }
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            m,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (isSelected) {
+                            Text(
+                                strings.api_selected,
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                }
+                // 末尾「管理模型」入口
+                item(key = "__manage_models__") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                            .background(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .clickable {
+                                onManageModels()
+                            }
+                            .padding(horizontal = 14.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.Settings,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            strings.chat_manage_models,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = 12.dp)
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            "+",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
             }
         }
     }
@@ -186,9 +321,14 @@ fun ChatBubble(msg: ChatMessage) {
         Box(
             modifier = Modifier
                 .background(
-                    if (isUser) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.surfaceVariant,
-                    RoundedCornerShape(16.dp)
+                    if (isUser) MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                    else MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                    RoundedCornerShape(
+                        topStart = 18.dp,
+                        topEnd = 18.dp,
+                        bottomStart = if (isUser) 18.dp else 4.dp,
+                        bottomEnd = if (isUser) 4.dp else 18.dp
+                    )
                 )
                 .padding(horizontal = 14.dp, vertical = 10.dp)
                 .fillMaxWidth(0.82f)
@@ -211,30 +351,42 @@ fun ChatInputBar(
     onSend: () -> Unit,
     loading: Boolean
 ) {
+    val strings = localStrings()
     Row(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .background(
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                RoundedCornerShape(22.dp)
+            )
+            .padding(horizontal = 14.dp, vertical = 6.dp),
         verticalAlignment = Alignment.Bottom
     ) {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            placeholder = { Text("输入消息...") },
+            placeholder = { Text(strings.chat_placeholder) },
             modifier = Modifier.weight(1f),
             maxLines = 4,
             enabled = !loading,
-            shape = RoundedCornerShape(20.dp)
+            shape = RoundedCornerShape(18.dp),
+            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent
+            )
         )
         IconButton(
             onClick = onSend,
             enabled = !loading && value.isNotBlank(),
-            modifier = Modifier.padding(start = 8.dp)
+            modifier = Modifier.padding(start = 4.dp)
         ) {
             if (loading) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
             } else {
                 Icon(
                     Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "发送",
+                    contentDescription = strings.chat_send,
                     tint = MaterialTheme.colorScheme.primary
                 )
             }

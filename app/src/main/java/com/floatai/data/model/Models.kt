@@ -57,15 +57,30 @@ data class ChatHistory(
 data class ApiConfig(
     val baseUrl: String = "",
     val apiKey: String = "",
-    val model: String = "auto"
+    val model: String = "auto",
+    val models: List<String> = emptyList()
 )
+
+enum class AppLanguage(val code: String, val display: String) {
+    ZH("zh", "简体中文"),
+    EN("en", "English");
+
+    companion object {
+        fun fromCode(code: String?): AppLanguage =
+            entries.firstOrNull { it.code == code } ?: ZH
+    }
+}
 
 data class AppSettings(
     val darkTheme: Boolean = true,
     val dynamicColor: Boolean = false,
-    val accentColor: String = "紫色",
+    val accentColor: String = "靛蓝",
     val floatEnabled: Boolean = false,
-    val protocolAgreed: Boolean = false
+    val protocolAgreed: Boolean = false,
+    val githubToken: String = "",
+    val language: AppLanguage = AppLanguage.ZH,
+    val languageChosen: Boolean = false,
+    val elevatedGranted: Boolean = false
 )
 
 data class UpdateInfo(

@@ -6,6 +6,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Circle
@@ -23,6 +26,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,20 +38,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.floatai.App
 import com.floatai.R
-import com.floatai.data.model.AppSettings
+import com.floatai.data.model.AppLanguage
+import com.floatai.service.FloatService
 import com.floatai.ui.components.GlassCard
 import com.floatai.ui.components.SectionTitle
 import com.floatai.ui.components.SettingsRow
+import com.floatai.ui.i18n.localStrings
 import com.floatai.ui.theme.AccentOptions
-import com.floatai.ui.theme.accentColorByName
-import com.floatai.service.FloatService
 
 @Composable
 fun SettingsScreen(modifier: Modifier = Modifier) {
@@ -59,9 +64,11 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     )
     val settings by vm.settings.collectAsStateWithLifecycle()
     val updateState by vm.update.collectAsStateWithLifecycle()
+    val strings = localStrings()
 
     var showPermissionNotice by remember { mutableStateOf(false) }
     var showFloatGrants by remember { mutableStateOf(false) }
+    var showTokenDialog by remember { mutableStateOf(false) }
     var localMessage by remember { mutableStateOf<String?>(null) }
 
     Column(
@@ -71,54 +78,47 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text("设置", style = MaterialTheme.typography.headlineMedium)
+        Text(strings.app_name + " · " + strings.nav_settings, style = MaterialTheme.typography.headlineMedium)
 
-        SectionTitle("常规设置")
+        SectionTitle(strings.settings_general)
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column {
                 SettingsRow(
-                    title = "界面主题",
-                    subtitle = "切换亮色 / 深色外观"
+                    title = strings.settings_theme_title,
+                    subtitle = if (settings.darkTheme) "Dark" else "Light"
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            if (settings.darkTheme) "深色" else "亮色",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Switch(
-                            checked = settings.darkTheme,
-                            onCheckedChange = vm::setDarkTheme
-                        )
+                    Switch(checked = settings.darkTheme, onCheckedChange = vm::setDarkTheme)
+                }
+                SettingsRow(
+                    title = strings.settings_dynamic_color,
+                    subtitle = "Android 12+ wallpaper-based"
+                ) {
+                    Switch(checked = settings.dynamicColor, onCheckedChange = vm::setDynamicColor)
+                }
+                SettingsRow(
+                    title = strings.settings_theme_color,
+                    subtitle = settings.accentColor
+                ) {
+                    ThemeColorPicker(selected = settings.accentColor, onSelect = vm::setAccentColor)
+                }
+                SettingsRow(
+                    title = strings.settings_language,
+                    subtitle = if (settings.language == AppLanguage.ZH) strings.language_zh else strings.language_en
+                ) {
+                    Row {
+                        TextButton(onClick = { vm.setLanguage(AppLanguage.ZH) }) { Text("ZH") }
+                        TextButton(onClick = { vm.setLanguage(AppLanguage.EN) }) { Text("EN") }
                     }
-                }
-                SettingsRow(
-                    title = "动态取色",
-                    subtitle = "Android 12+ 跟随壁纸自动配色"
-                ) {
-                    Switch(
-                        checked = settings.dynamicColor,
-                        onCheckedChange = vm::setDynamicColor
-                    )
-                }
-                SettingsRow(
-                    title = "主题色",
-                    subtitle = "选择主色调，立即生效"
-                ) {
-                    ThemeColorPicker(
-                        selected = settings.accentColor,
-                        onSelect = vm::setAccentColor
-                    )
                 }
             }
         }
 
-        SectionTitle("悬浮窗控制")
+        SectionTitle(strings.settings_float_section)
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column {
                 SettingsRow(
-                    title = "启用悬浮窗按钮",
-                    subtitle = "在其他应用上层显示快捷操作按钮"
+                    title = strings.settings_float_title,
+                    subtitle = strings.settings_float_desc
                 ) {
                     Switch(
                         checked = settings.floatEnabled,
@@ -133,11 +133,11 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                                     context.startForegroundService(
                                         Intent(context, FloatService::class.java)
                                     )
-                                    localMessage = "悬浮窗已启动"
+                                    localMessage = strings.settings_float_title
                                 }
                             } else {
                                 context.stopService(Intent(context, FloatService::class.java))
-                                localMessage = "悬浮窗已关闭"
+                                localMessage = strings.settings_float_title
                             }
                         }
                     )
@@ -145,12 +145,12 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        SectionTitle("权限管理")
+        SectionTitle(strings.settings_permission_section)
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column {
                 SettingsRow(
-                    title = "悬浮窗权限",
-                    subtitle = "用于 AI 悬浮窗显示在其他应用之上"
+                    title = "Display over other apps",
+                    subtitle = "Float window"
                 ) {
                     TextButton(onClick = {
                         val intent = Intent(
@@ -158,25 +158,44 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                             Uri.parse("package:${context.packageName}")
                         )
                         context.startActivity(intent)
-                    }) { Text("去授权") }
+                    }) { Text("→") }
                 }
                 TextButton(onClick = { showPermissionNotice = true }) {
-                    Text("查看权限说明")
+                    Text(strings.settings_permission_notice)
                 }
             }
         }
 
-        SectionTitle("系统维护")
+        SectionTitle(strings.settings_github_section)
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column {
                 SettingsRow(
-                    title = "检查更新",
-                    subtitle = "自动从 GitHub Release 拉取最新版本"
+                    title = strings.settings_github_token,
+                    subtitle = if (settings.githubToken.isNotBlank()) "●●●●●●●●" + settings.githubToken.takeLast(4)
+                    else strings.atk_need_token
+                ) {
+                    TextButton(onClick = { showTokenDialog = true }) { Text("✎") }
+                }
+                Text(
+                    text = strings.settings_github_token_desc,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+        }
+
+        SectionTitle(strings.settings_about_section)
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Column {
+                SettingsRow(
+                    title = strings.settings_check_update,
+                    subtitle = "GitHub Releases"
                 ) {
                     if (updateState.checking) {
                         CircularProgressIndicator(modifier = Modifier.size(22.dp))
                     } else {
-                        Button(onClick = { vm.checkUpdate("v1.0.0") }) { Text("点击检测") }
+                        Button(onClick = { vm.checkUpdate("v1.0.1") }) { Text("↻") }
                     }
                 }
                 if (updateState.message.isNotEmpty()) {
@@ -195,27 +214,17 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         modifier = Modifier.padding(top = 8.dp)
                     )
                 }
-            }
-        }
-
-        SectionTitle("关于")
-        GlassCard(modifier = Modifier.fillMaxWidth()) {
-            Column {
+                Spacer4dp()
+                Text(strings.settings_about_app, style = MaterialTheme.typography.titleLarge)
                 Text(
-                    "FloatAI v1.0.0",
-                    style = MaterialTheme.typography.titleLarge
+                    strings.settings_about_desc,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    "开源 Android AI 悬浮助手",
+                    strings.settings_about_license,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-                Text(
-                    "MIT License",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(top = 4.dp)
+                    style = MaterialTheme.typography.labelSmall
                 )
                 Button(
                     onClick = {
@@ -226,7 +235,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         )
                     },
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-                ) { Text("发送邮件: 1953187487@qq.com") }
+                ) { Text(strings.settings_contact_email) }
                 Button(
                     onClick = {
                         context.startActivity(
@@ -234,7 +243,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         )
                     },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                ) { Text("访问 GitHub 开源仓库") }
+                ) { Text(strings.settings_open_repo) }
             }
         }
     }
@@ -242,10 +251,8 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     if (showFloatGrants) {
         AlertDialog(
             onDismissRequest = { showFloatGrants = false },
-            title = { Text("需要悬浮窗权限") },
-            text = {
-                Text("FloatAI 需要在其他应用上层显示以启动悬浮窗，请前往系统设置授权。")
-            },
+            title = { Text(strings.settings_float_title) },
+            text = { Text(strings.settings_float_desc) },
             confirmButton = {
                 TextButton(onClick = {
                     showFloatGrants = false
@@ -254,10 +261,10 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         Uri.parse("package:${context.packageName}")
                     )
                     context.startActivity(intent)
-                }) { Text("去授权") }
+                }) { Text("→") }
             },
             dismissButton = {
-                TextButton(onClick = { showFloatGrants = false }) { Text("取消") }
+                TextButton(onClick = { showFloatGrants = false }) { Text("✕") }
             }
         )
     }
@@ -265,10 +272,46 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     if (showPermissionNotice) {
         AlertDialog(
             onDismissRequest = { showPermissionNotice = false },
-            title = { Text("权限说明") },
-            text = { Text(context.getString(R.string.permission_notice), fontSize = 12.sp) },
+            title = { Text(strings.permission_notice_title) },
+            text = { Text(strings.permission_notice_body, fontSize = 12.sp) },
             confirmButton = {
-                TextButton(onClick = { showPermissionNotice = false }) { Text("知道了") }
+                TextButton(onClick = { showPermissionNotice = false }) { Text("✕") }
+            }
+        )
+    }
+
+    if (showTokenDialog) {
+        var tokenInput by remember { mutableStateOf(settings.githubToken) }
+        AlertDialog(
+            onDismissRequest = { showTokenDialog = false },
+            title = { Text(strings.settings_github_token) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = tokenInput,
+                        onValueChange = { tokenInput = it },
+                        placeholder = { Text("ghp_... or github_pat_...") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        strings.settings_github_token_desc,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.setGithubToken(tokenInput.trim())
+                    showTokenDialog = false
+                }) { Text("✓") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTokenDialog = false }) { Text("✕") }
             }
         )
     }
@@ -276,12 +319,12 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     updateState.notice?.let { notice ->
         AlertDialog(
             onDismissRequest = vm::dismissUpdate,
-            title = { Text("发现新版本 ${notice.latestTag}", color = MaterialTheme.colorScheme.primary) },
+            title = { Text("${strings.settings_check_update}: ${notice.latestTag}", color = MaterialTheme.colorScheme.primary) },
             text = {
                 Column {
-                    Text("请前往 GitHub Releases 下载更新", style = MaterialTheme.typography.bodyMedium)
+                    Text("→ GitHub Releases", style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        notice.changelog.ifEmpty { "无更新说明" },
+                        notice.changelog.ifEmpty { "—" },
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 8.dp)
                     )
@@ -293,20 +336,25 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                         Intent(Intent.ACTION_VIEW, Uri.parse(context.getString(R.string.repo_releases_url)))
                     )
                     vm.dismissUpdate()
-                }) { Text("前往下载") }
+                }) { Text("→") }
             },
             dismissButton = {
-                TextButton(onClick = vm::dismissUpdate) { Text("稍后") }
+                TextButton(onClick = vm::dismissUpdate) { Text("✕") }
             }
         )
     }
 }
 
 @Composable
+private fun Spacer4dp() {
+    Box(modifier = Modifier.size(8.dp))
+}
+
+@Composable
 fun ThemeColorPicker(selected: String, onSelect: (String) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         AccentOptions.forEach { option ->
             Box(

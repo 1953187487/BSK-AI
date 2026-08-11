@@ -47,6 +47,14 @@ class SettingsViewModel(
         settingsRepository.updateSettings { it.copy(floatEnabled = value) }
     }
 
+    fun setLanguage(lang: com.floatai.data.model.AppLanguage) {
+        settingsRepository.updateSettings { it.copy(language = lang) }
+    }
+
+    fun setGithubToken(token: String) {
+        settingsRepository.updateSettings { it.copy(githubToken = token) }
+    }
+
     fun checkUpdate(currentTag: String) {
         _update.update { it.copy(checking = true, message = "") }
         viewModelScope.launch {

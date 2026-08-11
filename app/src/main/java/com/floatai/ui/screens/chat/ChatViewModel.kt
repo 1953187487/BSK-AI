@@ -36,6 +36,9 @@ class ChatViewModel(
     private val _model = MutableStateFlow("auto")
     val model: StateFlow<String> = _model.asStateFlow()
 
+    private val _availableModels = MutableStateFlow<List<String>>(emptyList())
+    val availableModels: StateFlow<List<String>> = _availableModels.asStateFlow()
+
     private val _histories = MutableStateFlow<List<ChatHistory>>(emptyList())
     val histories: StateFlow<List<ChatHistory>> = _histories.asStateFlow()
 
@@ -46,6 +49,7 @@ class ChatViewModel(
 
     init {
         _model.value = settingsRepository.apiConfig.value.model.ifBlank { "auto" }
+        refreshModels()
         refreshHistories()
         // 默认加载一个欢迎对话
         _messages.value = listOf(defaultWelcome())
@@ -57,11 +61,25 @@ class ChatViewModel(
 
     fun refreshConfig() {
         apiConfig = settingsRepository.apiConfig.value
+        refreshModels()
     }
 
     fun setModel(model: String) {
         _model.value = model
         settingsRepository.updateApiConfig { it.copy(model = model) }
+    }
+
+    /** 合并内置常用模型与已拉取模型，去重后排序：auto 永远在最前。 */
+    private fun refreshModels() {
+        val builtIn = listOf(
+            "auto",
+            "gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo",
+            "deepseek-chat", "deepseek-reasoner",
+            "claude-3-5-sonnet", "gemini-pro", "qwen-max", "glm-4"
+        )
+        val merged = (builtIn + settingsRepository.apiConfig.value.models)
+            .distinct()
+        _availableModels.value = merged
     }
 
     fun send() {

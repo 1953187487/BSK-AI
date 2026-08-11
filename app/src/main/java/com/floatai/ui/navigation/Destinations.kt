@@ -2,7 +2,7 @@ package com.floatai.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -15,10 +15,10 @@ sealed class AppDestination(
     val icon: ImageVector
 ) {
     data object Chat : AppDestination("chat", "AI 对话", Icons.AutoMirrored.Filled.Chat)
-    data object Api : AppDestination("api", "API 配置", Icons.Filled.Dns)
+    data object Atk : AppDestination("atk", "ATK", Icons.Filled.Build)
     data object Settings : AppDestination("settings", "设置", Icons.Filled.Settings)
 
     companion object {
-        val bottomBar = listOf(Chat, Api, Settings)
+        val bottomBar = listOf(Chat, Atk, Settings)
     }
 }
