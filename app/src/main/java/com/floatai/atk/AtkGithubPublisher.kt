@@ -160,7 +160,7 @@ object AtkGithubPublisher {
             conn.outputStream.use { it.write(body.toString().toByteArray()) }
             if (conn.responseCode !in 200..299) return@runCatching null
             JSONObject(conn.inputStream.bufferedReader().readText())
-        }.getNull() ?: return null
+        }.getOrNull() ?: return null
 
         val uploadUrl = releaseObj.optString("upload_url", "").replace("{?name,label}", "?name=${apk.name}")
         val uploadOk = runCatching {

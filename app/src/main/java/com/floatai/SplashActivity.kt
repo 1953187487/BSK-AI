@@ -98,6 +98,8 @@ fun LiquidGlassSplash() {
         alpha.animateTo(1f, tween(700))
     }
 
+    val tertiaryColor = MaterialTheme.colorScheme.tertiary
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -116,7 +118,7 @@ fun LiquidGlassSplash() {
             )
             drawCircle(
                 brush = Brush.radialGradient(
-                    listOf(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.45f), Color.Transparent),
+                    listOf(tertiaryColor.copy(alpha = 0.45f), Color.Transparent),
                     center = Offset(size.width * (0.75f - phase * 0.05f), size.height * 0.7f),
                     radius = size.width * (0.45f + phase * 0.08f)
                 ),

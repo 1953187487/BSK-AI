@@ -19,7 +19,7 @@
     <string name="elevated_dhizuku_desc">Device-owner based, no root alternative.</string>
     <string name="elevated_root">Root</string>
     <string name="elevated_root_desc">Full device control, requires su binary.</string>
-    <string name="elevated_open">Open & Authorize</string>
+    <string name="elevated_open">Open &amp; Authorize</string>
     <string name="elevated_recheck">Re-detect</string>
     <string name="elevated_continue">Authorized, continue</string>
     <string name="elevated_required">At least one elevated grant is required</string>

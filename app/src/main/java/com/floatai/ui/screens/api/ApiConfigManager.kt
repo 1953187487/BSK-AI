@@ -1,10 +1,11 @@
-package com.floatai.data
+package com.floatai.ui.screens.api
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.floatai.data.SettingsRepository
 import com.floatai.data.model.ApiConfig
 import com.floatai.data.remote.OpenAiClient
 import kotlinx.coroutines.flow.MutableStateFlow

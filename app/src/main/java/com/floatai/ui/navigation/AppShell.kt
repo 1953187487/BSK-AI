@@ -5,8 +5,6 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideIntoContainer
-import androidx.compose.animation.slideOutOfContainer
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -56,20 +54,6 @@ import com.floatai.ui.screens.chat.ChatScreen
 import com.floatai.ui.screens.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
-sealed class AppDestination(
-    val route: String,
-    val label: String,
-    val icon: ImageVector
-) {
-    data object Chat : AppDestination("chat", "AI 对话", Icons.AutoMirrored.Filled.Chat)
-    data object Atk : AppDestination("atk", "ATK", Icons.Filled.Build)
-    data object Settings : AppDestination("settings", "设置", Icons.Filled.Settings)
-
-    companion object {
-        val drawer = listOf(Chat, Atk, Settings)
-    }
-}
-
 @Composable
 fun AppShell() {
     val strings = localStrings()
@@ -79,7 +63,7 @@ fun AppShell() {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
-    val title = strings.app_name + " · " + AppDestination.drawer
+    val title = strings.app_name + " · " + AppDestination.bottomBar
         .firstOrNull { it.route == currentRoute }?.label.orEmpty()
 
     ModalNavigationDrawer(
@@ -111,8 +95,10 @@ fun AppShell() {
                 AnimatedContent(
                     targetState = currentRoute,
                     transitionSpec = {
-                        val forward = initialState != targetState
-                        val direction = if (forward) SlideDirection.Start else SlideDirection.End
+                        val direction = if (initialState != targetState)
+                            AnimatedContentTransitionScope.SlideDirection.Start
+                        else
+                            AnimatedContentTransitionScope.SlideDirection.End
                         (slideIntoContainer(direction, tween(280)) + fadeIn(tween(280)))
                             .togetherWith(slideOutOfContainer(direction, tween(280)) + fadeOut(tween(220)))
                     },
@@ -167,7 +153,7 @@ private fun DrawerContent(
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp)
         )
-        AppDestination.drawer.forEach { dest ->
+        AppDestination.bottomBar.forEach { dest ->
             val selected = dest.route == currentRoute
             Row(
                 modifier = Modifier

@@ -2,6 +2,8 @@ package com.floatai.ui.i18n
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.floatai.App
@@ -16,20 +18,19 @@ import com.floatai.data.model.AppLanguage
  * 使用方式：`LocalStrings.current.chat_title`
  */
 @Composable
-@ReadOnlyComposable
 fun localStrings(): LocalStrings {
-    val app = LocalContext.current.applicationContext as App
+    val context = LocalContext.current
+    val app = context.applicationContext as App
     val lang by app.settingsRepository.settings.collectAsStateWithLifecycle()
-    val res = LocalContext.current.resources
-    val cfg = when (lang.language) {
-        AppLanguage.ZH -> res.configuration
-        AppLanguage.EN -> {
-            val newCfg = android.content.res.Configuration(res.configuration)
-            newCfg.setLocale(java.util.Locale.ENGLISH)
-            newCfg
-        }
+    val res = context.resources
+    val targetLocale = if (lang.language == AppLanguage.EN) java.util.Locale.ENGLISH else null
+    val localized = remember(lang.language) {
+        val cfg = res.configuration
+        val newCfg = if (targetLocale != null) {
+            android.content.res.Configuration(cfg).apply { setLocale(targetLocale) }
+        } else cfg
+        context.createConfigurationContext(newCfg).resources
     }
-    val localized = res.createConfigurationContext(cfg).resources
     return LocalStrings(localized)
 }
 
