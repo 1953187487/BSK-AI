@@ -1,11 +1,12 @@
 package com.floatai.ui.flow
 
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,52 +16,65 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.floatai.data.model.AppLanguage
 import com.floatai.perm.ElevatedGrant
 import com.floatai.perm.ElevatedGrantDetector
+import com.floatai.perm.GrantState
 import com.floatai.ui.components.GlassCard
 import com.floatai.ui.i18n.localStrings
 import com.floatai.ui.theme.liquidBackdrop
-import rikka.shizuku.Shizuku
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import rikka.shizuku.Shizuku
 
 /**
- * 高权限协议流：必须授予 Shizuku / Dhizuku / Root 至少一个才能进入主界面。
+ * 高权限协议流（v1.0.1 第三次重做）。
  *
- * 修复（v1.0.1 → v1.0.1 re-publish）：
- *  点击授权按钮改为「应用内执行授权流程」，不再自动跳转到开源项目下载页。
- *  Shizuku / Dhizuku 在设备上已安装对应 App 时，调用官方 API 发起权限请求；
- *  Root 在应用内执行探测并返回结果。
- *  「手动下载开源客户端」入口保留为次要按钮，仅在用户主动需要时使用。
+ * 设计原则：
+ *  - 状态机显式：每个授权来源展示明确的 GrantState，用户随时知道"现在卡在哪一步"
+ *  - 错误可操作：失败消息直接告诉用户"下一步做什么"
+ *  - 无静默跳转：除非用户主动点击"手动下载"，绝不离开当前屏幕
+ *  - listener 全局注册：在 ElevatedGrantFlow 进入屏幕期间注册一次，组件离开时移除，
+ *    避免 Composable 重建导致重复回调
  */
 @Composable
 fun ElevatedGrantFlow(
@@ -70,12 +84,36 @@ fun ElevatedGrantFlow(
     val strings = localStrings()
     val context = LocalContext.current
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    var detected by remember { mutableStateOf(ElevatedGrantDetector.detect()) }
-    var shizukuInfo by remember { mutableStateOf(false) }
-    var dhizukuInfo by remember { mutableStateOf(false) }
-    var rootInfo by remember { mutableStateOf(false) }
-    var statusMsg by remember { mutableStateOf<String?>(null) }
-    var statusError by remember { mutableStateOf(false) }
+
+    var shizukuState by remember { mutableStateOf<GrantState>(GrantState.Detecting) }
+    var dhizukuState by remember { mutableStateOf<GrantState>(GrantState.Detecting) }
+    var rootState by remember { mutableStateOf<GrantState>(GrantState.Detecting) }
+
+    var infoDialog by remember { mutableStateOf<InfoDialogKind?>(null) }
+
+    // 进入屏幕时主动检测一次
+    LaunchedEffect(Unit) {
+        refreshAll(context, shizukuSetter = { shizukuState = it },
+            dhizukuSetter = { dhizukuState = it },
+            rootSetter = { rootState = it })
+    }
+
+    // 全局注册 Shizuku permission listener
+    DisposableEffect(Unit) {
+        val listener = Shizuku.OnRequestPermissionResultListener { _, grantResult ->
+            val ok = grantResult == PackageManager.PERMISSION_GRANTED
+            shizukuState = if (ok) GrantState.Granted
+            else GrantState.Failed("Shizuku 权限被拒绝。可在 Shizuku App 中重新授权本应用。")
+        }
+        Shizuku.addRequestPermissionResultListener(listener)
+        onDispose {
+            Shizuku.removeRequestPermissionResultListener(listener)
+        }
+    }
+
+    val anyGranted = shizukuState is GrantState.Granted
+            || dhizukuState is GrantState.Granted
+            || rootState is GrantState.Granted
 
     Box(
         modifier = Modifier
@@ -87,7 +125,7 @@ fun ElevatedGrantFlow(
                 .fillMaxSize()
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text(
                 text = strings.elevated_title,
@@ -98,101 +136,59 @@ fun ElevatedGrantFlow(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AssistChip(
                     onClick = {
-                        detected = ElevatedGrantDetector.detect()
-                        statusMsg = null
+                        refreshAll(context, { shizukuState = it },
+                            { dhizukuState = it }, { rootState = it })
                     },
                     label = { Text(strings.elevated_recheck) },
-                    leadingIcon = { Icon(Icons.Filled.CheckCircle, contentDescription = null) }
+                    leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) }
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = strings.elevated_status(ElevatedGrantDetector.describe(detected)),
+                    text = if (anyGranted) strings.elevated_status("已就绪")
+                    else strings.elevated_status("未授权"),
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (detected != ElevatedGrant.NONE) MaterialTheme.colorScheme.primary
+                    color = if (anyGranted) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            statusMsg?.let { msg ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (statusError) Icons.Filled.Error else Icons.Filled.CheckCircle,
-                        contentDescription = null,
-                        tint = if (statusError) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        msg,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (statusError) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            ShizukuOptionCard(
-                granted = detected == ElevatedGrant.SHIZUKU,
-                onGranted = { detected = ElevatedGrant.SHIZUKU; statusError = false; statusMsg = "Shizuku 已授权" },
-                onInfo = { shizukuInfo = true },
-                onRequestResult = { ok, msg ->
-                    if (ok) {
-                        detected = ElevatedGrant.SHIZUKU
-                        statusError = false
-                        statusMsg = "Shizuku 已授权"
-                    } else {
-                        statusError = true
-                        statusMsg = msg
-                    }
-                }
+            ShizukuCard(
+                state = shizukuState,
+                context = context,
+                onStateChange = { shizukuState = it },
+                onInfo = { infoDialog = InfoDialogKind.SHIZUKU }
             )
-
-            DhizukuOptionCard(
-                granted = detected == ElevatedGrant.DHIZUKU,
-                onGranted = { detected = ElevatedGrant.DHIZUKU; statusError = false; statusMsg = "Dhizuku 已授权" },
-                onInfo = { dhizukuInfo = true },
-                onRequestResult = { ok, msg ->
-                    if (ok) {
-                        detected = ElevatedGrant.DHIZUKU
-                        statusError = false
-                        statusMsg = "Dhizuku 已授权"
-                    } else {
-                        statusError = true
-                        statusMsg = msg
-                    }
-                }
+            DhizukuCard(
+                state = dhizukuState,
+                context = context,
+                onStateChange = { dhizukuState = it },
+                onInfo = { infoDialog = InfoDialogKind.DHIZUKU }
             )
-
-            RootOptionCard(
-                granted = detected == ElevatedGrant.ROOT,
-                onGranted = { detected = ElevatedGrant.ROOT; statusError = false; statusMsg = "Root 已检测" },
-                onInfo = { rootInfo = true },
-                onResult = { ok, msg ->
-                    if (ok) {
-                        detected = ElevatedGrant.ROOT
-                        statusError = false
-                        statusMsg = "Root 已检测"
-                    } else {
-                        statusError = true
-                        statusMsg = msg
-                    }
-                }
+            RootCard(
+                state = rootState,
+                onStateChange = { rootState = it },
+                onInfo = { infoDialog = InfoDialogKind.ROOT }
             )
 
             Spacer(Modifier.height(8.dp))
             Button(
                 onClick = {
-                    detected = ElevatedGrantDetector.detect()
-                    if (detected != ElevatedGrant.NONE) onGranted()
+                    refreshAll(context, { shizukuState = it },
+                        { dhizukuState = it }, { rootState = it })
+                    if (shizukuState is GrantState.Granted
+                        || dhizukuState is GrantState.Granted
+                        || rootState is GrantState.Granted
+                    ) onGranted()
                 },
-                enabled = detected != ElevatedGrant.NONE,
+                enabled = anyGranted,
                 modifier = Modifier.fillMaxWidth()
             ) { Text(strings.elevated_continue) }
 
-            if (detected == ElevatedGrant.NONE) {
+            if (!anyGranted) {
                 Text(
                     text = strings.elevated_required,
                     color = MaterialTheme.colorScheme.error,
@@ -202,240 +198,422 @@ fun ElevatedGrantFlow(
         }
     }
 
-    if (shizukuInfo) {
-        AuthorInfoDialog(
-            title = strings.shizuku_intro_title,
-            body = strings.shizuku_intro_body,
-            downloadUrl = "https://shizuku.rikka.app/download/",
-            onDismiss = { shizukuInfo = false }
-        )
-    }
-    if (dhizukuInfo) {
-        AuthorInfoDialog(
-            title = strings.dhizuku_intro_title,
-            body = strings.dhizuku_intro_body,
-            downloadUrl = "https://github.com/iamr0s/Dhizuku/releases",
-            onDismiss = { dhizukuInfo = false }
-        )
-    }
-    if (rootInfo) {
-        AuthorInfoDialog(
-            title = "关于 Root",
-            body = "Root 授权依赖设备已刷入 su（Magisk / KernelSU / 其他方案）。\n\n点击「授权」会在应用内执行探测命令验证 su 可用性；如失败，请确认已正确安装 Root 方案并授予本应用 Root 权限。\n\n如需 Root 方案，请点击下方「手动下载开源客户端」。",
-            downloadUrl = "https://github.com/topjohnwu/Magisk",
-            onDismiss = { rootInfo = false }
-        )
+    infoDialog?.let { kind ->
+        InfoDialog(kind = kind, onDismiss = { infoDialog = null })
     }
 }
 
-@Composable
-private fun ShizukuOptionCard(
-    granted: Boolean,
-    onGranted: () -> Unit,
-    onInfo: () -> Unit,
-    onRequestResult: (Boolean, String) -> Unit
+private fun refreshAll(
+    context: Context,
+    shizukuSetter: (GrantState) -> Unit,
+    dhizukuSetter: (GrantState) -> Unit,
+    rootSetter: (GrantState) -> Unit
 ) {
-    val context = LocalContext.current
-    val requestCode = remember { mutableIntStateOf(1001) }
-    val listener = remember<Shizuku.OnRequestPermissionResultListener> {
-        Shizuku.OnRequestPermissionResultListener { _, grantResult ->
-            val ok = grantResult == PackageManager.PERMISSION_GRANTED
-            onRequestResult(ok, if (ok) "" else "Shizuku 权限被拒绝")
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        Shizuku.addRequestPermissionResultListener(listener)
-    }
-    DisposableEffect(Unit) {
-        onDispose { Shizuku.removeRequestPermissionResultListener(listener) }
-    }
-
-    ElevatedOptionCard(
-        title = "Shizuku",
-        desc = "ADB-level permissions, no root required.",
-        granted = granted,
-        onAuthorize = {
-            try {
-                if (!Shizuku.pingBinder()) {
-                    // 应用未安装 / 服务未启动
-                    onRequestResult(false, "未检测到 Shizuku 服务，请先安装并启动 Shizuku App")
-                    return@ElevatedOptionCard
-                }
-                if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-                    onGranted()
-                } else {
-                    Shizuku.requestPermission(requestCode.intValue)
-                }
-            } catch (t: Throwable) {
-                onRequestResult(false, "Shizuku 授权失败：${t.message ?: t.javaClass.simpleName}")
-            }
-        },
-        onInfo = onInfo,
-        onDownload = {
-            runCatching {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/download/")))
-            }
-        }
-    )
+    // Shizuku
+    shizukuSetter(GrantState.Detecting)
+    shizukuSetter(evalShizukuState(context))
+    // Dhizuku
+    dhizukuSetter(GrantState.Detecting)
+    dhizukuSetter(evalDhizukuState(context))
+    // Root
+    rootSetter(GrantState.Detecting)
+    rootSetter(evalRootState())
 }
 
+private fun evalShizukuState(context: Context): GrantState {
+    if (!ElevatedGrantDetector.isShizukuInstalled(context)) {
+        return GrantState.Unavailable(
+            "设备未安装 Shizuku App。请点击下方「手动下载」安装，或前往 https://shizuku.rikka.app/download/ 下载并启动后回到此页面。"
+        )
+    }
+    return runCatching {
+        if (Shizuku.isPreV11()) {
+            return@runCatching GrantState.Unavailable("Shizuku 版本过低（< v11），请更新 Shizuku App")
+        }
+        if (!Shizuku.pingBinder()) {
+            return@runCatching GrantState.Unavailable(
+                "Shizuku 服务未运行。请打开 Shizuku App 点击「启动」，然后回到此页面点击「重新检测」。"
+            )
+        }
+        if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+            GrantState.Granted
+        } else {
+            GrantState.NeedsPermission
+        }
+    }.getOrElse { t ->
+        GrantState.Failed("检测失败：${t.message ?: t.javaClass.simpleName}")
+    }
+}
+
+private fun evalDhizukuState(context: Context): GrantState {
+    if (!ElevatedGrantDetector.isDhizukuInstalled(context)) {
+        return GrantState.Unavailable("设备未安装 Dhizuku 客户端。Dhizuku 需要 Device Owner 激活，请点击「手动下载」获取详细指引。")
+    }
+    return runCatching {
+        val cls = Class.forName("com.itsaky.androidide.dhizukudav.Dhizuku")
+        val isAvailable = cls.getMethod("isAvailable").invoke(null) as? Boolean ?: false
+        if (!isAvailable) {
+            return@runCatching GrantState.Unavailable(
+                "Dhizuku 服务未激活。请打开 Dhizuku 客户端完成 DeviceOwner 激活，然后回到此页面。"
+            )
+        }
+        val isGranted = cls.getMethod("isPermissionGranted").invoke(null) as? Boolean ?: false
+        if (isGranted) GrantState.Granted else GrantState.NeedsPermission
+    }.getOrElse { t ->
+        GrantState.Failed("检测失败：${t.message ?: t.javaClass.simpleName}")
+    }
+}
+
+private fun evalRootState(): GrantState = runCatching {
+    val process = ProcessBuilder("su", "-c", "true").start()
+    val exit = process.waitFor()
+    if (exit == 0) GrantState.Granted
+    else GrantState.Unavailable("未检测到 su。请确认设备已 Root（Magisk / KernelSU 等）并授予本应用 Root 权限。")
+}.getOrElse {
+    GrantState.Unavailable("未检测到 Root。点击「手动下载」可查看 Root 方案。")
+}
+
+private enum class InfoDialogKind { SHIZUKU, DHIZUKU, ROOT }
+
 @Composable
-private fun DhizukuOptionCard(
-    granted: Boolean,
-    onGranted: () -> Unit,
-    onInfo: () -> Unit,
-    onRequestResult: (Boolean, String) -> Unit
+private fun ShizukuCard(
+    state: GrantState,
+    context: Context,
+    onStateChange: (GrantState) -> Unit,
+    onInfo: () -> Unit
 ) {
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    ElevatedOptionCard(
+    GrantCard(
+        title = "Shizuku",
+        subtitle = "ADB 级权限，无需 Root",
+        state = state,
+        onInfo = onInfo,
+        primaryAction = when (state) {
+            is GrantState.Detecting, GrantState.Granted, GrantState.Requesting -> null
+            is GrantState.NeedsPermission -> PrimaryAction("请求授权") {
+                runCatching {
+                    if (Shizuku.pingBinder()) {
+                        onStateChange(GrantState.Requesting)
+                        val reqCode = (System.currentTimeMillis() and 0x7FFFFFFF).toInt()
+                        Shizuku.requestPermission(reqCode)
+                    } else {
+                        onStateChange(GrantState.Unavailable("Shizuku 服务未运行"))
+                    }
+                }.onFailure { t ->
+                    onStateChange(GrantState.Failed("请求失败：${t.message ?: t.javaClass.simpleName}"))
+                }
+            }
+            is GrantState.Unavailable -> PrimaryAction("重新检测") {
+                scope.launch {
+                    onStateChange(GrantState.Detecting)
+                    delay(300)
+                    onStateChange(evalShizukuState(context))
+                }
+            }
+            is GrantState.Failed -> PrimaryAction("重试") {
+                scope.launch {
+                    onStateChange(GrantState.Detecting)
+                    delay(300)
+                    onStateChange(evalShizukuState(context))
+                }
+            }
+        },
+        downloadUrl = "https://shizuku.rikka.app/download/"
+    )
+}
+
+@Composable
+private fun DhizukuCard(
+    state: GrantState,
+    context: Context,
+    onStateChange: (GrantState) -> Unit,
+    onInfo: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    GrantCard(
         title = "Dhizuku",
-        desc = "Device-owner based, no root alternative.",
-        granted = granted,
-        onAuthorize = {
-            try {
-                val cls = Class.forName("com.itsaky.androidide.dhizukudav.Dhizuku")
-                val isAvailable = cls.getMethod("isAvailable").invoke(null) as? Boolean ?: false
-                if (!isAvailable) {
-                    onRequestResult(false, "未检测到 Dhizuku 服务，请先安装并激活 Dhizuku")
-                    return@ElevatedOptionCard
-                }
-                val isGranted = cls.getMethod("isPermissionGranted").invoke(null) as? Boolean ?: false
-                if (isGranted) {
-                    onGranted()
-                } else {
-                    // 反射调用 requestPermission(Activity, int)；用户需在 Dhizuku 弹窗中确认授权。
-                    val currentActivity = context as? android.app.Activity
-                    if (currentActivity == null) {
-                        onRequestResult(false, "无法获取 Activity 实例发起授权")
-                        return@ElevatedOptionCard
+        subtitle = "Device-Owner 授权，无需 Root",
+        state = state,
+        onInfo = onInfo,
+        primaryAction = when (state) {
+            is GrantState.Detecting, GrantState.Granted, GrantState.Requesting -> null
+            is GrantState.NeedsPermission -> PrimaryAction("请求授权") {
+                scope.launch {
+                    val activity = context as? android.app.Activity
+                    if (activity == null) {
+                        onStateChange(GrantState.Failed("无法获取 Activity，请从主界面进入"))
+                        return@launch
                     }
-                    val reqCode = (System.currentTimeMillis() and 0x7FFFFFFF).toInt()
-                    val listenerClass = Class.forName("com.itsaky.androidide.dhizukudav.Dhizuku\$OnRequestPermissionResultListener")
-                    val listener = java.lang.reflect.Proxy.newProxyInstance(
-                        listenerClass.classLoader,
-                        arrayOf(listenerClass)
-                    ) { _, _, _ -> true }
-                    val reqPerm = cls.getMethod(
-                        "requestPermission",
-                        android.app.Activity::class.java,
-                        Int::class.java,
-                        listenerClass
-                    )
-                    reqPerm.invoke(null, currentActivity, reqCode, listener)
-                    // Dhizuku 的回调是同步 UI 弹窗，返回后再次检测
-                    scope.launch {
-                        kotlinx.coroutines.delay(800)
-                        val grantedNow = cls.getMethod("isPermissionGranted").invoke(null) as? Boolean ?: false
-                        onRequestResult(grantedNow, if (grantedNow) "" else "Dhizuku 授权被拒绝或超时")
+                    try {
+                        val cls = Class.forName("com.itsaky.androidide.dhizukudav.Dhizuku")
+                        val listenerClass = Class.forName("com.itsaky.androidide.dhizukudav.Dhizuku\$OnRequestPermissionResultListener")
+                        val listener = java.lang.reflect.Proxy.newProxyInstance(
+                            listenerClass.classLoader,
+                            arrayOf(listenerClass)
+                        ) { _, method, args ->
+                            if (method.name == "onRequestPermissionResult" && args?.isNotEmpty() == true) {
+                                val granted = args[0] as? Boolean ?: false
+                                onStateChange(if (granted) GrantState.Granted
+                                else GrantState.Failed("Dhizuku 权限被拒绝"))
+                            }
+                            null
+                        }
+                        val reqCode = (System.currentTimeMillis() and 0x7FFFFFFF).toInt()
+                        cls.getMethod("requestPermission", android.app.Activity::class.java,
+                            Int::class.java, listenerClass)
+                            .invoke(null, activity, reqCode, listener)
+                        onStateChange(GrantState.Requesting)
+                    } catch (t: Throwable) {
+                        onStateChange(GrantState.Failed("请求失败：${t.message ?: t.javaClass.simpleName}"))
                     }
                 }
-            } catch (t: Throwable) {
-                onRequestResult(false, "Dhizuku 授权失败：${t.message ?: t.javaClass.simpleName}")
+            }
+            is GrantState.Unavailable -> PrimaryAction("重新检测") {
+                scope.launch {
+                    onStateChange(GrantState.Detecting)
+                    delay(300)
+                    onStateChange(evalDhizukuState(context))
+                }
+            }
+            is GrantState.Failed -> PrimaryAction("重试") {
+                scope.launch {
+                    onStateChange(GrantState.Detecting)
+                    delay(300)
+                    onStateChange(evalDhizukuState(context))
+                }
             }
         },
-        onInfo = onInfo,
-        onDownload = {
-            runCatching {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/iamr0s/Dhizuku/releases")))
-            }
-        }
+        downloadUrl = "https://github.com/iamr0s/Dhizuku/releases"
     )
 }
 
 @Composable
-private fun RootOptionCard(
-    granted: Boolean,
-    onGranted: () -> Unit,
-    onInfo: () -> Unit,
-    onResult: (Boolean, String) -> Unit
+private fun RootCard(
+    state: GrantState,
+    onStateChange: (GrantState) -> Unit,
+    onInfo: () -> Unit
 ) {
-    ElevatedOptionCard(
+    GrantCard(
         title = "Root",
-        desc = "Full device control, requires su binary.",
-        granted = granted,
-        onAuthorize = {
-            val ok = runCatching {
-                val process = ProcessBuilder("su", "-c", "true").start()
-                process.waitFor() == 0
-            }.getOrDefault(false)
-            if (ok) onGranted() else onResult(false, "未检测到 Root，请确认已安装并授权 su")
-        },
+        subtitle = "完整设备控制，需要 su 二进制",
+        state = state,
         onInfo = onInfo,
-        onDownload = null
+        primaryAction = when (state) {
+            is GrantState.Detecting, GrantState.Granted -> null
+            is GrantState.Requesting -> null
+            is GrantState.NeedsPermission -> PrimaryAction("探测 Root") {
+                onStateChange(GrantState.Detecting)
+                onStateChange(evalRootState())
+            }
+            is GrantState.Unavailable -> PrimaryAction("重新检测") {
+                onStateChange(GrantState.Detecting)
+                onStateChange(evalRootState())
+            }
+            is GrantState.Failed -> PrimaryAction("重试") {
+                onStateChange(GrantState.Detecting)
+                onStateChange(evalRootState())
+            }
+        },
+        downloadUrl = "https://github.com/topjohnwu/Magisk"
     )
 }
 
+private data class PrimaryAction(val label: String, val action: () -> Unit)
+
 @Composable
-private fun ElevatedOptionCard(
+private fun GrantCard(
     title: String,
-    desc: String,
-    granted: Boolean,
-    onAuthorize: () -> Unit,
+    subtitle: String,
+    state: GrantState,
     onInfo: () -> Unit,
-    onDownload: (() -> Unit)?
+    primaryAction: PrimaryAction?,
+    downloadUrl: String?
 ) {
+    val context = LocalContext.current
+    val (statusText, statusColor, icon) = describeState(state)
+    val granted = state is GrantState.Granted
+
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    if (granted) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
-                    contentDescription = null,
-                    tint = if (granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                )
-                Spacer(Modifier.width(12.dp))
+                StatusDot(icon = icon, tint = statusColor)
+                Spacer(Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(title, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        desc,
+                        subtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                TextButton(onClick = onInfo) { Text("?") }
+                TextButton(onClick = onInfo) {
+                    Icon(Icons.Filled.HelpOutline, contentDescription = "查看详情")
+                }
             }
             Spacer(Modifier.height(8.dp))
+            // 状态条
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        statusColor.copy(alpha = 0.10f),
+                        RoundedCornerShape(8.dp)
+                    )
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Icon(
+                    icon, contentDescription = null,
+                    tint = statusColor,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = statusColor
+                )
+            }
+            if (!granted && primaryAction != null) {
+                Spacer(Modifier.height(10.dp))
                 Button(
-                    onClick = onAuthorize,
-                    modifier = Modifier.weight(1f),
-                    enabled = !granted
-                ) {
-                    Text(if (granted) "已授权" else "授权")
-                }
-                if (onDownload != null) {
-                    TextButton(
-                        onClick = onDownload,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("手动下载开源客户端", fontSize = 12.sp)
-                    }
-                }
+                    onClick = primaryAction.action,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = statusColor
+                    )
+                ) { Text(primaryAction.label) }
+            }
+            if (downloadUrl != null) {
+                Spacer(Modifier.height(6.dp))
+                OutlinedButton(
+                    onClick = {
+                        runCatching {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("手动下载开源客户端", fontSize = 12.sp) }
             }
         }
     }
 }
 
 @Composable
-private fun AuthorInfoDialog(
-    title: String,
-    body: String,
-    downloadUrl: String,
-    onDismiss: () -> Unit
-) {
+private fun StatusDot(icon: ImageVector, tint: Color) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .background(tint.copy(alpha = 0.15f), CircleShape)
+            .border(1.5.dp, tint, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+    }
+}
+
+@Composable
+private fun describeState(state: GrantState): Triple<String, Color, ImageVector> {
+    val cs = currentThemeColors()
+    return when (state) {
+        is GrantState.Detecting -> Triple(
+            "正在检测...", cs.outline, Icons.Filled.HourglassEmpty
+        )
+        is GrantState.Unavailable -> Triple(
+            state.reason, cs.outline, Icons.Filled.Cancel
+        )
+        is GrantState.NeedsPermission -> Triple(
+            "服务已就绪，请点击下方按钮请求授权", cs.primary, Icons.Filled.Lock
+        )
+        is GrantState.Requesting -> Triple(
+            "等待授权确认...", cs.primary, Icons.Filled.HourglassEmpty
+        )
+        is GrantState.Granted -> Triple(
+            "已授权", cs.primary, Icons.Filled.CheckCircle
+        )
+        is GrantState.Failed -> Triple(
+            state.message, cs.error, Icons.Filled.Error
+        )
+    }
+}
+
+private data class ThemeColors(
+    val primary: Color,
+    val outline: Color,
+    val error: Color
+)
+
+@Composable
+private fun currentThemeColors(): ThemeColors = ThemeColors(
+    primary = MaterialTheme.colorScheme.primary,
+    outline = MaterialTheme.colorScheme.outline,
+    error = MaterialTheme.colorScheme.error
+)
+
+@Composable
+private fun InfoDialog(kind: InfoDialogKind, onDismiss: () -> Unit) {
+    val (title, body, url) = when (kind) {
+        InfoDialogKind.SHIZUKU -> Triple(
+            "关于 Shizuku",
+            """
+            Shizuku 是一个开源项目，通过 ADB 启动一个系统级服务，让普通应用能够以 ADB 权限调用系统 API，无需 Root。
+
+            授权步骤：
+            1. 在设备上安装 Shizuku App（点击下方「手动下载」）
+            2. 打开 Shizuku，根据你的设备类型选择启动方式：
+               • 无 Root：通过 ADB 或无线调试启动
+               • 已 Root / Magisk：直接点击「启动」
+            3. Shizuku 启动后回到本页面，点击「重新检测」
+
+            本应用在检测到 Shizuku 服务后，会调用官方 SDK 请求本应用使用 Shizuku 的权限，你只需在 Shizuku 的弹窗中点击「允许」。
+            """.trimIndent(),
+            "https://shizuku.rikka.app/download/"
+        )
+        InfoDialogKind.DHIZUKU -> Triple(
+            "关于 Dhizuku",
+            """
+            Dhizuku 通过 Device Owner 机制把设备管理员权限共享给普通应用，无需 Root。
+
+            授权步骤：
+            1. 在设备上安装 Dhizuku 客户端（点击下方「手动下载」）
+            2. 通过 ADB 命令将 Dhizuku 激活为 Device Owner：
+               adb shell dpm set-device-owner com.itsaky.androidide.dhizukudav/.DhizukuDAReceiver
+            3. 在 Dhizuku 客户端中点击「激活」
+            4. 回到本页面，点击「重新检测」
+
+            注意：激活 Device Owner 前请确保设备未绑定任何 Google 账号 / 工作资料。
+            """.trimIndent(),
+            "https://github.com/iamr0s/Dhizuku/releases"
+        )
+        InfoDialogKind.ROOT -> Triple(
+            "关于 Root",
+            """
+            Root 授权要求设备已通过 Magisk / KernelSU / 其他方案获取 su 权限。
+
+            探测步骤：
+            1. 确认设备已 Root：在终端运行 su 命令，返回 # 即表示已 Root
+            2. 打开 Magisk / KernelSU Manager，确保本应用被授予 Root 权限
+            3. 回到本页面，点击「探测 Root」
+
+            本应用通过执行 su -c true 验证 Root 可用性。如失败，请检查：
+            • Magisk Manager → 超级用户列表中是否包含本应用
+            • 设备的 SELinux 策略是否允许 su 执行
+            """.trimIndent(),
+            "https://github.com/topjohnwu/Magisk"
+        )
+    }
     val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Filled.HelpOutline, contentDescription = null) },
         title = { Text(title) },
         text = { Text(body, fontSize = 13.sp) },
         confirmButton = {
             TextButton(onClick = {
                 runCatching {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)))
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                 }
                 onDismiss()
             }) { Text("手动下载") }
