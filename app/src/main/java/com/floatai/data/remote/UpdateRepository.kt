@@ -1,5 +1,6 @@
-package com.floatai.ui
+package com.floatai.data.remote
 
+import com.floatai.data.model.UpdateInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -8,19 +9,13 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 
-data class UpdateInfo(
-    val latestTag: String,
-    val changelog: String,
-    val isNewer: Boolean
-)
-
-object UpdateChecker {
+object UpdateRepository {
     suspend fun checkLatest(currentTag: String): UpdateInfo = withContext(Dispatchers.IO) {
         try {
             val url = URL("https://api.github.com/repos/1953187487/FloatAI/releases/latest")
             val conn = url.openConnection() as HttpURLConnection
-            conn.connectTimeout = 10000
-            conn.readTimeout = 10000
+            conn.connectTimeout = 10_000
+            conn.readTimeout = 10_000
             conn.setRequestProperty("Accept", "application/vnd.github+json")
             if (conn.responseCode != 200) {
                 return@withContext UpdateInfo("", "获取失败 (HTTP ${conn.responseCode})", false)

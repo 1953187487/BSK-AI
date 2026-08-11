@@ -4,20 +4,30 @@ plugins {
 }
 
 android {
-    namespace 'com.floatai.ui'
+    namespace 'com.floatai'
     compileSdk 34
 
     defaultConfig {
         applicationId "com.floatai.ui"
         minSdk 26
         targetSdk 34
-        versionCode 5
-        versionName "0.3.0"
+        versionCode 6
+        versionName "1.0.0"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(System.getenv("FLOATAI_KEYSTORE") ?: "${System.getProperty("user.home")}/floatai-release.keystore")
+            storePassword System.getenv("FLOATAI_KEYSTORE_PASSWORD") ?: "floatai2026"
+            keyAlias "floatai"
+            keyPassword System.getenv("FLOATAI_KEY_PASSWORD") ?: "floatai2026"
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -46,6 +56,9 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.activity:activity-compose:1.8.2'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.7.0'
+    implementation 'androidx.navigation:navigation-compose:2.7.7'
 
     def composeBom = platform('androidx.compose:compose-bom:2024.02.00')
     implementation composeBom

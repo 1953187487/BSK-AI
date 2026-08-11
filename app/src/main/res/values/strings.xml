@@ -69,7 +69,7 @@
     <string name="settings_check_update">Check Update</string>
     <string name="settings_check_update_desc">Pull latest version from GitHub Releases</string>
     <string name="settings_about_section">About</string>
-    <string name="settings_about_app">FloatAI v0.3.0</string>
+    <string name="settings_about_app">FloatAI v1.0.0</string>
     <string name="settings_about_desc">Open-source Android AI Float Assistant</string>
     <string name="settings_about_license">MIT License</string>
     <string name="settings_contact_email">Send Email</string>
