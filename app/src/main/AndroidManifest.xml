@@ -30,5 +30,14 @@
         <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask" />
 
         <service android:name=".service.FloatService" android:exported="false" android:foregroundServiceType="dataSync" />
+
+        <!-- Shizuku 集成：应用内授权需要 -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
     </application>
 </manifest>
