@@ -3,6 +3,7 @@ package com.floatai
 import android.app.Application
 import android.content.Intent
 import com.floatai.data.ChatRepository
+import com.floatai.data.CharacterRepository
 import com.floatai.data.SettingsRepository
 
 class App : Application() {
@@ -11,11 +12,14 @@ class App : Application() {
         private set
     lateinit var chatRepository: ChatRepository
         private set
+    lateinit var characterRepository: CharacterRepository
+        private set
 
     override fun onCreate() {
         super.onCreate()
         settingsRepository = SettingsRepository(this)
         chatRepository = ChatRepository(this)
+        characterRepository = CharacterRepository(this)
 
         Thread.setDefaultUncaughtExceptionHandler { _, _ ->
             // 崩溃兜底：记录日志，重启到 MainActivity，避免直接闪退

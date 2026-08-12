@@ -63,7 +63,7 @@ fun ChatScreen(modifier: Modifier = Modifier) {
     val app = LocalContext.current.applicationContext as App
     val vm: ChatViewModel = viewModel(
         key = "chat",
-        factory = ChatViewModel.factory(app.settingsRepository, app.chatRepository)
+        factory = ChatViewModel.factory(app.settingsRepository, app.chatRepository, app.characterRepository)
     )
 
     val strings = localStrings()
@@ -159,7 +159,7 @@ fun ChatScreen(modifier: Modifier = Modifier) {
 
         ChatInputBar(
             value = input,
-            onValueChange = vm::onInputChange,
+            onValueChange = vm::setInput,
             onSend = vm::send,
             loading = loading
         )
@@ -187,7 +187,7 @@ fun ChatScreen(modifier: Modifier = Modifier) {
             models = availableModels,
             selected = model,
             onSelect = {
-                vm.setModel(it)
+                vm.selectModel(it)
             },
             onManageModels = {
                 showModelPicker = false
@@ -200,7 +200,9 @@ fun ChatScreen(modifier: Modifier = Modifier) {
     if (showApiManagement) {
         ApiManagementSheet(onDismiss = {
             showApiManagement = false
-            vm.refreshConfig()
+            // 关闭后从 SettingsRepository 重新加载可用模型
+            val list = app.settingsRepository.apiConfig.value.models
+            vm.updateAvailableModels(list)
         })
     }
 }

@@ -116,7 +116,6 @@ import java.io.File
 fun SettingsScreen(
     onOpenAbout: () -> Unit,
     onOpenPackageHub: () -> Unit,
-    onOpenLobster: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -424,21 +423,6 @@ fun SettingsScreen(
             }
         }
 
-        // —— 小龙虾面板入口 ——
-        SectionTitle(strings.lobster_section)
-        GlassCard(modifier = Modifier.fillMaxWidth()) {
-            Column {
-                SettingsRow(
-                    title = strings.lobster_panel_title,
-                    subtitle = strings.lobster_panel_desc,
-                    onClick = onOpenLobster
-                ) {
-                    Icon(Icons.Filled.Pets, contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-
         // —— AI 模型配置（输入即保存） ——
         SectionTitle(strings.settings_ai_section)
         GlassCard(modifier = Modifier.fillMaxWidth()) {
@@ -530,13 +514,15 @@ fun SettingsScreen(
                     title = "联系作者",
                     subtitle = context.getString(R.string.contact_email),
                     onClick = {
-                        try {
-                            context.startActivity(
-                                Intent(Intent.ACTION_SENDTO).apply {
-                                    data = Uri.parse("mailto:" + context.getString(R.string.contact_email))
-                                }
-                            )
-                        } catch (_: Exception) {}
+                        // 点击 = 复制邮箱到剪贴板（不再调邮件客户端，避免部分设备无邮件 App 时无反应）
+                        val email = context.getString(R.string.contact_email)
+                        val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+                        clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("email", email))
+                        android.widget.Toast.makeText(
+                            context,
+                            "✓ 已复制邮箱：$email",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
                     }
                 )
                 SettingsRow(

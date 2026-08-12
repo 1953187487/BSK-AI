@@ -1,6 +1,7 @@
 package com.floatai.ui.flow
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,15 +19,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.SettingsApplications
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -71,20 +72,20 @@ fun ProtocolFlow(
     val dark = MaterialTheme.colorScheme.background.relativeLuminance() < 0.5f
     val totalSteps = 5
     var step by remember { mutableIntStateOf(1) }
-    var showLanguage by remember { mutableStateOf(false) }
+    // 语言协议现在是第一个页面（不再是顶部弹出框）
 
     // 各步勾选（默认全部勾选，避免按钮 disabled）
+    var ackLanguage by remember { mutableStateOf(true) }
     var ackNotice by remember { mutableStateOf(true) }
     var ackOss by remember { mutableStateOf(true) }
     var ackApp by remember { mutableStateOf(true) }
-    var ackLobster by remember { mutableStateOf(true) }
     var ackPerms by remember { mutableStateOf(true) }
 
     val ackCurrent: Boolean = when (step) {
-        1 -> ackNotice
-        2 -> ackOss
-        3 -> ackApp
-        4 -> ackLobster
+        1 -> ackLanguage
+        2 -> ackNotice
+        3 -> ackOss
+        4 -> ackApp
         else -> ackPerms
     }
 
@@ -100,34 +101,18 @@ fun ProtocolFlow(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // 顶部：版本 + 语言
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.Warning,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.size(8.dp))
-                    Text(
-                        "FloatAI v${BuildConfig.VERSION_NAME} · 协议 v${BuildConfig.PROTOCOL_VERSION}",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                AssistChip(
-                    onClick = { showLanguage = true },
-                    label = {
-                        Text(
-                            if (language == AppLanguage.ZH) strings.language_zh
-                            else strings.language_en
-                        )
-                    },
-                    leadingIcon = { Icon(Icons.Filled.Language, contentDescription = null) }
+            // 顶部：版本
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.size(8.dp))
+                Text(
+                    "FloatAI v${BuildConfig.VERSION_NAME} · 协议 v${BuildConfig.PROTOCOL_VERSION}",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
@@ -155,10 +140,10 @@ fun ProtocolFlow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = when (step) {
-                        1 -> strings.user_notice_title
-                        2 -> strings.oss_title
-                        3 -> "应用须知"
-                        4 -> "小龙虾须知"
+                        1 -> strings.language_choose_title
+                        2 -> strings.user_notice_title
+                        3 -> strings.oss_title
+                        4 -> "应用须知"
                         else -> strings.permission_notice_title
                     },
                     style = MaterialTheme.typography.headlineSmall,
@@ -182,10 +167,10 @@ fun ProtocolFlow(
                     .padding(18.dp)
             ) {
                 when (step) {
-                    1 -> NoticeStepBody()
-                    2 -> OssStepBody()
-                    3 -> AppNoticeStepBody()
-                    4 -> LobsterNoticeStepBody()
+                    1 -> LanguageStepBody(language, onLanguage)
+                    2 -> NoticeStepBody()
+                    3 -> OssStepBody()
+                    4 -> AppNoticeStepBody()
                     else -> PermissionStepBody()
                 }
             }
@@ -199,10 +184,10 @@ fun ProtocolFlow(
                     checked = ackCurrent,
                     onCheckedChange = { v ->
                         when (step) {
-                            1 -> ackNotice = v
-                            2 -> ackOss = v
-                            3 -> ackApp = v
-                            4 -> ackLobster = v
+                            1 -> ackLanguage = v
+                            2 -> ackNotice = v
+                            3 -> ackOss = v
+                            4 -> ackApp = v
                             else -> ackPerms = v
                         }
                     }
@@ -210,10 +195,10 @@ fun ProtocolFlow(
                 Spacer(Modifier.size(8.dp))
                 Text(
                     text = when (step) {
-                        1 -> "我已阅读并理解上述内容"
-                        2 -> "我知悉本应用使用 Apache 2.0 与第三方开源组件"
-                        3 -> "我了解本应用的能力范围与数据流向"
-                        4 -> "我知悉小龙虾功能的边界与风险"
+                        1 -> "我已选择语言，并理解后续所有内容按此语言显示"
+                        2 -> "我已阅读并理解上述用户须知"
+                        3 -> "我知悉本应用使用 Apache 2.0 与第三方开源组件"
+                        4 -> "我了解本应用的能力范围与数据流向"
                         else -> "我同意上述权限声明，并知晓每项可在设置中撤销"
                     },
                     fontSize = 13.sp
@@ -260,29 +245,96 @@ fun ProtocolFlow(
             )
         }
     }
+}
 
-    if (showLanguage) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showLanguage = false },
-            title = { Text(strings.language_choose_title) },
-            text = {
-                Column {
-                    androidx.compose.material3.TextButton(onClick = {
-                        onLanguage(AppLanguage.ZH); showLanguage = false
-                    }) { Text(strings.language_zh) }
-                    androidx.compose.material3.TextButton(onClick = {
-                        onLanguage(AppLanguage.EN); showLanguage = false
-                    }) { Text(strings.language_en) }
-                }
-            },
-            confirmButton = {
-                androidx.compose.material3.TextButton(onClick = { showLanguage = false }) {
-                    Text("关闭")
-                }
-            }
+/**
+ * 第 1 步：语言协议（v1.0.5 新增）
+ *  - 用户选择语言后，所有后续协议 + 应用界面均按所选语言显示
+ *  - 用户可在「设置」中随时切换
+ */
+@Composable
+private fun LanguageStepBody(
+    language: AppLanguage,
+    onLanguage: (AppLanguage) -> Unit
+) {
+    val strings = localStrings()
+    Column {
+        Text(
+            text = "请选择界面语言。后续所有协议内容、应用内文本、菜单与对话框都将按您选择的语言显示。\n\n" +
+                "您可以随时在「设置 → 常规 → 语言」中重新切换语言。",
+            fontSize = 13.sp,
+            lineHeight = 20.sp,
+            color = MaterialTheme.colorScheme.onSurface
         )
+        Spacer(Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            LanguageCard(
+                flag = "🇨🇳",
+                title = strings.language_zh,
+                selected = language == AppLanguage.ZH,
+                onClick = { onLanguage(AppLanguage.ZH) },
+                modifier = Modifier.weight(1f)
+            )
+            LanguageCard(
+                flag = "🇺🇸",
+                title = strings.language_en,
+                selected = language == AppLanguage.EN,
+                onClick = { onLanguage(AppLanguage.EN) },
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }
+
+@Composable
+private fun LanguageCard(
+    flag: String,
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.material3.Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .androidx_clickable(onClick),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = if (selected)
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(flag, fontSize = 36.sp)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (selected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurface
+            )
+            if (selected) {
+                Spacer(Modifier.height(4.dp))
+                Icon(
+                    Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+private fun Modifier.androidx_clickable(onClick: () -> Unit): Modifier =
+    this.then(Modifier.clickable(onClick = onClick))
 
 @Composable
 private fun NoticeStepBody() {
