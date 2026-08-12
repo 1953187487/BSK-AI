@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.floatai.BuildConfig
 import com.floatai.data.remote.ReleaseNote
 import com.floatai.data.remote.UpdateRepository
@@ -63,11 +66,17 @@ import java.util.Locale
 fun AboutScreen() {
     val strings = localStrings()
     val context = LocalContext.current
+    val app = context.applicationContext as com.floatai.App
     val scope = rememberCoroutineScope()
     var loading by remember { mutableStateOf(false) }
     var checkMessage by remember { mutableStateOf<String?>(null) }
     var isNewer by remember { mutableStateOf(false) }
     var releases by remember { mutableStateOf<List<ReleaseNote>>(emptyList()) }
+    var filterChannel by remember { mutableStateOf("all") }
+
+    val settings by app.settingsRepository.settings.collectAsStateWithLifecycle()
+    val currentChannel = filterChannel
+    val currentTag = "v${BuildConfig.VERSION_NAME}"
 
     fun openUrl(url: String) {
         runCatching {
@@ -75,9 +84,9 @@ fun AboutScreen() {
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(currentChannel) {
         loading = true
-        releases = UpdateRepository.loadRecent(10)
+        releases = UpdateRepository.loadRecentByChannel(20, currentTag, currentChannel)
         loading = false
     }
 
@@ -158,7 +167,7 @@ fun AboutScreen() {
                                             info.changelog
                                         }
                                         isNewer = info.isNewer
-                                        releases = UpdateRepository.loadRecent(10)
+                                        releases = UpdateRepository.loadRecentByChannel(20, currentTag, currentChannel)
                                         loading = false
                                     }
                                 }
@@ -180,7 +189,7 @@ fun AboutScreen() {
                                     info.changelog
                                 }
                                 isNewer = info.isNewer
-                                releases = UpdateRepository.loadRecent(10)
+                                releases = UpdateRepository.loadRecentByChannel(20, currentTag, currentChannel)
                                 loading = false
                             }
                         }
@@ -236,6 +245,26 @@ fun AboutScreen() {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
         )
+        // 通道过滤
+        Row(
+            modifier = Modifier.padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            listOf(
+                "all" to "全部",
+                "major" to "大版本",
+                "patch" to "补丁版"
+            ).forEach { (key, label) ->
+                FilterChip(
+                    selected = currentChannel == key,
+                    onClick = { filterChannel = key },
+                    label = { Text(label, fontSize = 11.sp) },
+                    leadingIcon = if (currentChannel == key) {
+                        { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(12.dp)) }
+                    } else null
+                )
+            }
+        }
         LazyColumn(
             contentPadding = PaddingValues(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)

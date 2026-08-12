@@ -50,6 +50,8 @@ class SettingsRepository(context: Context) {
                 .putString("language", language.code)
                 .putBoolean("language_chosen", languageChosen)
                 .putBoolean("elevated_granted", elevatedGranted)
+                .putString("ui_engine", uiEngine)
+                .putString("update_channel", updateChannel)
                 .apply()
         }
     }
@@ -80,6 +82,8 @@ class SettingsRepository(context: Context) {
         githubToken = prefs.getString("github_token", "") ?: "",
         language = AppLanguage.fromCode(prefs.getString("language", null)),
         languageChosen = prefs.getBoolean("language_chosen", false),
-        elevatedGranted = prefs.getBoolean("elevated_granted", false)
+        elevatedGranted = prefs.getBoolean("elevated_granted", false),
+        uiEngine = prefs.getString("ui_engine", "compose") ?: "compose",
+        updateChannel = prefs.getString("update_channel", "all") ?: "all"
     )
 }

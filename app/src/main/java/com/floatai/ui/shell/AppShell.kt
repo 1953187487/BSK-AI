@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,6 +52,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -133,8 +136,9 @@ fun AppShell() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                TopBar(
+            com.floatai.ui.components.LiquidBackdrop {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    TopBar(
                     title = "$currentTitle · FloatAI v${BuildConfig.VERSION_NAME}",
                     onMenu = { scope.launch { drawerState.open() } }
                 )
@@ -171,45 +175,69 @@ fun AppShell() {
                         }
                     }
                 }
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 3.dp
+                com.floatai.ui.components.GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    cornerRadius = 0
                 ) {
-                    ShellDestination.bottomBar.forEach { dest ->
-                        val selected = dest.route == currentRoute
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                if (dest.route != currentRoute) navigateTo(dest.route)
-                            },
-                            icon = {
-                                Icon(dest.icon, contentDescription = labels[dest])
-                            },
-                            label = { Text(labels[dest] ?: dest.route) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                indicatorColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ShellDestination.bottomBar.forEach { dest ->
+                            val selected = dest.route == currentRoute
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        if (dest.route != currentRoute) navigateTo(dest.route)
+                                    }
+                                    .padding(vertical = 10.dp),
+                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                        .background(
+                                            if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
+                                            else Color.Transparent
+                                        )
+                                        .padding(horizontal = 18.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(
+                                        dest.icon,
+                                        contentDescription = labels[dest],
+                                        tint = if (selected) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    labels[dest] ?: dest.route,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (selected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Bold
+                                    else androidx.compose.ui.text.font.FontWeight.Normal
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
 }
+}
 
 @Composable
 private fun TopBar(title: String, onMenu: () -> Unit) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp
+    com.floatai.ui.components.GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 0
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(horizontal = 4.dp, vertical = 6.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onMenu) {
@@ -224,7 +252,8 @@ private fun TopBar(title: String, onMenu: () -> Unit) {
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1
+                maxLines = 1,
+                modifier = Modifier.weight(1f)
             )
         }
     }

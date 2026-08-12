@@ -189,7 +189,7 @@ class FloatService : Service() {
 
     // ===== 面板 =====
 
-    private var currentTab = 0 // 0 = AI, 1 = 应用, 2 = 抓包
+    private var currentTab = 0 // 0 = AI 聊天, 1 = 抓包, 2 = 工具
 
     private fun togglePanel() {
         if (panelContainer != null) {
@@ -241,12 +241,16 @@ class FloatService : Service() {
         val tabCapture = makeTab("抓包", currentTab == 1) {
             currentTab = 1; renderTabs(); renderContent()
         }
+        val tabTools = makeTab("工具", currentTab == 2) {
+            currentTab = 2; renderTabs(); renderContent()
+        }
         tabRow.addView(tabAi)
         tabRow.addView(tabCapture)
+        tabRow.addView(tabTools)
         tabRow.addView(TextView(ctx).apply {
             layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
         })
-        tabRow.tag = listOf(tabAi, tabCapture)
+        tabRow.tag = listOf(tabAi, tabCapture, tabTools)
         panel.addView(tabRow)
 
         // 内容容器
@@ -303,7 +307,8 @@ class FloatService : Service() {
         content.removeAllViews()
         when (currentTab) {
             0 -> renderAiTab(content)
-            else -> renderCaptureTab(content)
+            1 -> renderCaptureTab(content)
+            else -> renderToolsTab(content)
         }
     }
 
@@ -527,6 +532,84 @@ class FloatService : Service() {
 
     private class SpacerView(ctx: Context, heightPx: Int) : View(ctx) {
         init { layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, heightPx) }
+    }
+
+    // ----- Tools Tab -----
+
+    private fun renderToolsTab(parent: LinearLayout) {
+        val ctx = this
+
+        // 工具 1：打开主应用
+        addToolButton(parent, "打开 FloatAI 主界面", "📱") {
+            val intent = packageManager.getLaunchIntentForPackage(packageName)
+            intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            runCatching { startActivity(intent) }
+                .onFailure { Toast.makeText(ctx, "启动失败: ${it.message}", Toast.LENGTH_SHORT).show() }
+        }
+
+        // 工具 2：启动字符选择（无障碍服务）
+        addToolButton(parent, "启动字符选择器", "⌨") {
+            val intent = Intent(ctx, com.floatai.MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            runCatching { startActivity(intent) }
+                .onFailure { Toast.makeText(ctx, "启动失败: ${it.message}", Toast.LENGTH_SHORT).show() }
+        }
+
+        // 工具 3：清空聊天历史
+        addToolButton(parent, "清空当前 AI 聊天", "🗑") {
+            Toast.makeText(ctx, "请在主界面操作", Toast.LENGTH_SHORT).show()
+        }
+
+        // 工具 4：检查更新
+        addToolButton(parent, "检查应用更新", "🔄") {
+            val intent = Intent(ctx, com.floatai.MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                putExtra("route", "settings")
+            }
+            runCatching { startActivity(intent) }
+        }
+
+        // 工具 5：当前版本信息
+        SpacerView(ctx, dp(8)).also { parent.addView(it) }
+        val versionInfo = TextView(ctx).apply {
+            text = buildString {
+                append("版本：v${com.floatai.BuildConfig.VERSION_NAME}\n")
+                append("协议：v${com.floatai.BuildConfig.PROTOCOL_VERSION}\n")
+                append("Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+            }
+            textSize = 10f
+            setTextColor(0xFFAAAAAA.toInt())
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+            background = roundedDrawable(dp(8).toFloat(), 0xFF1F1F30.toInt(), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(0, dp(8), 0, dp(4)) }
+        }
+        parent.addView(versionInfo)
+
+        // 工具 6：快速收起面板
+        addToolButton(parent, "收起悬浮窗", "▼") {
+            closePanel()
+        }
+    }
+
+    private fun addToolButton(parent: LinearLayout, label: String, icon: String, onClick: () -> Unit) {
+        val ctx = this
+        val btn = TextView(ctx).apply {
+            text = "$icon  $label"
+            textSize = 13f
+            setTextColor(0xFFEEEEEE.toInt())
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = roundedDrawable(dp(10).toFloat(), 0xFF2A2A40.toInt(), 0xFF5B5BEF.toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(0, dp(3), 0, dp(3)) }
+            setOnClickListener { onClick() }
+        }
+        parent.addView(btn)
     }
 
     // ===== 工具 =====

@@ -80,7 +80,11 @@ data class AppSettings(
     val githubToken: String = "",
     val language: AppLanguage = AppLanguage.ZH,
     val languageChosen: Boolean = false,
-    val elevatedGranted: Boolean = false
+    val elevatedGranted: Boolean = false,
+    /** UI 引擎："compose"（Jetpack Compose 全量） / "view"（纯 View XML） / "hybrid"（Compose + View 混合） */
+    val uiEngine: String = "compose",
+    /** 更新检查通道："all" 全部 / "major" 仅大版本 / "patch" 仅补丁版 */
+    val updateChannel: String = "all"
 )
 
 data class UpdateInfo(

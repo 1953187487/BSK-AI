@@ -226,6 +226,79 @@ object UpdateRepository {
         return false
     }
 
+    /**
+     * 是否为大版本更新（major 不同）：
+     *   v1.0.5 → v2.0.0 = 大版本
+     *   v1.0.5 → v1.0.6 = 不是大版本
+     */
+    fun isMajorUpdate(currentTag: String, latestTag: String): Boolean {
+        val cur = normalize(currentTag).split(".")
+        val latest = normalize(latestTag).split(".")
+        val curMajor = cur.getOrNull(0)?.toIntOrNull() ?: 0
+        val latestMajor = latest.getOrNull(0)?.toIntOrNull() ?: 0
+        return latestMajor > curMajor
+    }
+
+    /**
+     * 是否为补丁版更新（major + minor 相同，只有 patch 增加）：
+     *   v1.0.5 → v1.0.6 = 补丁版
+     *   v1.0.5 → v1.1.0 = 不是补丁版
+     */
+    fun isPatchUpdate(currentTag: String, latestTag: String): Boolean {
+        val cur = normalize(currentTag).split(".")
+        val latest = normalize(latestTag).split(".")
+        val curMajor = cur.getOrNull(0)?.toIntOrNull() ?: 0
+        val latestMajor = latest.getOrNull(0)?.toIntOrNull() ?: 0
+        val curMinor = cur.getOrNull(1)?.toIntOrNull() ?: 0
+        val latestMinor = latest.getOrNull(1)?.toIntOrNull() ?: 0
+        val curPatch = cur.getOrNull(2)?.toIntOrNull() ?: 0
+        val latestPatch = latest.getOrNull(2)?.toIntOrNull() ?: 0
+        return latestMajor == curMajor &&
+            latestMinor == curMinor &&
+            latestPatch > curPatch
+    }
+
+    /**
+     * 按通道检查更新：
+     *  - "all"：任意 newer 都返回
+     *  - "major"：仅返回 major 更新
+     *  - "patch"：仅返回 patch 更新（否则视为已是最新）
+     */
+    suspend fun checkLatestWithChannel(
+        currentTag: String,
+        channel: String = "all"
+    ): UpdateInfo = withContext(Dispatchers.IO) {
+        val raw = checkLatest(currentTag)
+        if (raw.latestTag.isBlank()) return@withContext raw
+        if (channel == "all") return@withContext raw
+        val match = when (channel) {
+            "major" -> isMajorUpdate(currentTag, raw.latestTag)
+            "patch" -> isPatchUpdate(currentTag, raw.latestTag)
+            else -> true
+        }
+        if (match) raw else UpdateInfo(raw.latestTag, raw.changelog, false)
+    }
+
+    /**
+     * 按通道加载最近 N 个 release：
+     *  - "major"：仅 major 更新（最新一条）
+     *  - "patch"：仅 patch 更新（最新一条）
+     *  - "all"：所有 release
+     */
+    suspend fun loadRecentByChannel(
+        count: Int = 10,
+        currentTag: String = "",
+        channel: String = "all"
+    ): List<ReleaseNote> {
+        val all = loadRecent(count.coerceAtLeast(20))  // 拉够够的，再过滤
+        if (channel == "all" || currentTag.isBlank()) return all
+        return when (channel) {
+            "major" -> all.filter { isMajorUpdate(currentTag, it.tag) }
+            "patch" -> all.filter { isPatchUpdate(currentTag, it.tag) }
+            else -> all
+        }
+    }
+
     private fun normalize(tag: String): String =
         tag.trim().lowercase().removePrefix("v")
 

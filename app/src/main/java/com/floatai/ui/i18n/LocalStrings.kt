@@ -65,6 +65,7 @@ class LocalStrings(private val res: android.content.res.Resources) {
     val chat_send: String get() = res.getString(R.string.chat_send)
     val chat_history: String get() = res.getString(R.string.chat_history)
     val chat_clear: String get() = res.getString(R.string.chat_clear)
+    val chat_character: String get() = res.getString(R.string.chat_character)
     val chat_manage_models: String get() = res.getString(R.string.chat_manage_models)
     val chat_select_model: String get() = res.getString(R.string.chat_select_model)
     val chat_no_models: String get() = res.getString(R.string.chat_no_models)

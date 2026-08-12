@@ -35,10 +35,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
@@ -56,10 +58,13 @@ import androidx.compose.material.icons.filled.VpnLock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -489,7 +494,7 @@ fun SettingsScreen(
 
         // —— 关于（融入设置） ——
         SectionTitle(strings.settings_about_section)
-        AboutBlock(onOpenDetail = onOpenAbout)
+        AboutBlock(onOpenDetail = onOpenAbout, settingsRepo = app.settingsRepository)
 
         // —— 包管理入口 ——
         SectionTitle("包与扩展")
@@ -640,16 +645,22 @@ private fun ThemeColorPicker(selected: String, onSelect: (String) -> Unit) {
 /**
  * 关于区块（融入设置）：
  *  - 版本信息 + 协议版本 + 构建类型
- *  - 「检查更新」按钮：检查后若有新版，「下载」按钮直接调用 GitHub 直链下载
+ *  - 「检查更新」按钮：按用户选择的"更新通道"（全部/大版本/补丁版）过滤结果
  *  - 下载进度条 + 速度 + 校验和显示
  *  - 「立即安装」按钮触发 PackageInstaller
- *  - 「查看完整更新日志」跳独立 About 页
+ *  - 「查看完整更新日志」跳独立 About 页（带历史 release 列表）
+ *  - 「更新通道」单选：全部 / 仅大版本 / 仅补丁版
+ *  - 「UI 引擎」单选：Compose 全量 / View XML 纯原生 / Hybrid 混合
  */
 @Composable
-private fun AboutBlock(onOpenDetail: () -> Unit) {
+private fun AboutBlock(
+    onOpenDetail: () -> Unit,
+    settingsRepo: com.floatai.data.SettingsRepository
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val strings = localStrings()
+    val settings by settingsRepo.settings.collectAsStateWithLifecycle()
     var checking by remember { mutableStateOf(false) }
     var info by remember { mutableStateOf<UpdateInfo?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -657,6 +668,8 @@ private fun AboutBlock(onOpenDetail: () -> Unit) {
     var downloadProgress by remember { mutableStateOf<ApkDownloadProgress?>(null) }
     var downloadedApk by remember { mutableStateOf<File?>(null) }
     var verifying by remember { mutableStateOf(false) }
+    var showChannelPicker by remember { mutableStateOf(false) }
+    var showEnginePicker by remember { mutableStateOf(false) }
 
     val apkFile = remember { File(context.cacheDir, "update.apk") }
 
@@ -687,13 +700,25 @@ private fun AboutBlock(onOpenDetail: () -> Unit) {
         message = null
         scope.launch {
             val currentTag = "v${com.floatai.BuildConfig.VERSION_NAME}"
-            val latest = UpdateRepository.checkLatest(currentTag)
+            val channel = settings.updateChannel
+            val latest = UpdateRepository.checkLatestWithChannel(currentTag, channel)
             info = latest
             checking = false
             message = when {
                 latest.latestTag.isEmpty() -> latest.changelog
-                latest.isNewer -> "${latest.latestTag}: ${latest.changelog.take(80)}"
-                else -> strings.update_latest
+                latest.isNewer -> {
+                    val typeLabel = when {
+                        UpdateRepository.isMajorUpdate(currentTag, latest.latestTag) -> "[大版本]"
+                        UpdateRepository.isPatchUpdate(currentTag, latest.latestTag) -> "[补丁]"
+                        else -> "[小版本]"
+                    }
+                    "$typeLabel ${latest.latestTag}: ${latest.changelog.take(80)}"
+                }
+                else -> when (channel) {
+                    "major" -> "当前为最新大版本（${currentTag}）"
+                    "patch" -> "当前为最新补丁版（${currentTag}）"
+                    else -> strings.update_latest
+                }
             }
         }
     }
@@ -704,7 +729,7 @@ private fun AboutBlock(onOpenDetail: () -> Unit) {
                 Icon(Icons.Filled.Info, contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.size(8.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(strings.settings_about_app, style = MaterialTheme.typography.titleLarge)
                     Text(
                         text = "v${com.floatai.BuildConfig.VERSION_NAME} · 协议 v${com.floatai.BuildConfig.PROTOCOL_VERSION}",
@@ -716,7 +741,7 @@ private fun AboutBlock(onOpenDetail: () -> Unit) {
             Spacer(Modifier.height(10.dp))
             Text(
                 strings.settings_about_desc,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(
@@ -726,9 +751,43 @@ private fun AboutBlock(onOpenDetail: () -> Unit) {
                 modifier = Modifier.padding(top = 4.dp)
             )
 
+            Spacer(Modifier.height(16.dp))
+            androidx.compose.material3.HorizontalDivider(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            )
             Spacer(Modifier.height(12.dp))
 
-            // 检查更新
+            // === 更新通道选择 ===
+            Text(
+                "更新通道",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(
+                    "all" to "全部",
+                    "major" to "仅大版本",
+                    "patch" to "仅补丁"
+                ).forEach { (key, label) ->
+                    val selected = settings.updateChannel == key
+                    FilterChip(
+                        selected = selected,
+                        onClick = {
+                            settingsRepo.updateSettings { it.copy(updateChannel = key) }
+                        },
+                        label = { Text(label, fontSize = 12.sp) },
+                        leadingIcon = if (selected) {
+                            { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                        } else null
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // === 检查更新按钮 ===
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { checkUpdate() }, enabled = !checking) {
                     if (checking) {
@@ -746,7 +805,6 @@ private fun AboutBlock(onOpenDetail: () -> Unit) {
                     Spacer(Modifier.size(6.dp))
                     AssistChip(
                         onClick = {
-                            // 直连下载
                             val tag = info?.latestTag ?: return@AssistChip
                             scope.launch {
                                 val asset = UpdateRepository.findApkAsset(tag)
@@ -786,7 +844,6 @@ private fun AboutBlock(onOpenDetail: () -> Unit) {
                         )
                     }
                     is ApkDownloadProgress.Verifying -> {
-                        // 校验动画：旋转
                         val transition = rememberInfiniteTransition(label = "verify")
                         val angle by transition.animateFloat(
                             initialValue = 0f,
@@ -802,8 +859,7 @@ private fun AboutBlock(onOpenDetail: () -> Unit) {
                                 Icons.Filled.Shield,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .size(14.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                             Spacer(Modifier.size(6.dp))
                             Text(
@@ -831,7 +887,6 @@ private fun AboutBlock(onOpenDetail: () -> Unit) {
                 }
             }
 
-            // 安装按钮
             downloadedApk?.let { file ->
                 Spacer(Modifier.height(6.dp))
                 TextButton(onClick = {
@@ -850,13 +905,134 @@ private fun AboutBlock(onOpenDetail: () -> Unit) {
             }
 
             Spacer(Modifier.height(8.dp))
-            TextButton(onClick = onOpenDetail) {
-                Icon(Icons.Filled.ChevronRight, contentDescription = null)
-                Spacer(Modifier.size(4.dp))
-                Text(strings.update_history)
+            Row {
+                TextButton(onClick = onOpenDetail) {
+                    Icon(Icons.Filled.History, contentDescription = null)
+                    Spacer(Modifier.size(4.dp))
+                    Text(strings.update_history)
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    "通道：${channelLabel(settings.updateChannel)}",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+            androidx.compose.material3.HorizontalDivider(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            )
+            Spacer(Modifier.height(12.dp))
+
+            // === UI 引擎选择 ===
+            Text(
+                "UI 引擎",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+            )
+            Text(
+                "渲染整个应用所使用的图形引擎，影响视觉效果和性能。",
+                fontSize = 10.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+            Column {
+                listOf(
+                    UiEngineOption(
+                        key = "compose",
+                        label = "Jetpack Compose",
+                        desc = "现代化声明式 UI，Material 3 + 液态玻璃 v2。推荐。",
+                        badge = "默认"
+                    ),
+                    UiEngineOption(
+                        key = "hybrid",
+                        label = "Hybrid 混合",
+                        desc = "Compose 主框架 + 关键面板用传统 View（性能与兼容性平衡）。",
+                        badge = null
+                    ),
+                    UiEngineOption(
+                        key = "view",
+                        label = "View XML 纯原生",
+                        desc = "传统 XML + 反射注入。极简风格，无液态玻璃。",
+                        badge = null
+                    )
+                ).forEach { option ->
+                    val selected = settings.uiEngine == option.key
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                            .background(
+                                if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            )
+                            .clickable {
+                                settingsRepo.updateSettings { it.copy(uiEngine = option.key) }
+                            }
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selected,
+                            onClick = {
+                                settingsRepo.updateSettings { it.copy(uiEngine = option.key) }
+                            }
+                        )
+                        Spacer(Modifier.size(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    option.label,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                                )
+                                if (option.badge != null) {
+                                    Spacer(Modifier.size(6.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .background(
+                                                MaterialTheme.colorScheme.primary,
+                                                androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
+                                            )
+                                            .padding(horizontal = 6.dp, vertical = 1.dp)
+                                    ) {
+                                        Text(
+                                            option.badge,
+                                            fontSize = 9.sp,
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    }
+                                }
+                            }
+                            Text(
+                                option.desc,
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+private data class UiEngineOption(
+    val key: String,
+    val label: String,
+    val desc: String,
+    val badge: String?
+)
+
+private fun channelLabel(channel: String): String = when (channel) {
+    "major" -> "仅大版本"
+    "patch" -> "仅补丁"
+    else -> "全部"
 }
 
 private fun formatSize(bytes: Long): String {

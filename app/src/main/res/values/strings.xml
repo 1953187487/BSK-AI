@@ -30,6 +30,7 @@
     <string name="chat_send">发送</string>
     <string name="chat_history">历史记录</string>
     <string name="chat_clear">清空对话</string>
+    <string name="chat_character">角色管理</string>
     <string name="chat_manage_models">管理模型</string>
     <string name="chat_select_model">选择模型</string>
     <string name="chat_no_models">暂无可用模型，点击下方「管理模型」拉取</string>
