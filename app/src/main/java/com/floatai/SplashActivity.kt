@@ -142,7 +142,7 @@ fun LiquidGlassSplash() {
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = strings.atk_subtitle,
+                text = strings.settings_about_desc,
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.7f),
                 modifier = Modifier

@@ -18,11 +18,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PrivacyTip
+import androidx.compose.material.icons.filled.SettingsApplications
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.VpnLock
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -35,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,12 +53,21 @@ import com.floatai.ui.i18n.localStrings
 import com.floatai.ui.theme.liquidBackdrop
 import com.floatai.ui.theme.relativeLuminance
 
+private data class PermissionEntry(
+    val key: String,
+    val display: String,
+    val rationale: String,
+    val icon: ImageVector,
+    val required: Boolean
+)
+
 /**
- * 协议流 v2：
- *  - 顶部 2 段进度条
- *  - 第 1 步：用户须知 + 勾选「我已阅读并理解」
- *  - 第 2 步：权限协议 + 勾选「我同意」
- *  - 每发布新版本 (BuildConfig.PROTOCOL_VERSION 递增) 都会强制重新签署
+ * 协议流 v1.0.3：三步
+ *  - 第 1 步：用户须知（隐私、用途）
+ *  - 第 2 步：开源协议（Apache 2.0 + 第三方依赖清单）
+ *  - 第 3 步：运行时权限清单（悬浮窗 / 通知 / 麦克风 / 相机 / 使用情况 / VPN）
+ *
+ *  每发布新版本 PROTOCOL_VERSION 递增都会强制重签。
  */
 @Composable
 fun ProtocolFlow(
@@ -61,8 +79,60 @@ fun ProtocolFlow(
     val dark = MaterialTheme.colorScheme.background.relativeLuminance() < 0.5f
     var step by remember { mutableIntStateOf(1) }
     var showLanguage by remember { mutableStateOf(false) }
-    var step1Checked by remember { mutableStateOf(false) }
-    var step2Checked by remember { mutableStateOf(false) }
+
+    // 三组 Checkbox：用户须知 / 开源协议 / 权限
+    var ackNotice by remember { mutableStateOf(false) }
+    var ackOss by remember { mutableStateOf(false) }
+    var ackPerms by remember { mutableStateOf(false) }
+
+    // 权限列表
+    val permissions = remember {
+        listOf(
+            PermissionEntry(
+                key = "overlay",
+                display = "悬浮窗 (SYSTEM_ALERT_WINDOW)",
+                rationale = "用于在屏幕边缘显示快捷按钮与 AI 聊天面板。可在设置中随时撤销。",
+                icon = Icons.Filled.SettingsApplications,
+                required = false
+            ),
+            PermissionEntry(
+                key = "notifications",
+                display = "通知 (POST_NOTIFICATIONS)",
+                rationale = "用于显示后台服务运行通知。Android 13+ 必须用户主动授权。",
+                icon = Icons.Filled.Notifications,
+                required = false
+            ),
+            PermissionEntry(
+                key = "microphone",
+                display = "麦克风 (RECORD_AUDIO)",
+                rationale = "用于语音输入。可在设置中随时撤销。",
+                icon = Icons.Filled.Mic,
+                required = false
+            ),
+            PermissionEntry(
+                key = "camera",
+                display = "相机 (CAMERA)",
+                rationale = "用于拍摄附件与 OCR。可在设置中随时撤销。",
+                icon = Icons.Filled.Videocam,
+                required = false
+            ),
+            PermissionEntry(
+                key = "usage",
+                display = "使用情况访问 (PACKAGE_USAGE_STATS)",
+                rationale = "用于读取最近使用的应用列表与悬浮窗面板。需要在系统设置中手动开启。",
+                icon = Icons.Filled.PrivacyTip,
+                required = false
+            ),
+            PermissionEntry(
+                key = "vpn",
+                display = "VPN 服务 (VpnService)",
+                rationale = "用于抓包功能。流量仅在本机处理，不上传。可在设置中随时撤销。",
+                icon = Icons.Filled.VpnLock,
+                required = false
+            )
+        )
+    }
+    val grantedPerms = remember { mutableStateOf(setOf<String>()) }
 
     Box(
         modifier = Modifier
@@ -112,7 +182,7 @@ fun ProtocolFlow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                repeat(2) { i ->
+                repeat(3) { i ->
                     val active = (i + 1) <= step
                     Box(
                         modifier = Modifier
@@ -127,10 +197,13 @@ fun ProtocolFlow(
                 }
             }
 
-            // 标题 + 副标题
+            // 步骤标题
             Text(
-                text = if (step == 1) strings.user_notice_title
-                else strings.permission_notice_title,
+                text = when (step) {
+                    1 -> "用户须知"
+                    2 -> "开源协议"
+                    else -> "运行时权限声明"
+                },
                 style = MaterialTheme.typography.headlineMedium
             )
 
@@ -144,13 +217,11 @@ fun ProtocolFlow(
                     )
                     .padding(20.dp)
             ) {
-                Text(
-                    text = if (step == 1) strings.user_notice_body
-                    else strings.permission_notice_body,
-                    fontSize = 14.sp,
-                    lineHeight = 22.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                when (step) {
+                    1 -> NoticeStepBody()
+                    2 -> OssStepBody()
+                    else -> PermissionStepBody(permissions, grantedPerms)
+                }
             }
 
             // 勾选项
@@ -159,15 +230,26 @@ fun ProtocolFlow(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(
-                    checked = if (step == 1) step1Checked else step2Checked,
+                    checked = when (step) {
+                        1 -> ackNotice
+                        2 -> ackOss
+                        else -> ackPerms
+                    },
                     onCheckedChange = {
-                        if (step == 1) step1Checked = it else step2Checked = it
+                        when (step) {
+                            1 -> ackNotice = it
+                            2 -> ackOss = it
+                            else -> ackPerms = it
+                        }
                     }
                 )
                 Spacer(Modifier.size(8.dp))
                 Text(
-                    text = if (step == 1) "我已阅读并理解上述内容"
-                    else "我同意上述协议，并知晓相关风险",
+                    text = when (step) {
+                        1 -> "我已阅读并理解上述内容"
+                        2 -> "我知悉本应用使用 Apache 2.0 与第三方开源组件"
+                        else -> "我同意上述权限声明，并知晓每项可在设置中撤销"
+                    },
                     fontSize = 14.sp
                 )
             }
@@ -177,21 +259,25 @@ fun ProtocolFlow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (step == 2) {
+                if (step > 1) {
                     OutlinedButton(
-                        onClick = { step = 1 },
+                        onClick = { step-- },
                         modifier = Modifier.weight(1f)
-                    ) { Text("← ${strings.user_notice_title}") }
+                    ) { Text("← 上一步") }
                 }
                 Button(
                     onClick = {
-                        if (step == 1) {
-                            step = 2
-                        } else {
-                            onAgree()
+                        when (step) {
+                            1 -> step = 2
+                            2 -> step = 3
+                            else -> onAgree()
                         }
                     },
-                    enabled = if (step == 1) step1Checked else step2Checked,
+                    enabled = when (step) {
+                        1 -> ackNotice
+                        2 -> ackOss
+                        else -> ackPerms
+                    },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
@@ -199,11 +285,10 @@ fun ProtocolFlow(
                 ) {
                     Icon(Icons.Filled.CheckCircle, contentDescription = null)
                     Spacer(Modifier.size(6.dp))
-                    Text(if (step == 1) "下一步" else "同意并继续")
+                    Text(if (step < 3) "下一步" else "同意并继续")
                 }
             }
 
-            // 提示
             Text(
                 text = "提示：每次发布新版本时，协议内容可能更新，您需要重新签署。",
                 fontSize = 12.sp,
@@ -232,5 +317,138 @@ fun ProtocolFlow(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun NoticeStepBody() {
+    Text(
+        text = """
+FloatAI 是一个本地优先的 AI 助手应用，主要功能包括：
+
+• AI 对话：使用您配置的 OpenAI 兼容 API（API Key 仅存储在本地 SharedPreferences，不上传）
+• 悬浮窗：在屏幕边缘提供快速访问入口，需悬浮窗权限
+• 项目创建：本地生成 Android Gradle 项目脚手架
+• 抓包（可选）：使用标准 VpnService 在本机抓取进出流量，数据仅落盘本地
+
+数据安全：
+• 所有对话历史与配置仅保存到应用私有目录 (filesDir)
+• 不会向任何第三方服务器上传您的 API Key 或对话内容
+• 您可以随时在「设置」中清空所有数据
+
+您可以随时通过「设置」-「权限」撤销已授权的运行时权限。
+        """.trimIndent(),
+        fontSize = 13.sp,
+        lineHeight = 20.sp,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+}
+
+@Composable
+private fun OssStepBody() {
+    Column {
+        Text(
+            text = "本应用基于 Apache License 2.0 开源。",
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.height(10.dp))
+        Text("使用的第三方组件：", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        Spacer(Modifier.height(6.dp))
+        val deps = listOf(
+            "AndroidX Core / Compose / Material 3 — Apache 2.0",
+            "Kotlin / JetBrains — Apache 2.0",
+            "NanoHTTPD — BSD-3-Clause",
+            "OkHttp — Apache 2.0 (transitively)",
+            "GitHub API 客户端 — MIT"
+        )
+        deps.forEach {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Lock,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(Modifier.size(6.dp))
+                Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            "完整源码：github.com/1953187487/FloatAI",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun PermissionStepBody(
+    permissions: List<PermissionEntry>,
+    granted: androidx.compose.runtime.MutableState<Set<String>>
+) {
+    Column {
+        Text(
+            text = "以下权限仅在您主动使用对应功能时才会请求。" +
+                "您可以随时在「设置」中撤销。" +
+                "撤销后，对应功能将不可用，但不会影响其他功能。",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(10.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+        Spacer(Modifier.height(6.dp))
+        permissions.forEach { perm ->
+            val checked = perm.key in granted.value
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Checkbox(
+                    checked = checked,
+                    onCheckedChange = { v ->
+                        granted.value = if (v) granted.value + perm.key
+                        else granted.value - perm.key
+                    }
+                )
+                Spacer(Modifier.size(6.dp))
+                Icon(
+                    perm.icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.size(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        perm.display,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        perm.rationale,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(
+                checked = granted.value.size == permissions.size,
+                onCheckedChange = { v ->
+                    granted.value = if (v) permissions.map { it.key }.toSet() else emptySet()
+                }
+            )
+            Spacer(Modifier.size(4.dp))
+            Text("全部同意", fontSize = 13.sp)
+        }
     }
 }

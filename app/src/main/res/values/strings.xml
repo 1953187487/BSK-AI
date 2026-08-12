@@ -6,29 +6,12 @@
     <string name="contact_email">1953187487@qq.com</string>
 
     <string name="user_notice_title">用户须知</string>
-    <string name="user_notice_body">1. FloatAI 支持 Android 8.0+（API 26+）。\n\n2. 悬浮窗功能需要「显示在其他应用上层」权限。\n\n3. 进程查看、ATK 高权限操作需要至少授予一种：Shizuku、Dhizuku 或 Root。\n\n4. AI 对话功能需要你自行配置服务商地址与 API Key；本应用不存储任何模型或对话数据。\n\n5. 请在遵守当地法律法规的前提下使用本应用。\n\n6. 本应用基于 MIT 协议开源，使用风险自担。</string>
+    <string name="user_notice_body">1. FloatAI 支持 Android 8.0+（API 26+）。\n\n2. 悬浮窗功能需要「显示在其他应用上层」权限。\n\n3. AI 对话功能需要你自行配置服务商地址与 API Key；本应用不存储任何模型或对话数据。\n\n4. 抓包功能使用 Android 标准 VpnService API；流量仅在本机处理，不上传。\n\n5. 请在遵守当地法律法规的前提下使用本应用。\n\n6. 本应用基于 Apache 2.0 协议开源，使用风险自担。</string>
 
     <string name="permission_notice_title">权限协议</string>
-    <string name="permission_notice_body">本应用申请以下权限：\n\n• 显示在其他应用上层 —— 用于 AI 悬浮窗\n• 前台服务（FOREGROUND_SERVICE / DATA_SYNC）—— 保持悬浮窗运行\n• 推送通知（POST_NOTIFICATIONS）—— 悬浮窗服务通知\n• 互联网（INTERNET）—— 调用 AI 提供商 API\n• 访问网络状态（ACCESS_NETWORK_STATE）—— 检测网络可用性\n\n高级权限：\n• Shizuku —— 通过 ADB 权限查看进程与运行 ATK\n• Dhizuku —— 非 root 设备的备选方案\n• Root —— 完整设备控制能力\n\n请确认你已理解上述风险后再继续。</string>
+    <string name="permission_notice_body">本应用申请以下权限：\n\n• 显示在其他应用上层 —— 用于 AI 悬浮窗\n• 前台服务（FOREGROUND_SERVICE / DATA_SYNC）—— 保持悬浮窗与抓包运行\n• 推送通知（POST_NOTIFICATIONS）—— 悬浮窗与抓包服务通知\n• 互联网（INTERNET）—— 调用 AI 提供商 API\n• 访问网络状态（ACCESS_NETWORK_STATE）—— 检测网络可用性\n• 麦克风（RECORD_AUDIO）—— 可选，语音输入\n• 相机（CAMERA）—— 可选，拍照与 OCR\n• 使用情况访问（PACKAGE_USAGE_STATS）—— 悬浮窗面板显示最近应用\n• VPN 服务（VpnService）—— 可选，抓包功能\n\n请确认你已理解上述内容后再继续。</string>
 
-    <string name="elevated_title">选择授权方式</string>
-    <string name="elevated_intro">为了使用 ATK 开发工具与进程查看能力，请至少授予以下一种高级权限：</string>
-    <string name="elevated_shizuku">Shizuku</string>
-    <string name="elevated_shizuku_desc">通过 ADB 启动的服务提供权限，无需 root。</string>
-    <string name="elevated_dhizuku">Dhizuku</string>
-    <string name="elevated_dhizuku_desc">通过设备管理员激活，无 root 备选方案。</string>
-    <string name="elevated_root">Root</string>
-    <string name="elevated_root_desc">完整的设备权限控制，需要已刷入 su。</string>
-    <string name="elevated_open">前往授权</string>
-    <string name="elevated_recheck">重新检测</string>
-    <string name="elevated_continue">已授权，继续</string>
-    <string name="elevated_required">必须先完成至少一种授权</string>
-    <string name="elevated_status">当前授权状态：%1$s</string>
-
-    <string name="shizuku_intro_title">关于 Shizuku</string>
-    <string name="shizuku_intro_body">Shizuku 是一个开源项目，通过 ADB 启动一个系统级服务，让普通应用获得原本只有 ADB 或系统应用才有的权限。\n\nFloatAI 会通过 Shizuku API：\n• 读取运行中的进程信息\n• 调用 ATK 命令执行底层操作\n• 拉起构建工具链\n\n授权后请在 Shizuku 的「已授权应用」列表中确认 FloatAI 出现。</string>
-    <string name="dhizuku_intro_title">关于 Dhizuku</string>
-    <string name="dhizuku_intro_body">Dhizuku 是 AndroidIDE 团队开源的项目，通过设备管理员（Device Owner）激活，将设备管理员权限下放给普通应用。\n\nFloatAI 会通过 Dhizuku：\n• 执行无 root 环境下的进程操作\n• 运行 ATK 终端命令\n\n授权后请在 Dhizuku 的受信任应用列表中确认 FloatAI 出现。</string>
+    <string name="oss_title">开源协议</string>
 
     <string name="language_choose_title">选择语言</string>
     <string name="language_choose_body">请选择应用语言，后续协议与界面将按此语言显示。</string>
@@ -36,11 +19,10 @@
     <string name="language_en">English</string>
 
     <string name="nav_ai_chat">AI 对话</string>
-    <string name="nav_atk">ATK</string>
     <string name="nav_settings">设置</string>
     <string name="nav_build">构建 APK</string>
-    <string name="nav_packages">包管理</string>
-    <string name="nav_mcp">MCP 服务</string>
+    <string name="nav_package_hub">包管理</string>
+    <string name="nav_about">关于</string>
 
     <string name="chat_title">FloatAI 助手</string>
     <string name="chat_placeholder">输入消息…</string>
@@ -62,32 +44,6 @@
     <string name="api_available">可用模型 (%1$d)</string>
     <string name="api_selected">已选</string>
 
-    <string name="atk_title">ATK 开发工具</string>
-    <string name="atk_subtitle">设备本地构建、AI 辅助诊断、一键发布开源</string>
-    <string name="atk_terminal">终端</string>
-    <string name="atk_terminal_hint">输入 shell 命令，回车执行（仅设备本机环境）</string>
-    <string name="atk_run">运行</string>
-    <string name="atk_stop">停止</string>
-    <string name="atk_clear_log">清空日志</string>
-    <string name="atk_project">项目</string>
-    <string name="atk_new_project">新建 APK 项目</string>
-    <string name="atk_project_name">项目名</string>
-    <string name="atk_project_pkg">包名</string>
-    <string name="atk_project_create">生成脚手架</string>
-    <string name="atk_build_debug">构建 Debug APK</string>
-    <string name="atk_build_release">构建 Release APK</string>
-    <string name="atk_publish">发布到 GitHub</string>
-    <string name="atk_publish_repo">仓库名</string>
-    <string name="atk_publish_desc">描述</string>
-    <string name="atk_publish_private">私有仓库</string>
-    <string name="atk_ai_diagnose">AI 诊断构建错误</string>
-    <string name="atk_ai_fix">一键生成修复</string>
-    <string name="atk_need_token">请先在设置页配置 GitHub Token</string>
-    <string name="atk_no_project">请先生成项目</string>
-    <string name="atk_scaffold_done">脚手架已生成：%1$s</string>
-    <string name="atk_build_done">构建完成，产物：%1$s</string>
-    <string name="atk_publish_done">已发布到 %1$s</string>
-
     <string name="settings_general">常规设置</string>
     <string name="settings_theme_title">界面主题</string>
     <string name="settings_dynamic_color">动态取色</string>
@@ -102,10 +58,23 @@
     <string name="settings_github_token">GitHub Personal Access Token</string>
     <string name="settings_github_token_desc">用于一键创建仓库、推送代码、上传 APK。仅写入本机，不上传。</string>
     <string name="settings_about_section">关于</string>
-    <string name="settings_about_app">FloatAI v1.0.1</string>
+    <string name="settings_about_app">FloatAI</string>
     <string name="settings_about_desc">开源 Android AI 悬浮助手</string>
-    <string name="settings_about_license">MIT License</string>
+    <string name="settings_about_license">Apache License 2.0</string>
     <string name="settings_contact_email">发送邮件</string>
     <string name="settings_open_repo">访问 GitHub 开源仓库</string>
-    <string name="settings_check_update">检查更新</string>
+
+    <string name="about_app">应用信息</string>
+    <string name="about_version">版本</string>
+    <string name="about_protocol">协议版本</string>
+    <string name="about_build_type">构建类型</string>
+    <string name="about_repo">源码仓库</string>
+    <string name="about_open_source">开源声明</string>
+    <string name="about_license">开源协议</string>
+    <string name="about_github">在 GitHub 上查看源码</string>
+    <string name="about_updates">版本更新</string>
+    <string name="about_check_now">点击检查更新</string>
+    <string name="about_new_version_available">发现新版本</string>
+    <string name="about_no_network">无法连接到 GitHub</string>
+    <string name="about_history">历史版本</string>
 </resources>

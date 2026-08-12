@@ -11,12 +11,12 @@ android {
         applicationId "com.floatai.ui"
         minSdk 26
         targetSdk 34
-        versionCode 8
-        versionName "1.0.2"
+        versionCode 9
+        versionName "1.0.3"
 
         // 协议版本号：每次发布新版本时递增；启动时与本地存储对比，
         // 不一致则强制重走协议页。
-        buildConfigField "int", "PROTOCOL_VERSION", "3"
+        buildConfigField "int", "PROTOCOL_VERSION", "4"
     }
 
     signingConfigs {
@@ -30,9 +30,15 @@ android {
 
     buildTypes {
         release {
+            // 完整版：不做 R8 压缩/混淆，保留完整代码与资源
             minifyEnabled false
+            shrinkResources false
             signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
+            shrinkResources false
         }
     }
 

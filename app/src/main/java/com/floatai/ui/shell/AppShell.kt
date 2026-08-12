@@ -8,7 +8,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,10 +30,9 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SmartToy
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
@@ -50,7 +48,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,41 +62,37 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.floatai.BuildConfig
 import com.floatai.ui.i18n.localStrings
-import com.floatai.ui.screens.atk.AtkScreen
+import com.floatai.ui.screens.about.AboutScreen
 import com.floatai.ui.screens.build.BuildScreen
 import com.floatai.ui.screens.chat.ChatScreen
-import com.floatai.ui.screens.mcp.McpScreen
-import com.floatai.ui.screens.packages.PackagesScreen
+import com.floatai.ui.screens.packagehub.PackageHubScreen
 import com.floatai.ui.screens.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
-/** 主导航目的地。 */
+/** 主导航目的地（v1.0.3：移除 ATK / MCP，2-Tab + Drawer 含 Hub）。 */
 enum class ShellDestination(
     val route: String,
     val labelKey: String,
     val icon: ImageVector
 ) {
     CHAT("chat", "nav_ai_chat", Icons.Filled.Chat),
-    ATK("atk", "nav_atk", Icons.Filled.Build),
     BUILD("build", "nav_build", Icons.Filled.Code),
-    PACKAGES("packages", "nav_packages", Icons.Filled.Extension),
-    MCP("mcp", "nav_mcp", Icons.Filled.SmartToy),
-    SETTINGS("settings", "nav_settings", Icons.Filled.Settings);
+    PACKAGE_HUB("package_hub", "nav_package_hub", Icons.Filled.Extension),
+    SETTINGS("settings", "nav_settings", Icons.Filled.Settings),
+    ABOUT("about", "nav_about", Icons.Filled.Info);
 
     companion object {
-        val bottomBar = listOf(CHAT, ATK, BUILD)
-        val drawer = listOf(CHAT, ATK, BUILD, PACKAGES, MCP, SETTINGS)
+        val bottomBar = listOf(CHAT, BUILD)
+        val drawer = listOf(CHAT, BUILD, PACKAGE_HUB, SETTINGS, ABOUT)
     }
 }
 
 /**
- * 重写后的 AppShell：
+ * AppShell v1.0.3：
  *  - 顶部：TopBar（汉堡菜单 + 当前页标题 + 协议版本徽章）
  *  - 中部：NavHost 内容
- *  - 底部：NavigationBar（核心三 tab：Chat / ATK / Build）
- *  - Drawer：完整菜单（包含底部栏没有的 Packages / MCP / Settings）
- *
- * Drawer 中的菜单项是可点击的（v1.0.1 修复过 clickable bug）。
+ *  - 底部：NavigationBar（核心两 tab：Chat / Build）
+ *  - Drawer：完整菜单（含 Package Hub / Settings / About）
  */
 @Composable
 fun AppShell() {
@@ -113,11 +106,10 @@ fun AppShell() {
     val labels = remember(strings) {
         mapOf(
             ShellDestination.CHAT to strings.nav_ai_chat,
-            ShellDestination.ATK to strings.nav_atk,
             ShellDestination.BUILD to strings.nav_build,
-            ShellDestination.PACKAGES to strings.nav_packages,
-            ShellDestination.MCP to strings.nav_mcp,
-            ShellDestination.SETTINGS to strings.nav_settings
+            ShellDestination.PACKAGE_HUB to strings.nav_package_hub,
+            ShellDestination.SETTINGS to strings.nav_settings,
+            ShellDestination.ABOUT to strings.nav_about
         )
     }
     val currentTitle = labels[ShellDestination.entries.firstOrNull { it.route == currentRoute }]
@@ -154,12 +146,10 @@ fun AppShell() {
             color = MaterialTheme.colorScheme.background
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // 顶部栏
                 TopBar(
                     title = "$currentTitle · FloatAI v${BuildConfig.VERSION_NAME}",
                     onMenu = { scope.launch { drawerState.open() } }
                 )
-                // 内容
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     AnimatedContent(
                         targetState = currentRoute,
@@ -179,15 +169,13 @@ fun AppShell() {
                             modifier = Modifier.fillMaxSize()
                         ) {
                             composable(ShellDestination.CHAT.route) { ChatScreen() }
-                            composable(ShellDestination.ATK.route) { AtkScreen() }
                             composable(ShellDestination.BUILD.route) { BuildScreen() }
-                            composable(ShellDestination.PACKAGES.route) { PackagesScreen() }
-                            composable(ShellDestination.MCP.route) { McpScreen() }
+                            composable(ShellDestination.PACKAGE_HUB.route) { PackageHubScreen() }
                             composable(ShellDestination.SETTINGS.route) { SettingsScreen() }
+                            composable(ShellDestination.ABOUT.route) { AboutScreen() }
                         }
                     }
                 }
-                // 底部 NavigationBar
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
                     tonalElevation = 3.dp
@@ -258,7 +246,6 @@ private fun DrawerContent(
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
-        // 应用标题区
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -274,7 +261,7 @@ private fun DrawerContent(
                 Icon(
                     Icons.Filled.Apps,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
             Spacer(Modifier.width(12.dp))

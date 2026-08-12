@@ -193,7 +193,7 @@ class FloatService : Service() {
 
     // ===== 面板 =====
 
-    private var currentTab = 0 // 0 = AI, 1 = 应用
+    private var currentTab = 0 // 0 = AI, 1 = 应用, 2 = 抓包
 
     private fun togglePanel() {
         if (panelContainer != null) {
@@ -239,18 +239,22 @@ class FloatService : Service() {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(10), 0, dp(10))
         }
-        val tabAi = makeTab("AI 聊天", currentTab == 0) {
+        val tabAi = makeTab("AI", currentTab == 0) {
             currentTab = 0; renderTabs(); renderContent()
         }
         val tabApps = makeTab("应用", currentTab == 1) {
             currentTab = 1; renderTabs(); renderContent()
         }
+        val tabCapture = makeTab("抓包", currentTab == 2) {
+            currentTab = 2; renderTabs(); renderContent()
+        }
         tabRow.addView(tabAi)
         tabRow.addView(tabApps)
+        tabRow.addView(tabCapture)
         tabRow.addView(TextView(ctx).apply {
             layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
         })
-        tabRow.tag = listOf(tabAi, tabApps)
+        tabRow.tag = listOf(tabAi, tabApps, tabCapture)
         panel.addView(tabRow)
 
         // 内容容器
@@ -293,13 +297,11 @@ class FloatService : Service() {
         val panel = panelContainer ?: return
         val tabRow = panel.getChildAt(1) as? LinearLayout ?: return
         val tags = tabRow.tag as? List<*> ?: return
-        (tags[0] as? TextView)?.let {
-            it.setBackgroundColor(if (currentTab == 0) 0xFF5B5BEF.toInt() else 0x00000000)
-            it.setTextColor(if (currentTab == 0) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt())
-        }
-        (tags[1] as? TextView)?.let {
-            it.setBackgroundColor(if (currentTab == 1) 0xFF5B5BEF.toInt() else 0x00000000)
-            it.setTextColor(if (currentTab == 1) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt())
+        for (i in tags.indices) {
+            (tags[i] as? TextView)?.let {
+                it.setBackgroundColor(if (currentTab == i) 0xFF5B5BEF.toInt() else 0x00000000)
+                it.setTextColor(if (currentTab == i) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt())
+            }
         }
     }
 
@@ -307,7 +309,11 @@ class FloatService : Service() {
         val panel = panelContainer ?: return
         val content = panel.findViewWithTag<LinearLayout>("content") ?: return
         content.removeAllViews()
-        if (currentTab == 0) renderAiTab(content) else renderAppsTab(content)
+        when (currentTab) {
+            0 -> renderAiTab(content)
+            1 -> renderAppsTab(content)
+            else -> renderCaptureTab(content)
+        }
     }
 
     // ----- AI Tab -----
@@ -478,6 +484,114 @@ class FloatService : Service() {
             val item = apps[position]
             launchApp(item.packageName)
         }
+    }
+
+    // ----- Capture Tab (v1.0.3 基础版) -----
+
+    private fun renderCaptureTab(parent: LinearLayout) {
+        val ctx = this
+        val title = TextView(ctx).apply {
+            text = "抓包会话 (v1.0.3 基础版)"
+            textSize = 12f
+            setTextColor(0xFFAAAAAA.toInt())
+            setPadding(0, dp(4), 0, dp(8))
+        }
+        parent.addView(title)
+
+        val status = TextView(ctx).apply {
+            text = "状态：未启动\n" +
+                "v1.0.3 已实现：VpnService 接口建立 + 通知。\n" +
+                "v1.0.4 将加入：IP 包解析、TCP 重组、TLS 解密。"
+            textSize = 11f
+            setTextColor(0xFFCCCCCC.toInt())
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            background = roundedDrawable(dp(8).toFloat(), 0xFF1F1F30.toInt(), 0)
+        }
+        parent.addView(status)
+
+        val startBtn = Button(ctx).apply {
+            text = "启动 VpnService (需用户在系统弹窗中授权)"
+            textSize = 11f
+            setBackgroundColor(0xFF5B5BEF.toInt())
+            setTextColor(0xFFFFFFFF.toInt())
+            setOnClickListener {
+                try {
+                    val intent = Intent(ctx, com.floatai.capture.CaptureService::class.java)
+                    ctx.startForegroundService(intent)
+                    Toast.makeText(ctx, "抓包服务已启动", Toast.LENGTH_SHORT).show()
+                    status.text = "状态：VPN 接口已建立，等待流量..."
+                } catch (e: Exception) {
+                    Toast.makeText(ctx, "启动失败：${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        val stopBtn = Button(ctx).apply {
+            text = "停止抓包"
+            textSize = 11f
+            setBackgroundColor(0xFF884444.toInt())
+            setTextColor(0xFFFFFFFF.toInt())
+            setOnClickListener {
+                try {
+                    ctx.stopService(Intent(ctx, com.floatai.capture.CaptureService::class.java))
+                    Toast.makeText(ctx, "已停止", Toast.LENGTH_SHORT).show()
+                    status.text = "状态：未启动"
+                } catch (e: Exception) {
+                    Toast.makeText(ctx, "停止失败：${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        val btnRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(8), 0, dp(8))
+        }
+        btnRow.addView(startBtn)
+        SpacerView(ctx, dp(6)).also { btnRow.addView(it) }
+        btnRow.addView(stopBtn)
+        parent.addView(btnRow)
+
+        // 历史
+        val app = applicationContext as? App
+        val repo = app?.let { com.floatai.capture.CaptureRepository(it) }
+        val listView = ListView(ctx).apply {
+            divider = null
+            setBackgroundColor(0x00000000)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
+            )
+        }
+        val sessions = repo?.listSessions() ?: emptyList()
+        listView.adapter = SessionAdapter(ctx, sessions.map { it.nameWithoutExtension })
+        parent.addView(listView)
+    }
+
+    private class SessionAdapter(
+        private val ctx: Context,
+        private val items: List<String>
+    ) : BaseAdapter() {
+        override fun getCount(): Int = items.size
+        override fun getItem(position: Int): String = items[position]
+        override fun getItemId(position: Int): Long = position.toLong()
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+            val tv = (convertView as? TextView) ?: TextView(ctx).apply { setPadding(dp(10), dp(10), dp(10), dp(10)); textSize = 12f }
+            tv.text = "会话 ${items[position]}"
+            tv.setTextColor(0xFFFFFFFF.toInt())
+            tv.setBackgroundColor(0xFF1A1A28.toInt())
+            tv.background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 8f * ctx.resources.displayMetrics.density
+                setColor(0xFF1A1A28.toInt())
+            }
+            tv.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(0, dp(2), 0, dp(2)) }
+            return tv
+        }
+        private fun dp(v: Int): Int = (v * ctx.resources.displayMetrics.density).toInt()
+    }
+
+    private class SpacerView(ctx: Context, heightPx: Int) : View(ctx) {
+        init { layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, heightPx) }
     }
 
     private fun loadRecentApps(): List<AppItem> {
