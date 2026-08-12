@@ -38,6 +38,9 @@
     <string name="nav_ai_chat">AI 对话</string>
     <string name="nav_atk">ATK</string>
     <string name="nav_settings">设置</string>
+    <string name="nav_build">构建 APK</string>
+    <string name="nav_packages">包管理</string>
+    <string name="nav_mcp">MCP 服务</string>
 
     <string name="chat_title">FloatAI 助手</string>
     <string name="chat_placeholder">输入消息…</string>

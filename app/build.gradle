@@ -11,8 +11,12 @@ android {
         applicationId "com.floatai.ui"
         minSdk 26
         targetSdk 34
-        versionCode 7
-        versionName "1.0.1"
+        versionCode 8
+        versionName "1.0.2"
+
+        // 协议版本号：每次发布新版本时递增；启动时与本地存储对比，
+        // 不一致则强制重走协议页。
+        buildConfigField "int", "PROTOCOL_VERSION", "3"
     }
 
     signingConfigs {
@@ -43,6 +47,7 @@ android {
 
     buildFeatures {
         compose true
+        buildConfig true
     }
 
     composeOptions {
@@ -71,4 +76,7 @@ dependencies {
 
     implementation 'androidx.core:core-splashscreen:1.0.1'
     implementation 'org.json:json:20231013'
+
+    // MCP server：本地 HTTP JSON-RPC
+    implementation 'org.nanohttpd:nanohttpd:2.3.1'
 }
