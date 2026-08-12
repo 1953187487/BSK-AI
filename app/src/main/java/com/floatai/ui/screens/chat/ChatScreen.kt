@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -103,6 +104,21 @@ fun ChatScreen(modifier: Modifier = Modifier) {
                 }
             },
             actions = {
+                IconButton(onClick = {
+                    runCatching {
+                        app.startService(
+                            android.content.Intent(app, com.floatai.service.FloatService::class.java)
+                        )
+                    }.onFailure {
+                        android.widget.Toast.makeText(
+                            app,
+                            "启动悬浮窗失败：${it.message}",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }) {
+                    Icon(androidx.compose.material.icons.Icons.Filled.OpenInNew, contentDescription = "启动悬浮窗")
+                }
                 IconButton(onClick = { showHistory = true }) {
                     Icon(Icons.Filled.History, contentDescription = strings.chat_history)
                 }

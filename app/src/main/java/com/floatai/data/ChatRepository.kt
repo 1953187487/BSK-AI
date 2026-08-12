@@ -45,6 +45,30 @@ class ChatRepository(context: Context) {
 
     fun newId(): String = UUID.randomUUID().toString().take(8)
 
+    /** 追加到最近一条历史；没有则新建。供悬浮窗快速消息使用。 */
+    fun appendToCurrent(messages: List<ChatMessage>) {
+        if (messages.isEmpty()) return
+        val list = loadHistories().toMutableList()
+        val history = if (list.isNotEmpty()) {
+            val first = list[0]
+            first.copy(
+                messages = messages,
+                time = System.currentTimeMillis(),
+                title = first.title.takeIf { it.isNotBlank() && it != "新对话" }
+                    ?: (messages.firstOrNull { it.role == "user" }?.content?.take(20) ?: "新对话")
+            )
+        } else {
+            ChatHistory(
+                id = newId(),
+                title = messages.firstOrNull { it.role == "user" }?.content?.take(20) ?: "新对话",
+                messages = messages,
+                time = System.currentTimeMillis()
+            )
+        }
+        list[0] = history
+        persist(list)
+    }
+
     private fun persist(list: List<ChatHistory>) {
         val arr = JSONArray()
         list.forEach { arr.put(it.toJson()) }
