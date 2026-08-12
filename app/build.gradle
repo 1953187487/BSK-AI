@@ -11,8 +11,8 @@ android {
         applicationId "com.floatai.ui"
         minSdk 26
         targetSdk 34
-        versionCode 11
-        versionName "1.0.5"
+        versionCode 12
+        versionName "1.0.6"
 
         // 协议版本号：v1.0.5 起固定为 5，不再随版本升级强制重签。
         // 用户已签过 v5 协议后，升级不会再走协议页（除非未来手动修改此处）。
@@ -85,4 +85,7 @@ dependencies {
 
     // MCP server：本地 HTTP JSON-RPC
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
+
+    // Coil 图片加载（头像）
+    implementation 'io.coil-kt:coil-compose:2.6.0'
 }

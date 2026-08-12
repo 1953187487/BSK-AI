@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,11 +57,13 @@ import com.floatai.data.model.ChatHistory
 import com.floatai.data.model.ChatMessage
 import com.floatai.ui.i18n.localStrings
 import com.floatai.ui.screens.api.ApiManagementSheet
+import com.floatai.ui.screens.character.CharacterAvatar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(modifier: Modifier = Modifier) {
-    val app = LocalContext.current.applicationContext as App
+    val context = LocalContext.current
+    val app = context.applicationContext as App
     val vm: ChatViewModel = viewModel(
         key = "chat",
         factory = ChatViewModel.factory(app.settingsRepository, app.chatRepository, app.characterRepository)
@@ -77,6 +80,7 @@ fun ChatScreen(modifier: Modifier = Modifier) {
     var showHistory by remember { mutableStateOf(false) }
     var showModelPicker by remember { mutableStateOf(false) }
     var showApiManagement by remember { mutableStateOf(false) }
+    var showCharacter by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
     // 任意 sheet 打开时强制收起其他 sheet，避免重叠 / 点击穿透
@@ -97,12 +101,39 @@ fun ChatScreen(modifier: Modifier = Modifier) {
     ) {
         TopAppBar(
             title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(strings.chat_title, style = MaterialTheme.typography.titleLarge)
-                    ModelPickerTrigger(
-                        selected = model,
-                        onClick = { showModelPicker = true }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable {
+                        showCharacter = true
+                    }
+                ) {
+                    CharacterAvatar(
+                        character = app.characterRepository.characters.value
+                            .firstOrNull { it.id == vm.activeCharacter.value }
+                            ?: com.floatai.data.model.DEFAULT_CHARACTER,
+                        size = 36.dp
                     )
+                    Spacer(Modifier.size(8.dp))
+                    Column {
+                        Text(
+                            vm.characters.value.firstOrNull { it.id == vm.activeCharacter.value }?.name
+                                ?: strings.chat_title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(model.ifBlank { "auto" },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.size(2.dp))
+                            Icon(
+                                Icons.Filled.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
                 }
             },
             actions = {
@@ -204,6 +235,17 @@ fun ChatScreen(modifier: Modifier = Modifier) {
             val list = app.settingsRepository.apiConfig.value.models
             vm.updateAvailableModels(list)
         })
+    }
+
+    if (showCharacter) {
+        // 全屏覆盖：角色管理界面（独立于 AI 聊天）
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.ui.platform.LocalContext provides context
+        ) {
+            com.floatai.ui.screens.character.CharacterScreen(onBack = {
+                showCharacter = false
+            })
+        }
     }
 }
 

@@ -124,23 +124,25 @@ class ChatViewModel(
     }
 
     /**
-     * 发送消息：流式输出，UI 实时刷新最后一条 assistant 消息。
+     * 发送消息：点发送立刻清空输入 + 启动流式输出。
+     *  - 取消任何进行中的旧流（避免多流并发）
+     *  - loading 状态仅用于控制"发送按钮"是否禁用，发送后立即设为 true 让 UI 转圈
      */
     fun send() {
         val text = _input.value.trim()
-        if (text.isBlank() || _loading.value) return
+        if (text.isBlank()) return
         streamJob?.cancel()
+        // 立刻清空输入框（避免用户感觉"没反应"）
+        _input.value = ""
         streamJob = viewModelScope.launch {
             // 1. 准备消息列表（加上角色 systemPrompt）
             val character = characterRepository.active()
             val historyMsgs = _messages.value.filter {
-                // 不发送本地欢迎语给 AI（避免重复）
                 it.role != "assistant" || !it.content.startsWith("你好")
             }
             val systemMsg = ChatMessage("system", character.systemPrompt, 0)
             val userMsg = ChatMessage("user", text, System.currentTimeMillis())
             _messages.update { it + userMsg }
-            _input.value = ""
             _loading.value = true
 
             // 2. 准备 API 参数
