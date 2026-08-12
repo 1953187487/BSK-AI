@@ -11,12 +11,12 @@ android {
         applicationId "com.floatai.ui"
         minSdk 26
         targetSdk 34
-        versionCode 9
-        versionName "1.0.3"
+        versionCode 10
+        versionName "1.0.4"
 
         // 协议版本号：每次发布新版本时递增；启动时与本地存储对比，
         // 不一致则强制重走协议页。
-        buildConfigField "int", "PROTOCOL_VERSION", "4"
+        buildConfigField "int", "PROTOCOL_VERSION", "5"
     }
 
     signingConfigs {

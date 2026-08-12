@@ -17,12 +17,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val app = application as App
-        // 反调试：检测到调试器时延迟启动（增加破解成本）
-        runCatching {
-            if (com.floatai.security.AntiDebug.isDebugging()) {
-                Thread.sleep(800)
-            }
-        }
+        // 反调试：检测到调试器时在后台线程延迟（不阻塞主线程，避免 setContent 卡死）
+        com.floatai.security.AntiDebug.applyDefenseDelayAsync()
         setContent {
             val settings by app.settingsRepository.settings.collectAsStateWithLifecycle()
             FloatAITheme(

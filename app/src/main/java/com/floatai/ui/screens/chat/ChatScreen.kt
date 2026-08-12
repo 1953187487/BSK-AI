@@ -22,8 +22,10 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -375,6 +377,49 @@ fun ChatInputBar(
     loading: Boolean
 ) {
     val strings = localStrings()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var recording by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val recognizerHolder = androidx.compose.runtime.remember {
+        object {
+            var instance: com.floatai.voice.VoiceRecognizer? = null
+        }
+    }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            recognizerHolder.instance?.stop()
+            recognizerHolder.instance = null
+        }
+    }
+
+    fun toggleVoice() {
+        if (recording) {
+            recognizerHolder.instance?.stop()
+            recognizerHolder.instance = null
+            recording = false
+        } else {
+            val r = com.floatai.voice.VoiceRecognizer(
+                context = context,
+                onPartial = { partial ->
+                    if (partial.isNotEmpty()) onValueChange(partial)
+                },
+                onResult = { text ->
+                    onValueChange(text)
+                    recording = false
+                    recognizerHolder.instance?.stop()
+                    recognizerHolder.instance = null
+                },
+                onError = { _ ->
+                    recording = false
+                    recognizerHolder.instance?.stop()
+                    recognizerHolder.instance = null
+                }
+            )
+            recognizerHolder.instance = r
+            r.start()
+            recording = true
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -386,13 +431,31 @@ fun ChatInputBar(
             .padding(horizontal = 14.dp, vertical = 6.dp),
         verticalAlignment = Alignment.Bottom
     ) {
+        // 语音输入按钮
+        IconButton(
+            onClick = { toggleVoice() },
+            enabled = !loading,
+            modifier = Modifier.padding(end = 2.dp)
+        ) {
+            Icon(
+                imageVector = if (recording) Icons.Filled.Stop else Icons.Filled.Mic,
+                contentDescription = strings.chat_voice_input,
+                tint = if (recording) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.primary
+            )
+        }
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            placeholder = { Text(strings.chat_placeholder) },
+            placeholder = {
+                Text(
+                    if (recording) strings.chat_voice_recording
+                    else strings.chat_placeholder
+                )
+            },
             modifier = Modifier.weight(1f),
             maxLines = 4,
-            enabled = !loading,
+            enabled = !loading && !recording,
             shape = RoundedCornerShape(18.dp),
             colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,

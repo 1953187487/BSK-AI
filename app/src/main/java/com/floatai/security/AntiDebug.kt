@@ -3,6 +3,10 @@ package com.floatai.security
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.Debug
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 /**
  * 简易反调试检测（v1.0.3 应用内置加固）：
@@ -40,4 +44,19 @@ object AntiDebug {
      * 调用方可在敏感操作前调用，若 true 则降级或拒绝。
      */
     fun check(context: Context): Boolean = isDebugging() || isDebuggable(context)
+
+    /**
+     * 在后台线程异步执行反调试延迟，避免阻塞主线程导致 setContent 被延迟、
+     * 用户看到的是「白屏 + 协议页不响应」。
+     */
+    fun applyDefenseDelayAsync(scope: CoroutineScope = GlobalScope) {
+        scope.launch(Dispatchers.Default) {
+            if (isDebugging()) {
+                try {
+                    Thread.sleep(800)
+                } catch (_: InterruptedException) {
+                }
+            }
+        }
+    }
 }

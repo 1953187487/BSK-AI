@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -62,14 +63,13 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.floatai.BuildConfig
 import com.floatai.ui.i18n.localStrings
-import com.floatai.ui.screens.about.AboutScreen
 import com.floatai.ui.screens.build.BuildScreen
 import com.floatai.ui.screens.chat.ChatScreen
 import com.floatai.ui.screens.packagehub.PackageHubScreen
 import com.floatai.ui.screens.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
-/** 主导航目的地（v1.0.3：移除 ATK / MCP，2-Tab + Drawer 含 Hub）。 */
+/** 主导航目的地（v1.0.4：移除「关于」Tab，「关于」融入设置）。 */
 enum class ShellDestination(
     val route: String,
     val labelKey: String,
@@ -78,21 +78,22 @@ enum class ShellDestination(
     CHAT("chat", "nav_ai_chat", Icons.Filled.Chat),
     BUILD("build", "nav_build", Icons.Filled.Code),
     PACKAGE_HUB("package_hub", "nav_package_hub", Icons.Filled.Extension),
-    SETTINGS("settings", "nav_settings", Icons.Filled.Settings),
-    ABOUT("about", "nav_about", Icons.Filled.Info);
+    LOBSTER("lobster", "lobster_panel_title", Icons.Filled.Pets),
+    SETTINGS("settings", "nav_settings", Icons.Filled.Settings);
 
     companion object {
         val bottomBar = listOf(CHAT, BUILD)
-        val drawer = listOf(CHAT, BUILD, PACKAGE_HUB, SETTINGS, ABOUT)
+        val drawer = listOf(CHAT, BUILD, PACKAGE_HUB, LOBSTER, SETTINGS)
     }
 }
 
 /**
- * AppShell v1.0.3：
+ * AppShell v1.0.4：
  *  - 顶部：TopBar（汉堡菜单 + 当前页标题 + 协议版本徽章）
  *  - 中部：NavHost 内容
  *  - 底部：NavigationBar（核心两 tab：Chat / Build）
- *  - Drawer：完整菜单（含 Package Hub / Settings / About）
+ *  - Drawer：完整菜单（含 Package Hub / Lobster / Settings）
+ *  - 关于融入设置：抽屉不再单独列出「关于」
  */
 @Composable
 fun AppShell() {
@@ -108,8 +109,8 @@ fun AppShell() {
             ShellDestination.CHAT to strings.nav_ai_chat,
             ShellDestination.BUILD to strings.nav_build,
             ShellDestination.PACKAGE_HUB to strings.nav_package_hub,
-            ShellDestination.SETTINGS to strings.nav_settings,
-            ShellDestination.ABOUT to strings.nav_about
+            ShellDestination.LOBSTER to strings.lobster_panel_title,
+            ShellDestination.SETTINGS to strings.nav_settings
         )
     }
     val currentTitle = labels[ShellDestination.entries.firstOrNull { it.route == currentRoute }]
@@ -171,8 +172,21 @@ fun AppShell() {
                             composable(ShellDestination.CHAT.route) { ChatScreen() }
                             composable(ShellDestination.BUILD.route) { BuildScreen() }
                             composable(ShellDestination.PACKAGE_HUB.route) { PackageHubScreen() }
-                            composable(ShellDestination.SETTINGS.route) { SettingsScreen() }
-                            composable(ShellDestination.ABOUT.route) { AboutScreen() }
+                            composable(ShellDestination.LOBSTER.route) {
+                                com.floatai.ui.screens.lobster.LobsterScreen()
+                            }
+                            composable(ShellDestination.SETTINGS.route) {
+                                SettingsScreen(
+                                    onOpenAbout = {
+                                        navController.navigate("about") {
+                                            launchSingleTop = true
+                                        }
+                                    },
+                                    onOpenPackageHub = { navigateTo(ShellDestination.PACKAGE_HUB.route) },
+                                    onOpenLobster = { navigateTo(ShellDestination.LOBSTER.route) }
+                                )
+                            }
+                            composable("about") { com.floatai.ui.screens.about.AboutScreen() }
                         }
                     }
                 }
