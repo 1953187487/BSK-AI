@@ -78,6 +78,25 @@ fun ProtocolFlow(
                 )
             }
             Spacer(Modifier.height(12.dp))
+            // 进度指示
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)
+            ) {
+                repeat(2) { i ->
+                    val active = (i + 1) == step
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(4.dp)
+                            .background(
+                                if (active) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                androidx.compose.foundation.shape.CircleShape
+                            )
+                    )
+                }
+            }
             Text(
                 text = if (step == 1) strings.user_notice_title else strings.permission_notice_title,
                 style = MaterialTheme.typography.headlineMedium
@@ -105,7 +124,10 @@ fun ProtocolFlow(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (step == 1) strings.permission_notice_title else strings.elevated_continue)
+                Text(
+                    if (step == 1) "下一步：${strings.permission_notice_title}"
+                    else "同意并继续"
+                )
             }
             if (step == 2) {
                 Spacer(Modifier.height(8.dp))

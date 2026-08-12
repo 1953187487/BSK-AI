@@ -76,6 +76,13 @@ fun ChatScreen(modifier: Modifier = Modifier) {
     var showApiManagement by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
+    // 任意 sheet 打开时强制收起其他 sheet，避免重叠 / 点击穿透
+    LaunchedEffect(showHistory, showModelPicker, showApiManagement) {
+        if (showHistory && (showModelPicker || showApiManagement)) {
+            showHistory = false
+        }
+    }
+
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
     }
