@@ -22,6 +22,7 @@
     <string name="nav_settings">设置</string>
     <string name="nav_build">构建 APK</string>
     <string name="nav_package_hub">包管理</string>
+    <string name="nav_atk">ATK 反编译</string>
     <string name="nav_about">关于</string>
 
     <string name="chat_title">FloatAI 助手</string>

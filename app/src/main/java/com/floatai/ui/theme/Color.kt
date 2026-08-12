@@ -24,51 +24,33 @@ val LightSurfaceVariant = Color(0xFFE5E5EA)
 
 /**
  * 玻璃态颜色组合：根据深浅模式提供模糊层。
- *  v1.0.6 升级：增加多层折射 / 顶部高光 / 底部阴影边 / 内部浮雕
+ * v1.0.6-rc.2：恢复简洁的双层结构（v1.0.5 风格），去掉过度装饰。
  */
 data class GlassTokens(
-    /** 主体背景：半透明 + 顶部稍亮 */
     val blurBackground: Color,
-    /** 边框：1px 高光描边 */
     val blurBorder: Color,
-    /** 顶部高光：1px 高光内描边（亮） */
-    val highlight: Color,
-    /** 折射色：左上 → 右下的渐变叠加层 */
-    val refraction: Color,
-    /** 底部阴影：底部 1px 暗边 */
-    val shadowEdge: Color,
-    /** 内部浮雕（可选） */
-    val innerGlow: Color
+    val highlight: Color
 )
 
 val DarkGlass = GlassTokens(
-    blurBackground = Color(0xAA1C1C2E),
-    blurBorder = Color(0x55FFFFFF),
-    highlight = Color(0xAAFFFFFF),
-    refraction = Color(0x33FFFFFF),
-    shadowEdge = Color(0x66000000),
-    innerGlow = Color(0x22FFFFFF)
+    blurBackground = Color(0x661C1C1E),
+    blurBorder = Color(0x33FFFFFF),
+    highlight = Color(0x33FFFFFF)
 )
 
 val LightGlass = GlassTokens(
-    blurBackground = Color(0xCCFFFFFF),
-    blurBorder = Color(0x33000000),
-    highlight = Color(0xFFFFFFFF),
-    refraction = Color(0x33FFFFFF),
-    shadowEdge = Color(0x33000000),
-    innerGlow = Color(0x22FFFFFF)
+    blurBackground = Color(0x99FFFFFF),
+    blurBorder = Color(0x1A000000),
+    highlight = Color(0x66FFFFFF)
 )
 
 /**
- * 主屏渐变背景（液态光斑）。
- * v1.0.6 升级：5 个色块 + 柔和弥散光斑（visionOS 风格）。
+ * 主屏渐变背景：v1.0.6-rc.2 恢复单层渐变（v1.0.5 风格）
  */
 fun liquidBackdrop(darkTheme: Boolean): Brush {
     val base = if (darkTheme) {
         listOf(
-            Color(0xFF0A0A18),
             Color(0xFF1A1A2E),
-            Color(0xFF16213E),
             Color(0xFF0F3460),
             Color(0xFF000000)
         )
@@ -76,70 +58,10 @@ fun liquidBackdrop(darkTheme: Boolean): Brush {
         listOf(
             Color(0xFFE0E7FF),
             Color(0xFFFCE7F3),
-            Color(0xFFDCFCE7),
-            Color(0xFFFFE5C7),
             Color(0xFFF2F2F7)
         )
     }
     return Brush.verticalGradient(base)
-}
-
-/**
- * 背景光斑层：在主背景上叠加几个模糊圆形光斑（Compose 不能直接 blur，用大半透明 radial gradient 模拟）。
- */
-fun liquidOrbs(darkTheme: Boolean): List<Brush> {
-    return if (darkTheme) {
-        listOf(
-            // 左上 紫色光斑
-            Brush.radialGradient(
-                colors = listOf(Color(0x66BF5AF2), Color(0x00BF5AF2)),
-                center = androidx.compose.ui.geometry.Offset(0.15f, 0.15f),
-                radius = 600f
-            ),
-            // 右上 青色光斑
-            Brush.radialGradient(
-                colors = listOf(Color(0x5530D1B5), Color(0x0030D1B5)),
-                center = androidx.compose.ui.geometry.Offset(0.9f, 0.25f),
-                radius = 500f
-            ),
-            // 中下 粉色光斑
-            Brush.radialGradient(
-                colors = listOf(Color(0x44FF375F), Color(0x00FF375F)),
-                center = androidx.compose.ui.geometry.Offset(0.5f, 0.85f),
-                radius = 700f
-            ),
-            // 左下 蓝色光斑
-            Brush.radialGradient(
-                colors = listOf(Color(0x440A84FF), Color(0x000A84FF)),
-                center = androidx.compose.ui.geometry.Offset(0.1f, 0.9f),
-                radius = 550f
-            )
-        )
-    } else {
-        listOf(
-            // 浅色版：更柔和高亮光斑
-            Brush.radialGradient(
-                colors = listOf(Color(0x99DDD6FF), Color(0x00DDD6FF)),
-                center = androidx.compose.ui.geometry.Offset(0.15f, 0.15f),
-                radius = 600f
-            ),
-            Brush.radialGradient(
-                colors = listOf(Color(0x99FFD6E0), Color(0x00FFD6E0)),
-                center = androidx.compose.ui.geometry.Offset(0.9f, 0.25f),
-                radius = 500f
-            ),
-            Brush.radialGradient(
-                colors = listOf(Color(0x99FFE9C7), Color(0x00FFE9C7)),
-                center = androidx.compose.ui.geometry.Offset(0.5f, 0.85f),
-                radius = 700f
-            ),
-            Brush.radialGradient(
-                colors = listOf(Color(0x99C7E9FF), Color(0x00C7E9FF)),
-                center = androidx.compose.ui.geometry.Offset(0.1f, 0.9f),
-                radius = 550f
-            )
-        )
-    }
 }
 
 /**

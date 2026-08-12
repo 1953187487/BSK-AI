@@ -57,6 +57,7 @@ class LocalStrings(private val res: android.content.res.Resources) {
     val nav_settings: String get() = res.getString(R.string.nav_settings)
     val nav_build: String get() = res.getString(R.string.nav_build)
     val nav_package_hub: String get() = res.getString(R.string.nav_package_hub)
+    val nav_atk: String get() = res.getString(R.string.nav_atk)
     val nav_about: String get() = res.getString(R.string.nav_about)
 
     val chat_title: String get() = res.getString(R.string.chat_title)

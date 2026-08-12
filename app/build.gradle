@@ -11,8 +11,8 @@ android {
         applicationId "com.floatai.ui"
         minSdk 26
         targetSdk 34
-        versionCode 14
-        versionName "1.0.6-rc.1"
+        versionCode 15
+        versionName "1.0.6-rc.2"
 
         // 协议版本号：v1.0.5 起固定为 5，不再随版本升级强制重签。
         // 用户已签过 v5 协议后，升级不会再走协议页（除非未来手动修改此处）。
@@ -88,4 +88,10 @@ dependencies {
 
     // Coil 图片加载（头像）
     implementation 'io.coil-kt:coil-compose:2.6.0'
+
+    // 文档解析（docparse MCP 工具调用所需的 okhttp 客户端）
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // 工作区选择（DocumentFile SAF）
+    implementation 'androidx.documentfile:documentfile:1.0.1'
 }

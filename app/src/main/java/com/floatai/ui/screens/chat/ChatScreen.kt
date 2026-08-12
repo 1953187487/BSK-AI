@@ -19,7 +19,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Mic
@@ -28,10 +33,9 @@ import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,11 +53,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.floatai.App
@@ -66,6 +72,22 @@ import com.floatai.ui.screens.character.CharacterAvatar
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(modifier: Modifier = Modifier) {
+    ChatScreenContent(modifier)
+}
+
+/**
+ * v1.0.6-rc.2：包装 ChatScreen，使放大模式时隐藏底部导航栏。
+ * 通过 UiState.bottomBarVisible 单例通信给 AppShell。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChatScreenWithBottomBarToggle(modifier: Modifier = Modifier) {
+    ChatScreenContent(modifier)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChatScreenContent(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val app = context.applicationContext as App
     val vm: ChatViewModel = viewModel(
@@ -84,6 +106,18 @@ fun ChatScreen(modifier: Modifier = Modifier) {
     var showHistory by remember { mutableStateOf(false) }
     var showApiManagement by remember { mutableStateOf(false) }
     var showCharacter by remember { mutableStateOf(false) }
+    var showWorkspace by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }  // 放大模式：隐藏底部导航 + 拉长聊天框
+    // 同步到底部导航栏可见性（AppShell 监听此全局状态）
+    androidx.compose.runtime.LaunchedEffect(expanded) {
+        com.floatai.ui.shell.UiState.bottomBarVisible.value = !expanded
+    }
+    // 离开 ChatScreen 时恢复显示
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            com.floatai.ui.shell.UiState.bottomBarVisible.value = true
+        }
+    }
     var modelMenuExpanded by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
@@ -115,6 +149,16 @@ fun ChatScreen(modifier: Modifier = Modifier) {
                 }
             },
             actions = {
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(
+                        if (expanded) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
+                        contentDescription = if (expanded) "退出放大" else "放大模式",
+                        tint = if (expanded) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                IconButton(onClick = { showWorkspace = true }) {
+                    Icon(Icons.Filled.FolderOpen, contentDescription = "选择工作区")
+                }
                 IconButton(onClick = { showCharacter = true }) {
                     Icon(Icons.Filled.PersonOutline, contentDescription = strings.chat_character)
                 }
@@ -228,6 +272,173 @@ fun ChatScreen(modifier: Modifier = Modifier) {
             })
         }
     }
+
+    if (showWorkspace) {
+        WorkspaceSheet(
+            app = app,
+            onDismiss = { showWorkspace = false }
+        )
+    }
+}
+
+/**
+ * 工作区选择 Sheet：
+ *  - 显示当前工作区（如果有）
+ *  - 提供"选择工作区"按钮（SAF OpenDocumentTree）
+ *  - 列出工作区文件（限制 50 个）
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun WorkspaceSheet(
+    app: App,
+    onDismiss: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val workspace by app.workspaceRepository.workspace.collectAsStateWithLifecycle()
+    var files by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf<List<com.floatai.data.WorkspaceFile>>(emptyList())
+    }
+
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            }
+            val name = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, uri)?.name ?: "工作区"
+            app.workspaceRepository.setWorkspace(uri.toString(), name)
+        }
+    }
+
+    androidx.compose.runtime.LaunchedEffect(workspace.treeUri) {
+        if (workspace.isSet) {
+            files = com.floatai.data.listWorkspaceFiles(context, workspace.treeUri)
+        }
+    }
+
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        androidx.compose.foundation.layout.Column(
+            modifier = androidx.compose.ui.Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+            androidx.compose.foundation.layout.Row(
+                modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                androidx.compose.material3.Text(
+                    "Android 工作区",
+                    style = androidx.compose.material3.MaterialTheme.typography.titleLarge
+                )
+                androidx.compose.material3.TextButton(onClick = onDismiss) { androidx.compose.material3.Text("✕") }
+            }
+            androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.height(8.dp))
+
+            androidx.compose.material3.Card(
+                modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                colors = androidx.compose.material3.CardDefaults.cardColors(
+                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+            ) {
+                androidx.compose.foundation.layout.Column(modifier = androidx.compose.ui.Modifier.padding(14.dp)) {
+                    if (workspace.isSet) {
+                        androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            androidx.compose.material3.Icon(
+                                androidx.compose.material.icons.Icons.Filled.Folder,
+                                contentDescription = null,
+                                tint = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                            )
+                            androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.size(8.dp))
+                            androidx.compose.foundation.layout.Column(modifier = androidx.compose.ui.Modifier.weight(1f)) {
+                                androidx.compose.material3.Text(
+                                    workspace.displayName,
+                                    style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                                )
+                                androidx.compose.material3.Text(
+                                    "已选 · 文件 ${files.size} 个",
+                                    fontSize = 10.sp,
+                                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            androidx.compose.material3.TextButton(onClick = {
+                                app.workspaceRepository.clear()
+                                files = emptyList()
+                            }) { androidx.compose.material3.Text("清除") }
+                        }
+                    } else {
+                        androidx.compose.material3.Text(
+                            "未设置工作区",
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.height(10.dp))
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { picker.launch(null) },
+                        modifier = androidx.compose.ui.Modifier.fillMaxWidth()
+                    ) {
+                        androidx.compose.material3.Icon(
+                            androidx.compose.material.icons.Icons.Filled.FolderOpen,
+                            contentDescription = null
+                        )
+                        androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.size(6.dp))
+                        androidx.compose.material3.Text(if (workspace.isSet) "更换工作区" else "选择工作区")
+                    }
+                }
+            }
+
+            androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.height(12.dp))
+            androidx.compose.material3.Text(
+                "工作区文件（前 ${files.take(50).size}）",
+                fontSize = 12.sp,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.height(4.dp))
+            androidx.compose.foundation.lazy.LazyColumn(
+                modifier = androidx.compose.ui.Modifier.heightIn(max = 320.dp)
+            ) {
+                items(
+                    items = files.take(50),
+                    key = null,
+                    itemContent = { f: com.floatai.data.WorkspaceFile ->
+                        androidx.compose.foundation.layout.Row(
+                            modifier = androidx.compose.ui.Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
+                            androidx.compose.material3.Icon(
+                                if (f.isDirectory) androidx.compose.material.icons.Icons.Filled.Folder
+                                else androidx.compose.material.icons.Icons.Filled.Code,
+                                contentDescription = null,
+                                modifier = androidx.compose.ui.Modifier.size(16.dp),
+                                tint = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                            )
+                            androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.size(8.dp))
+                            androidx.compose.material3.Text(
+                                f.name,
+                                fontSize = 12.sp,
+                                modifier = androidx.compose.ui.Modifier.weight(1f),
+                                maxLines = 1
+                            )
+                            androidx.compose.material3.Text(
+                                "${f.size / 1024} KB",
+                                fontSize = 10.sp,
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                )
+            }
+            androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.height(12.dp))
+        }
+    }
 }
 
 /**
@@ -248,107 +459,107 @@ private fun ModelPickerRow(
     onManageModels: () -> Unit
 ) {
     val strings = localStrings()
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 16.dp, vertical = 6.dp)
     ) {
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { if (it) onExpand() else onDismiss() },
-            modifier = Modifier.weight(1f)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    RoundedCornerShape(14.dp)
+                )
+                .clickable { if (!expanded) onExpand() }
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth()
-                    .background(
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                        RoundedCornerShape(14.dp)
-                    )
-                    .clickable { if (!expanded) onExpand() }
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "模型：",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            Text(
+                "模型：",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                selected.ifBlank { "auto" },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Icon(
+                Icons.Filled.KeyboardArrowDown,
+                contentDescription = "展开",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        // 使用普通 DropdownMenu（不依赖 menuAnchor），由 Box 自身定位
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = onDismiss,
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .background(
+                    MaterialTheme.colorScheme.surface,
+                    RoundedCornerShape(12.dp)
                 )
-                Text(
-                    selected.ifBlank { "auto" },
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+        ) {
+            if (models.isEmpty()) {
+                DropdownMenuItem(
+                    text = { Text(strings.chat_no_models, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    onClick = onDismiss,
+                    enabled = false
                 )
-                Icon(
-                    Icons.Filled.KeyboardArrowDown,
-                    contentDescription = "展开",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = onDismiss
-            ) {
-                if (models.isEmpty()) {
+            } else {
+                models.forEach { m ->
+                    val isSelected = m == selected
                     DropdownMenuItem(
-                        text = { Text(strings.chat_no_models, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                        onClick = onDismiss,
-                        enabled = false
-                    )
-                } else {
-                    models.forEach { m ->
-                        val isSelected = m == selected
-                        DropdownMenuItem(
-                            text = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    m,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (isSelected) {
                                     Text(
-                                        m,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        modifier = Modifier.weight(1f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        "✓",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
                                     )
-                                    if (isSelected) {
-                                        Text(
-                                            "✓",
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
                                 }
-                            },
-                            onClick = { onSelect(m) }
+                            }
+                        },
+                        onClick = { onSelect(m) }
+                    )
+                }
+            }
+            androidx.compose.material3.HorizontalDivider(
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+            DropdownMenuItem(
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Settings,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.size(8.dp))
+                        Text(
+                            strings.chat_manage_models,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
                         )
                     }
-                }
-                androidx.compose.material3.HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-                DropdownMenuItem(
-                    text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.Settings,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.size(8.dp))
-                            Text(
-                                strings.chat_manage_models,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    },
-                    onClick = onManageModels
-                )
-            }
+                },
+                onClick = onManageModels
+            )
         }
     }
 }

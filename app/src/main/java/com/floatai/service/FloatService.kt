@@ -430,28 +430,31 @@ class FloatService : Service() {
 
     private fun renderCaptureTab(parent: LinearLayout) {
         val ctx = this
+
+        // v1.0.6-rc.2：抓包 Tab 升级
         val title = TextView(ctx).apply {
-            text = "抓包会话 (v1.0.3 基础版)"
-            textSize = 12f
-            setTextColor(0xFFAAAAAA.toInt())
-            setPadding(0, dp(4), 0, dp(8))
+            text = "抓包会话"
+            textSize = 14f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(0xFFFFFFFF.toInt())
+            setPadding(dp(12), dp(6), dp(12), dp(6))
+            background = roundedDrawable(dp(8).toFloat(), 0xFF1F1F30.toInt(), 0)
         }
         parent.addView(title)
 
         val status = TextView(ctx).apply {
-            text = "状态：未启动\n" +
-                "v1.0.3 已实现：VpnService 接口建立 + 通知。\n" +
-                "v1.0.4 将加入：IP 包解析、TCP 重组、TLS 解密。"
+            text = "状态：未启动\nIPv4 / TCP / HTTP 三层解析\nHTTPS 因 TLS 加密无法看到内容"
             textSize = 11f
             setTextColor(0xFFCCCCCC.toInt())
-            setPadding(dp(10), dp(8), dp(10), dp(8))
+            setPadding(dp(10), dp(10), dp(10), dp(10))
             background = roundedDrawable(dp(8).toFloat(), 0xFF1F1F30.toInt(), 0)
         }
         parent.addView(status)
 
+        // 启动/停止
         val startBtn = Button(ctx).apply {
-            text = "启动 VpnService (需用户在系统弹窗中授权)"
-            textSize = 11f
+            text = "▶ 启动抓包"
+            textSize = 12f
             setBackgroundColor(0xFF5B5BEF.toInt())
             setTextColor(0xFFFFFFFF.toInt())
             setOnClickListener {
@@ -459,15 +462,15 @@ class FloatService : Service() {
                     val intent = Intent(ctx, com.floatai.capture.CaptureService::class.java)
                     ctx.startForegroundService(intent)
                     Toast.makeText(ctx, "抓包服务已启动", Toast.LENGTH_SHORT).show()
-                    status.text = "状态：VPN 接口已建立，等待流量..."
+                    status.text = "状态：✅ VPN 接口已建立\n等待流量通过..."
                 } catch (e: Exception) {
                     Toast.makeText(ctx, "启动失败：${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
         val stopBtn = Button(ctx).apply {
-            text = "停止抓包"
-            textSize = 11f
+            text = "■ 停止抓包"
+            textSize = 12f
             setBackgroundColor(0xFF884444.toInt())
             setTextColor(0xFFFFFFFF.toInt())
             setOnClickListener {
@@ -481,7 +484,7 @@ class FloatService : Service() {
             }
         }
         val btnRow = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
+            orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(8), 0, dp(8))
         }
         btnRow.addView(startBtn)
@@ -489,7 +492,37 @@ class FloatService : Service() {
         btnRow.addView(stopBtn)
         parent.addView(btnRow)
 
-        // 历史
+        // 实时事件计数
+        val liveStats = TextView(ctx).apply {
+            text = "实时事件：0 / 文件持久化：filesDir/captures/"
+            textSize = 10f
+            setTextColor(0xFFAAAAAA.toInt())
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+        }
+        parent.addView(liveStats)
+
+        // 快捷操作
+        val openDirBtn = TextView(ctx).apply {
+            text = "📁 打开抓包文件目录"
+            textSize = 11f
+            setTextColor(0xFFB5B5FF.toInt())
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+            background = roundedDrawable(dp(8).toFloat(), 0xFF1F1F30.toInt(), 0xFF5B5BEF.toInt())
+            setOnClickListener {
+                Toast.makeText(ctx, "文件保存在 filesDir/captures/", Toast.LENGTH_SHORT).show()
+            }
+        }
+        parent.addView(openDirBtn)
+
+        // 历史会话列表
+        val historyTitle = TextView(ctx).apply {
+            text = "历史会话"
+            textSize = 12f
+            setTextColor(0xFFAAAAAA.toInt())
+            setPadding(0, dp(8), 0, dp(4))
+        }
+        parent.addView(historyTitle)
+
         val app = applicationContext as? App
         val repo = app?.let { com.floatai.capture.CaptureRepository(it) }
         val listView = ListView(ctx).apply {
@@ -500,8 +533,19 @@ class FloatService : Service() {
             )
         }
         val sessions = repo?.listSessions() ?: emptyList()
-        listView.adapter = SessionAdapter(ctx, sessions.map { it.nameWithoutExtension })
-        parent.addView(listView)
+        if (sessions.isEmpty()) {
+            val empty = TextView(ctx).apply {
+                text = "暂无抓包会话"
+                textSize = 11f
+                setTextColor(0xFF888888.toInt())
+                gravity = Gravity.CENTER
+                setPadding(dp(16), dp(20), dp(16), dp(20))
+            }
+            parent.addView(empty)
+        } else {
+            listView.adapter = SessionAdapter(ctx, sessions.map { it.nameWithoutExtension })
+            parent.addView(listView)
+        }
     }
 
     private class SessionAdapter(

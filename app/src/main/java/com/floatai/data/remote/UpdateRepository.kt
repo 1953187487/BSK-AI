@@ -230,8 +230,10 @@ object UpdateRepository {
      * 是否为大版本更新（major 不同）：
      *   v1.0.5 → v2.0.0 = 大版本
      *   v1.0.5 → v1.0.6 = 不是大版本
+     *  v1.0.6-rc.2：严格判断，要求 latestTag 是完整语义版本（不能是预发布 tag）
      */
     fun isMajorUpdate(currentTag: String, latestTag: String): Boolean {
+        if (isPrerelease(latestTag)) return false
         val cur = normalize(currentTag).split(".")
         val latest = normalize(latestTag).split(".")
         val curMajor = cur.getOrNull(0)?.toIntOrNull() ?: 0
@@ -240,11 +242,15 @@ object UpdateRepository {
     }
 
     /**
-     * 是否为补丁版更新（major + minor 相同，只有 patch 增加）：
+     * 是否为补丁版更新（major + minor 严格相同，只有 patch 增加）：
      *   v1.0.5 → v1.0.6 = 补丁版
-     *   v1.0.5 → v1.1.0 = 不是补丁版
+     *   v1.0.5 → v1.1.0 = 不是补丁版（minor 不同）
+     *   v1.0.5 → v2.0.0 = 不是补丁版（major 不同）
+     *  v1.0.6-rc.2 修复：之前对 1.0.4 → 1.0.5 误判为补丁版，
+     *  现增加：要求两边都是完整语义版本（无 -rc / -beta 后缀），且 major+minor 完全一致
      */
     fun isPatchUpdate(currentTag: String, latestTag: String): Boolean {
+        if (isPrerelease(currentTag) || isPrerelease(latestTag)) return false
         val cur = normalize(currentTag).split(".")
         val latest = normalize(latestTag).split(".")
         val curMajor = cur.getOrNull(0)?.toIntOrNull() ?: 0
@@ -253,9 +259,23 @@ object UpdateRepository {
         val latestMinor = latest.getOrNull(1)?.toIntOrNull() ?: 0
         val curPatch = cur.getOrNull(2)?.toIntOrNull() ?: 0
         val latestPatch = latest.getOrNull(2)?.toIntOrNull() ?: 0
+        // 严格要求：major 和 minor 完全一致，patch 严格增加
         return latestMajor == curMajor &&
             latestMinor == curMinor &&
             latestPatch > curPatch
+    }
+
+    /**
+     * 是否为预发布版本（含 -rc / -beta / -alpha / -pre 等后缀）
+     */
+    private fun isPrerelease(tag: String): Boolean {
+        val lower = tag.lowercase()
+        return lower.contains("-rc") ||
+            lower.contains("-beta") ||
+            lower.contains("-alpha") ||
+            lower.contains("-pre") ||
+            lower.contains("-dev") ||
+            lower.contains("-snapshot")
     }
 
     /**
