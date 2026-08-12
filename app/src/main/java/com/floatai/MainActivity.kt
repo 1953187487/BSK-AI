@@ -7,7 +7,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.floatai.data.model.AppLanguage
-import com.floatai.ui.flow.ElevatedGrantFlow
 import com.floatai.ui.flow.LanguageFlow
 import com.floatai.ui.flow.ProtocolFlow
 import com.floatai.ui.navigation.AppShell
@@ -26,7 +25,7 @@ class MainActivity : ComponentActivity() {
                 dynamicColor = settings.dynamicColor,
                 accentColor = accentColorByName(settings.accentColor)
             ) {
-                // 是否走语言选择页：协议未同意时强制先选语言
+                // v1.0.1：移除 ElevatedGrantFlow 高权限协议，直接进入主界面。
                 when {
                     !settings.protocolAgreed && !settings.languageChosen -> LanguageFlow(
                         current = settings.language,
@@ -43,12 +42,6 @@ class MainActivity : ComponentActivity() {
                         },
                         onLanguage = { lang ->
                             app.settingsRepository.updateSettings { it.copy(language = lang) }
-                        }
-                    )
-                    !settings.elevatedGranted -> ElevatedGrantFlow(
-                        language = settings.language,
-                        onGranted = {
-                            app.settingsRepository.updateSettings { it.copy(elevatedGranted = true) }
                         }
                     )
                     else -> AppShell()
