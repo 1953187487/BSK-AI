@@ -42,6 +42,9 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
@@ -53,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -133,66 +137,67 @@ fun AppShell() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                TopBar(
-                    title = "$currentTitle · FloatAI v${BuildConfig.VERSION_NAME}",
-                    onMenu = { scope.launch { drawerState.open() } }
-                )
-                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    AnimatedContent(
-                        targetState = currentRoute,
-                        transitionSpec = {
-                            val direction = if (initialState != targetState)
-                                AnimatedContentTransitionScope.SlideDirection.Start
-                            else
-                                AnimatedContentTransitionScope.SlideDirection.End
-                            (slideIntoContainer(direction, tween(220)) + fadeIn(tween(220)))
-                                .togetherWith(slideOutOfContainer(direction, tween(180)) + fadeOut(tween(160)))
-                        },
-                        label = "page-switch"
-                    ) { _ ->
-                        NavHost(
-                            navController = navController,
-                            startDestination = ShellDestination.CHAT.route,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            composable(ShellDestination.CHAT.route) { ChatScreen() }
-                            composable(ShellDestination.BUILD.route) { BuildScreen() }
-                            composable(ShellDestination.PACKAGE_HUB.route) { PackageHubScreen() }
-                            composable(ShellDestination.SETTINGS.route) {
-                                SettingsScreen(
-                                    onOpenAbout = {
-                                        navController.navigate("about") { launchSingleTop = true }
-                                    },
-                                    onOpenPackageHub = { navigateTo(ShellDestination.PACKAGE_HUB.route) }
-                                )
-                            }
-                            composable("about") { com.floatai.ui.screens.about.AboutScreen() }
-                        }
-                    }
-                }
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 3.dp
+            Row(modifier = Modifier.fillMaxSize()) {
+                // 左侧 NavigationRail
+                NavigationRail(
+                    containerColor = MaterialTheme.colorScheme.surface
                 ) {
-                    ShellDestination.bottomBar.forEach { dest ->
+                    ShellDestination.drawer.forEach { dest ->
                         val selected = dest.route == currentRoute
-                        NavigationBarItem(
+                        NavigationRailItem(
                             selected = selected,
                             onClick = {
                                 if (dest.route != currentRoute) navigateTo(dest.route)
                             },
-                            icon = {
-                                Icon(dest.icon, contentDescription = labels[dest])
-                            },
-                            label = { Text(labels[dest] ?: dest.route) },
-                            colors = NavigationBarItemDefaults.colors(
+                            icon = { Icon(dest.icon, contentDescription = labels[dest]) },
+                            label = { Text(labels[dest] ?: dest.route, fontSize = 10.sp) },
+                            colors = NavigationRailItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.onPrimary,
                                 selectedTextColor = MaterialTheme.colorScheme.primary,
                                 indicatorColor = MaterialTheme.colorScheme.primary
                             )
                         )
                     }
+                }
+                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    TopBar(
+                        title = "$currentTitle · FloatAI v${BuildConfig.VERSION_NAME}",
+                        onMenu = { scope.launch { drawerState.open() } }
+                    )
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        AnimatedContent(
+                            targetState = currentRoute,
+                            transitionSpec = {
+                                val direction = if (initialState != targetState)
+                                    AnimatedContentTransitionScope.SlideDirection.Start
+                                else
+                                    AnimatedContentTransitionScope.SlideDirection.End
+                                (slideIntoContainer(direction, tween(220)) + fadeIn(tween(220)))
+                                    .togetherWith(slideOutOfContainer(direction, tween(180)) + fadeOut(tween(160)))
+                            },
+                            label = "page-switch"
+                        ) { _ ->
+                            NavHost(
+                                navController = navController,
+                                startDestination = ShellDestination.CHAT.route,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                composable(ShellDestination.CHAT.route) { ChatScreen() }
+                                composable(ShellDestination.BUILD.route) { BuildScreen() }
+                                composable(ShellDestination.PACKAGE_HUB.route) { PackageHubScreen() }
+                                composable(ShellDestination.SETTINGS.route) {
+                                    SettingsScreen(
+                                        onOpenAbout = {
+                                            navController.navigate("about") { launchSingleTop = true }
+                                        },
+                                        onOpenPackageHub = { navigateTo(ShellDestination.PACKAGE_HUB.route) }
+                                    )
+                                }
+                                composable("about") { com.floatai.ui.screens.about.AboutScreen() }
+                            }
+                        }
+                    }
+                    // 移除底部 NavigationBar（已用左侧 Rail 代替）
                 }
             }
         }

@@ -20,7 +20,10 @@ data class ReleaseNote(
     val tag: String,
     val publishedAt: Long,
     val summary: String,
-    val downloadUrl: String?
+    val downloadUrl: String?,
+    val fullBody: String = "",
+    val author: String = "",
+    val apkSize: Long = 0
 )
 
 /** APK asset 信息：直连下载用。 */
@@ -97,7 +100,16 @@ object UpdateRepository {
                             tag = o.optString("tag_name", ""),
                             publishedAt = parseIso(o.optString("published_at", "")),
                             summary = body.take(120),
-                            downloadUrl = o.optString("html_url", "")
+                            downloadUrl = o.optString("html_url", ""),
+                            fullBody = body,
+                            author = o.optJSONObject("author")?.optString("login", "") ?: "",
+                            apkSize = o.optJSONArray("assets")?.let { assets ->
+                                (0 until assets.length()).firstOrNull { j ->
+                                    assets.getJSONObject(j).optString("name", "").endsWith(".apk")
+                                }?.let { j ->
+                                    assets.getJSONObject(j).optLong("size", 0)
+                                }
+                            } ?: 0
                         )
                     )
                 }

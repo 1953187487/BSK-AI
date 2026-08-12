@@ -4,17 +4,13 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.app.usage.UsageStats
-import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
-import android.os.Debug
 import android.os.IBinder
 import android.provider.Settings
 import android.view.Gravity
@@ -50,15 +46,15 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * 悬浮窗服务 v2：
+ * 悬浮窗服务 v1.0.5 液态玻璃版：
  *  - 屏幕边缘一个圆形快捷按钮（FAB）
  *  - 拖拽移动
- *  - 点击 FAB 弹出面板（不是简单菜单，是真正的对话框式面板）
+ *  - 点击 FAB 弹出面板
  *  - 面板内两个 Tab：
- *      1. AI 聊天：直接输入消息，调用当前配置的 OpenAI 兼容 API；附带「历史」按钮
- *      2. 应用：列出本机最近使用过的应用（无需 QUERY_ALL_PACKAGES 权限，
- *         用 UsageStatsManager 读最近一周活跃应用），点击用 Intent 启动
+ *      1. AI 聊天：直接输入消息，调用当前配置的 OpenAI 兼容 API
+ *      2. 抓包：启动/停止 VPN 抓包会话，查看会话列表
  *  - 顶部关闭按钮 + 状态徽章
+ *  - 液态玻璃风格：半透明深色背景 + 高光描边 + 大圆角
  *
  * 设计原则：
  *  - 不读取其他应用进程列表
@@ -119,7 +115,7 @@ class FloatService : Service() {
             setImageResource(android.R.drawable.ic_dialog_dialer)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             setPadding(dp(14), dp(14), dp(14), dp(14))
-            background = roundedDrawable(dp(28).toFloat(), 0xEE5B5BEF.toInt(), 0xFF6E6EFF.toInt())
+            background = liquidGlassBackground()
             setOnClickListener {
                 if (!moved) togglePanel()
             }
@@ -207,7 +203,7 @@ class FloatService : Service() {
         val ctx = this
         val panel = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            background = roundedDrawable(dp(20).toFloat(), 0xF5151525.toInt(), 0)
+            background = liquidGlassBackground()
             setPadding(dp(16), dp(12), dp(16), dp(16))
         }
 
@@ -239,22 +235,18 @@ class FloatService : Service() {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(10), 0, dp(10))
         }
-        val tabAi = makeTab("AI", currentTab == 0) {
+        val tabAi = makeTab("AI 聊天", currentTab == 0) {
             currentTab = 0; renderTabs(); renderContent()
         }
-        val tabApps = makeTab("应用", currentTab == 1) {
+        val tabCapture = makeTab("抓包", currentTab == 1) {
             currentTab = 1; renderTabs(); renderContent()
         }
-        val tabCapture = makeTab("抓包", currentTab == 2) {
-            currentTab = 2; renderTabs(); renderContent()
-        }
         tabRow.addView(tabAi)
-        tabRow.addView(tabApps)
         tabRow.addView(tabCapture)
         tabRow.addView(TextView(ctx).apply {
             layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
         })
-        tabRow.tag = listOf(tabAi, tabApps, tabCapture)
+        tabRow.tag = listOf(tabAi, tabCapture)
         panel.addView(tabRow)
 
         // 内容容器
@@ -311,7 +303,6 @@ class FloatService : Service() {
         content.removeAllViews()
         when (currentTab) {
             0 -> renderAiTab(content)
-            1 -> renderAppsTab(content)
             else -> renderCaptureTab(content)
         }
     }
@@ -430,62 +421,6 @@ class FloatService : Service() {
 
     // ----- Apps Tab -----
 
-    private fun renderAppsTab(parent: LinearLayout) {
-        val ctx = this
-
-        val title = TextView(ctx).apply {
-            text = "最近使用的应用"
-            textSize = 12f
-            setTextColor(0xFFAAAAAA.toInt())
-            setPadding(0, dp(4), 0, dp(8))
-        }
-        parent.addView(title)
-
-        // 应用进程信息（仅本应用自身）
-        val memInfo = Debug.MemoryInfo().also { Debug.getMemoryInfo(it) }
-        val pid = android.os.Process.myPid()
-        val ownInfo = TextView(ctx).apply {
-            text = buildString {
-                append("本应用 (PID: $pid)\n")
-                append("PSS: ${memInfo.totalPss} KB / ${memInfo.totalPss / 1024} MB")
-            }
-            textSize = 11f
-            setTextColor(0xFFCCCCCC.toInt())
-            setPadding(dp(8), dp(6), dp(8), dp(6))
-            background = roundedDrawable(dp(8).toFloat(), 0xFF1F1F30.toInt(), 0)
-        }
-        parent.addView(ownInfo)
-
-        val listView = ListView(ctx).apply {
-            divider = null
-            setBackgroundColor(0x00000000)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-            )
-        }
-        parent.addView(listView)
-
-        val apps = loadRecentApps()
-        if (apps.isEmpty()) {
-            val empty = TextView(ctx).apply {
-                text = "未发现最近活动。\n请授予「使用情况访问权限」后查看。"
-                textSize = 12f
-                setTextColor(0xFF888888.toInt())
-                gravity = Gravity.CENTER
-                setPadding(dp(16), dp(20), dp(16), dp(20))
-            }
-            parent.addView(empty)
-            return
-        }
-        listView.adapter = AppsAdapter(ctx, apps)
-        listView.setOnItemClickListener { _, _, position, _ ->
-            val item = apps[position]
-            launchApp(item.packageName)
-        }
-    }
-
     // ----- Capture Tab (v1.0.3 基础版) -----
 
     private fun renderCaptureTab(parent: LinearLayout) {
@@ -594,63 +529,6 @@ class FloatService : Service() {
         init { layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, heightPx) }
     }
 
-    private fun loadRecentApps(): List<AppItem> {
-        val items = mutableListOf<AppItem>()
-
-        // 1) UsageStatsManager — 最近一周活跃应用
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val usageManager = getSystemService(USAGE_STATS_SERVICE) as? UsageStatsManager
-            if (usageManager != null) {
-                val now = System.currentTimeMillis()
-                val oneWeek = 7 * 24 * 60 * 60 * 1000L
-                runCatching {
-                    val stats: List<UsageStats> = usageManager.queryUsageStats(
-                        UsageStatsManager.INTERVAL_DAILY, now - oneWeek, now
-                    ) ?: emptyList()
-                    val seen = mutableSetOf<String>()
-                    stats.sortedByDescending { it.lastTimeUsed }.forEach { s ->
-                        if (s.packageName !in seen && s.lastTimeUsed > 0) {
-                            seen.add(s.packageName)
-                            val label = appLabelOrPkg(s.packageName)
-                            items.add(AppItem(label, s.packageName, s.lastTimeUsed))
-                        }
-                    }
-                }
-            }
-        }
-
-        // 2) PackageManager — 用户可见的应用（兜底）
-        if (items.isEmpty()) {
-            val pm = packageManager
-            val intent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
-            runCatching {
-                pm.queryIntentActivities(intent, 0).take(50).forEach { ri ->
-                    val pkg = ri.activityInfo.packageName
-                    val label = ri.loadLabel(pm).toString()
-                    items.add(AppItem(label, pkg, 0L))
-                }
-            }
-        }
-        return items
-    }
-
-    private fun appLabelOrPkg(pkg: String): String = runCatching {
-        val info = packageManager.getApplicationInfo(pkg, 0)
-        packageManager.getApplicationLabel(info).toString()
-    }.getOrDefault(pkg)
-
-    private fun launchApp(packageName: String) {
-        val intent = packageManager.getLaunchIntentForPackage(packageName)
-        if (intent == null) {
-            Toast.makeText(this, "无法启动 $packageName", Toast.LENGTH_SHORT).show()
-            return
-        }
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { startActivity(intent) }.onFailure {
-            Toast.makeText(this, "启动失败: ${it.message}", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     // ===== 工具 =====
 
     private fun makeTab(text: String, active: Boolean, onClick: () -> Unit): TextView {
@@ -674,6 +552,33 @@ class FloatService : Service() {
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     private fun touchSlop(): Int = dp(6)
+
+    /**
+     * 液态玻璃背景：半透明深色 + 顶部高光描边 + 大圆角。
+     * 使用 LayerDrawable 模拟 iOS 风格液态玻璃。
+     */
+    private fun liquidGlassBackground(): android.graphics.drawable.Drawable {
+        val density = resources.displayMetrics.density
+        val radius = 22f * density
+        // 底层：半透明深色渐变
+        val base = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            colors = intArrayOf(
+                Color.argb(0xF0, 0x1A, 0x1A, 0x2A),  // 顶部稍亮
+                Color.argb(0xF0, 0x10, 0x10, 0x1C)   // 底部更深
+            )
+            orientation = android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM
+        }
+        // 顶层：1px 高光描边
+        val stroke = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setStroke((0.6f * density).toInt(), Color.argb(0x88, 0xFF, 0xFF, 0xFF))
+            setColor(Color.TRANSPARENT)
+        }
+        return android.graphics.drawable.LayerDrawable(arrayOf(base, stroke))
+    }
 
     private fun roundedDrawable(radiusDp: Float, color: Int, stroke: Int): GradientDrawable =
         GradientDrawable().apply {
@@ -708,8 +613,6 @@ class FloatService : Service() {
             .build()
     }
 
-    data class AppItem(val label: String, val packageName: String, val lastUsed: Long)
-
     private class ChatAdapter(
         private val ctx: Context,
         private var items: List<ChatMessage>
@@ -742,37 +645,6 @@ class FloatService : Service() {
             )
             lp.setMargins(0, dp(4), 0, dp(4))
             tv.layoutParams = lp
-            return tv
-        }
-        private fun dp(v: Int): Int = (v * ctx.resources.displayMetrics.density).toInt()
-    }
-
-    private class AppsAdapter(
-        private val ctx: Context,
-        private val items: List<AppItem>
-    ) : BaseAdapter() {
-        override fun getCount(): Int = items.size
-        override fun getItem(position: Int): AppItem = items[position]
-        override fun getItemId(position: Int): Long = position.toLong()
-        override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
-            val item = items[position]
-            val tv = (convertView as? TextView) ?: TextView(ctx).apply {
-                setPadding(dp(10), dp(10), dp(10), dp(10))
-                textSize = 13f
-            }
-            tv.text = item.label
-            tv.setTextColor(0xFFFFFFFF.toInt())
-            tv.setBackgroundColor(0xFF1A1A28.toInt())
-            tv.background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = 10f * ctx.resources.displayMetrics.density
-                setColor(0xFF1A1A28.toInt())
-            }
-            tv.setPadding(dp(10), dp(10), dp(10), dp(10))
-            tv.layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { setMargins(0, dp(3), 0, dp(3)) }
             return tv
         }
         private fun dp(v: Int): Int = (v * ctx.resources.displayMetrics.density).toInt()
