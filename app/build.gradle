@@ -11,8 +11,8 @@ android {
         applicationId "com.floatai.ui"
         minSdk 26
         targetSdk 34
-        versionCode 20
-        versionName "2.0.0"
+        versionCode 21
+        versionName "2.0.1"
 
         // 协议版本号：v1.0.5 起固定为 5，不再随版本升级强制重签。
         // 用户已签过 v5 协议后，升级不会再走协议页（除非未来手动修改此处）。
