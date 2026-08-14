@@ -26,27 +26,7 @@ class MainActivity : ComponentActivity() {
                 dynamicColor = settings.dynamicColor,
                 accentColor = accentColorByName(settings.accentColor)
             ) {
-                // 启动流：
-                //   1. 用户须知 + 开源协议 + 权限声明（每版本必须重签）
-                //   2. 主界面（底部 NavigationBar + 抽屉式菜单）
-                // 语言选择在「设置」中
-                val context = this@MainActivity
-                when {
-                    !settings.protocolAgreed || VersionGate.needsReSign(context) -> ProtocolFlow(
-                        language = settings.language,
-                        onAgree = {
-                            VersionGate.markAgreed(context)
-                            app.settingsRepository.updateSettings { it.copy(protocolAgreed = true) }
-                            android.widget.Toast.makeText(
-                                context, "协议已签署", android.widget.Toast.LENGTH_SHORT
-                            ).show()
-                        },
-                        onLanguage = { lang ->
-                            app.settingsRepository.updateSettings { it.copy(language = lang) }
-                        }
-                    )
-                    else -> AppShell()
-                }
+                com.floatai.ide.IDE2Home()
             }
         }
     }
