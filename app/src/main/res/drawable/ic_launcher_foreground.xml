@@ -1,11 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-    <group android:scaleX="2.0" android:scaleY="2.0" android:pivotX="54" android:pivotY="54">
-        <path android:fillColor="#FFFFFF"
-            android:pathData="M54,54m-12,0a12,12 0,1 1,24 0a12,12 0,1 1,-24 0"/>
-        <path android:fillColor="#FF6B6B"
-            android:pathData="M54,54m-8,0a8,8 0,1 1,16 0a8,8 0,1 1,-16 0"/>
-    </group>
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 背景圆角方块：靛蓝渐变底色 -->
+    <path
+        android:fillColor="#4F46E5"
+        android:pathData="M22,22h64a8,8 0 0 1 8,8v44a8,8 0 0 1 -8,8h-64a8,8 0 0 1 -8,-8v-44a8,8 0 0 1 8,-8z" />
+
+    <!-- 终端窗口框架 -->
+    <path
+        android:fillColor="#1E1B4B"
+        android:pathData="M30,34h48v28h-48z" />
+
+    <!-- 终端标题栏小圆点 -->
+    <path
+        android:fillColor="#F87171"
+        android:pathData="M34,38a2,2 0 1 0 0,4a2,2 0 0 0 0,-4z" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M40,38a2,2 0 1 0 0,4a2,2 0 0 0 0,-4z" />
+    <path
+        android:fillColor="#34D399"
+        android:pathData="M46,38a2,2 0 1 0 0,4a2,2 0 0 0 0,-4z" />
+
+    <!-- 命令行提示符 -->
+    <path
+        android:fillColor="#34D399"
+        android:pathData="M34,44l6,5l-6,5"
+        android:strokeWidth="2"
+        android:strokeColor="#34D399"
+        android:strokeLineJoin="round" />
+
+    <!-- 光标闪烁条 -->
+    <path
+        android:fillColor="#818CF8"
+        android:pathData="M43,43h2v10h-2z" />
+
+    <!-- 代码提示符 -->
+    <path
+        android:fillColor="#A5B4FC"
+        android:pathData="M48,44l4,4l-4,4"
+        android:strokeWidth="2"
+        android:strokeColor="#A5B4FC"
+        android:strokeLineJoin="round" />
+
+    <!-- 三个智能体节点（代表多智能体编排） -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M76,58a3,3 0 1 0 0,6a3,3 0 0 0 0,-6z" />
+    <path
+        android:fillColor="#F472B6"
+        android:pathData="M83,58a3,3 0 1 0 0,6a3,3 0 0 0 0,-6z" />
+    <path
+        android:fillColor="#34D399"
+        android:pathData="M90,58a3,3 0 1 0 0,6a3,3 0 0 0 0,-6z" />
+
+    <!-- 连接线：节点到右侧 -->
+    <path
+        android:strokeColor="#818CF8"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M79,61h8" />
+    <path
+        android:strokeColor="#818CF8"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M86,61h8" />
 </vector>

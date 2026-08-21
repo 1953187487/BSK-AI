@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "FloatAI"
+rootProject.name = "BSK AI"
 include ':app'

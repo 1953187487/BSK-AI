@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.FloatAI" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/primary</item>
+    <style name="Theme.BskAI" parent="android:Theme.Material.NoActionBar">
+        <item name="colorPrimary">@color/bsk_primary</item>
         <item name="colorOnPrimary">@color/white</item>
-        <item name="colorPrimaryContainer">@color/accent</item>
-        <item name="colorSecondary">@color/accent</item>
-        <item name="android:statusBarColor">#0F0A1E</item>
-        <item name="android:windowBackground">@color/background</item>
-        <item name="android:navigationBarColor">@color/white</item>
-        <item name="bottomNavigationStyle">@style/Widget.Material3.BottomNavigationView</item>
+        <item name="android:statusBarColor">@color/bsk_background</item>
+        <item name="android:windowBackground">@color/bsk_background</item>
+        <item name="android:navigationBarColor">@color/bsk_background</item>
     </style>
 </resources>

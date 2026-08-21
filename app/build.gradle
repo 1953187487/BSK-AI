@@ -4,33 +4,30 @@ plugins {
 }
 
 android {
-    namespace 'com.floatai'
+    namespace 'com.bskai'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.floatai.ui"
+        applicationId "com.bskai"
         minSdk 26
         targetSdk 34
-        versionCode 21
-        versionName "2.0.1"
+        versionCode 106
+        versionName "1.0.6"
 
-        // 协议版本号：v1.0.5 起固定为 5，不再随版本升级强制重签。
-        // 用户已签过 v5 协议后，升级不会再走协议页（除非未来手动修改此处）。
-        buildConfigField "int", "PROTOCOL_VERSION", "5"
+        buildConfigField "int", "PROTOCOL_VERSION", "6"
     }
 
     signingConfigs {
         release {
-            storeFile file(System.getenv("FLOATAI_KEYSTORE") ?: "${System.getProperty("user.home")}/floatai-release.keystore")
-            storePassword System.getenv("FLOATAI_KEYSTORE_PASSWORD") ?: "floatai2026"
-            keyAlias "floatai"
-            keyPassword System.getenv("FLOATAI_KEY_PASSWORD") ?: "floatai2026"
+            storeFile file(System.getenv("BSK_KEYSTORE") ?: "${System.getProperty("user.home")}/bsk-release.keystore")
+            storePassword System.getenv("BSK_KEYSTORE_PASSWORD") ?: "bsk2026"
+            keyAlias "bsk"
+            keyPassword System.getenv("BSK_KEY_PASSWORD") ?: "bsk2026"
         }
     }
 
     buildTypes {
         release {
-            // 完整版：不做 R8 压缩/混淆，保留完整代码与资源
             minifyEnabled false
             shrinkResources false
             signingConfig signingConfigs.release
@@ -81,17 +78,9 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-tooling'
 
     implementation 'androidx.core:core-splashscreen:1.0.1'
-    implementation 'org.json:json:20231013'
-
-    // MCP server：本地 HTTP JSON-RPC
-    implementation 'org.nanohttpd:nanohttpd:2.3.1'
-
-    // Coil 图片加载（头像）
-    implementation 'io.coil-kt:coil-compose:2.6.0'
-
-    // 文档解析（docparse MCP 工具调用所需的 okhttp 客户端）
-    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-
-    // 工作区选择（DocumentFile SAF）
+    implementation 'androidx.datastore:datastore-preferences:1.0.0'
     implementation 'androidx.documentfile:documentfile:1.0.1'
+
+    implementation 'org.json:json:20231013'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
