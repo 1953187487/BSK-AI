@@ -54,7 +54,7 @@ data class TerminalLine(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TerminalScreen(app: BskApp) {
-    val lines = remember { mutableStateOf(listOf(TerminalLine("BSK AI 终端 v1.0.7"))) }
+    val lines = remember { mutableStateOf(listOf(TerminalLine("BSK AI 终端 v1.0.8"))) }
     var input by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val termuxAvailable = remember { TermuxBridge.isAvailable(app) }

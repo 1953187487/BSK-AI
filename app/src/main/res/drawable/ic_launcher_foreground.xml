@@ -5,68 +5,68 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- 背景圆角方块：靛蓝渐变底色 -->
-    <path
-        android:fillColor="#4F46E5"
-        android:pathData="M22,22h64a8,8 0 0 1 8,8v44a8,8 0 0 1 -8,8h-64a8,8 0 0 1 -8,-8v-44a8,8 0 0 1 8,-8z" />
-
-    <!-- 终端窗口框架 -->
-    <path
-        android:fillColor="#1E1B4B"
-        android:pathData="M30,34h48v28h-48z" />
-
-    <!-- 终端标题栏小圆点 -->
-    <path
-        android:fillColor="#F87171"
-        android:pathData="M34,38a2,2 0 1 0 0,4a2,2 0 0 0 0,-4z" />
-    <path
-        android:fillColor="#FBBF24"
-        android:pathData="M40,38a2,2 0 1 0 0,4a2,2 0 0 0 0,-4z" />
-    <path
-        android:fillColor="#34D399"
-        android:pathData="M46,38a2,2 0 1 0 0,4a2,2 0 0 0 0,-4z" />
-
-    <!-- 命令行提示符 -->
-    <path
-        android:fillColor="#34D399"
-        android:pathData="M34,44l6,5l-6,5"
-        android:strokeWidth="2"
-        android:strokeColor="#34D399"
-        android:strokeLineJoin="round" />
-
-    <!-- 光标闪烁条 -->
+    <!-- 液态玻璃主圆球：靛紫渐变 -->
     <path
         android:fillColor="#818CF8"
-        android:pathData="M43,43h2v10h-2z" />
+        android:pathData="M54,24a30,30 0 1,0 0,60a30,30 0 1,0 0,-60z" />
 
-    <!-- 代码提示符 -->
+    <!-- 玻璃高光：左上弧形 -->
     <path
-        android:fillColor="#A5B4FC"
-        android:pathData="M48,44l4,4l-4,4"
-        android:strokeWidth="2"
+        android:fillColor="#C7D2FE"
+        android:pathData="M54,28c-13,0 -24,8 -28,19c3,-8 12,-14 26,-15c4,0 8,1 12,3 C58,29 56,28 54,28z" />
+
+    <!-- 玻璃折射光斑：右上小圆 -->
+    <path
+        android:fillColor="#E0E7FF"
+        android:pathData="M72,36a6,6 0 1,0 0,12a6,6 0 1,0 0,-12z" />
+
+    <!-- 底部反光：柔和白色 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,70c0,10 10,16 16,16s16,-6 16,-16 C70,64 64,60 54,60s-16,4 -16,10z" />
+
+    <!-- AI 核心：闪电符号，白色半透明 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M56,38l-8,14h6l-4,14l10,-16h-6l4,-12z" />
+
+    <!-- 外层光晕环（极淡） -->
+    <path
         android:strokeColor="#A5B4FC"
-        android:strokeLineJoin="round" />
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M54,18a36,36 0 1,0 0,72a36,36 0 1,0 0,-72z" />
 
-    <!-- 三个智能体节点（代表多智能体编排） -->
-    <path
-        android:fillColor="#FBBF24"
-        android:pathData="M76,58a3,3 0 1 0 0,6a3,3 0 0 0 0,-6z" />
-    <path
-        android:fillColor="#F472B6"
-        android:pathData="M83,58a3,3 0 1 0 0,6a3,3 0 0 0 0,-6z" />
+    <!-- 三个辅助粒子： Emerald / Amber / Rose -->
     <path
         android:fillColor="#34D399"
-        android:pathData="M90,58a3,3 0 1 0 0,6a3,3 0 0 0 0,-6z" />
+        android:pathData="M28,30a4,4 0 1,0 0,8a4,4 0 1,0 0,-8z" />
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M80,32a3,3 0 1,0 0,6a3,3 0 1,0 0,-6z" />
+    <path
+        android:fillColor="#F472B6"
+        android:fillAlpha="0.8"
+        android:pathData="M78,74a3.5,3.5 0 1,0 0,7a3.5,3.5 0 1,0 0,-7z" />
 
-    <!-- 连接线：节点到右侧 -->
+    <!-- 连接线：粒子到主圆球 -->
     <path
         android:strokeColor="#818CF8"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:pathData="M79,61h8" />
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:strokeAlpha="0.5"
+        android:pathData="M32,34 L44,40" />
     <path
         android:strokeColor="#818CF8"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:pathData="M86,61h8" />
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:strokeAlpha="0.5"
+        android:pathData="M76,35 L68,42" />
+    <path
+        android:strokeColor="#818CF8"
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:strokeAlpha="0.5"
+        android:pathData="M75,77 L66,72" />
+
 </vector>

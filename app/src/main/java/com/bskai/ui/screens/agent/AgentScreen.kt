@@ -1,6 +1,8 @@
 package com.bskai.ui.screens.agent
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,143 +13,241 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.StopCircle
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bskai.ui.components.PermissionDialog
+import com.bskai.ui.screens.agent.AgentUiItem
+import com.bskai.ui.screens.agent.AgentViewModel
+import com.bskai.ui.theme.BskGlassCard
 import com.bskai.ui.theme.MonoFont
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgentScreen(viewModel: AgentViewModel = viewModel()) {
     val items by viewModel.items.collectAsState()
     val streaming by viewModel.streaming.collectAsState()
     val isRunning by viewModel.isRunning.collectAsState()
     val permission by viewModel.permission.collectAsState()
-    val input by viewModel.input.collectAsState()
+    var input by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    var canSend by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(items.size, streaming) {
         val count = items.size + if (streaming.isNotEmpty()) 1 else 0
         if (count > 0) listState.animateScrollToItem(count - 1)
     }
 
-    Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().imePadding()) {
-            AgentHeader(isRunning) { viewModel.stop() }
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(items, key = { it.hashCode() }) { item ->
-                    when (item) {
-                        is AgentUiItem.User -> UserBubble(item.text)
-                        is AgentUiItem.Assistant -> AssistantBubble(item.text)
-                        is AgentUiItem.ToolItem -> ToolCard(item)
-                        is AgentUiItem.SystemMsg -> SystemMsgBubble(item)
-                    }
-                }
-                if (streaming.isNotEmpty()) {
-                    item { AssistantBubble(streaming + " \u258c") }
-                }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragStart = {},
+                    onDragCancel = {},
+                    onDragEnd = {},
+                    onHorizontalDrag = { _, _ -> }
+                )
             }
-            AgentInputBar(
-                value = input,
-                enabled = !isRunning,
-                onValueChange = viewModel::onInputChange,
-                onSend = { viewModel.send(it) }
+    ) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = "BSK AI",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = if (isRunning) "Agent running..." else "Claude Code style coding assistant",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
+                    )
+                )
+            }
+        ) { padding ->
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .imePadding()
+                    .background(Color(0xFF0A0914))
+            ) {
+                // Message list
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    if (items.isEmpty() && streaming.isEmpty()) {
+                        item {
+                            WelcomeCard()
+                        }
+                    }
+                    items(items, key = { it.hashCode() }) { item ->
+                        when (item) {
+                            is AgentUiItem.User -> UserBubble(item.text)
+                            is AgentUiItem.Assistant -> AssistantBubble(item.text)
+                            is AgentUiItem.ToolItem -> ToolCard(item)
+                            is AgentUiItem.SystemMsg -> SystemMsgBubble(item)
+                        }
+                    }
+                    if (streaming.isNotEmpty()) {
+                        item { AssistantBubble(streaming + " |") }
+                    }
+                    item { Spacer(Modifier.height(16.dp)) }
+                }
+
+                // Input bar
+                InputBar(
+                    value = input,
+                    onValueChange = { input = it },
+                    onSend = {
+                        if (input.isNotBlank() && canSend) {
+                            viewModel.send(input.trim())
+                            input = ""
+                            canSend = false
+                            scope.launch { delay(500); canSend = true }
+                        }
+                    },
+                    enabled = !isRunning
+                )
+            }
+        }
+
+        permission?.let { req ->
+            PermissionDialog(
+                toolName = req.toolName,
+                args = req.args,
+                onAllow = { viewModel.resolvePermission(true) },
+                onDeny = { viewModel.resolvePermission(false) }
             )
         }
-    }
-
-    permission?.let { req ->
-        PermissionDialog(
-            toolName = req.toolName,
-            args = req.args,
-            onAllow = { viewModel.resolvePermission(true) },
-            onDeny = { viewModel.resolvePermission(false) }
-        )
     }
 }
 
 @Composable
-private fun AgentHeader(isRunning: Boolean, onStop: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+private fun WelcomeCard() {
+    BskGlassCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Column(Modifier.weight(1f)) {
-            Text("BSK Agent \u7ec8\u7aef", style = MaterialTheme.typography.titleLarge)
-            Text(
-                if (isRunning) "\u667a\u80fd\u4f53\u8fd0\u884c\u4e2d..." else "Claude Code \u98ce\u683c\u7f16\u7801\u667a\u80fd\u4f53",
-                style = MaterialTheme.typography.labelMedium,
-                color = if (isRunning) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        if (isRunning) {
-            IconButton(onClick = onStop) {
-                Icon(Icons.Outlined.StopCircle, contentDescription = "\u505c\u6b62", tint = MaterialTheme.colorScheme.error)
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), Color.Transparent),
+                            center = Offset(0.5f, 0.5f),
+                            radius = 160f
+                        ),
+                        RoundedCornerShape(14.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("\u26A1", fontSize = 24.sp)
             }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = "BSK AI v1.0.8",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Enter a task description and the agent will execute it",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
 
 @Composable
 private fun UserBubble(text: String) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-        Text(
-            text = text,
-            modifier = Modifier
-                .widthIn(max = 320.dp)
-                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            style = MaterialTheme.typography.bodyLarge
-        )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End
+    ) {
+        Card(
+            modifier = Modifier.widthIn(max = 300.dp),
+            shape = RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        ) {
+            Text(
+                text = text,
+                modifier = Modifier.padding(12.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
     }
 }
 
 @Composable
 private fun AssistantBubble(text: String) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+    BskGlassCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
         Text(
             text = text,
-            modifier = Modifier
-                .widthIn(max = 340.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(18.dp, 18.dp, 18.dp, 4.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+            modifier = Modifier.padding(12.dp),
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyMedium,
             fontFamily = MonoFont
         )
     }
@@ -157,20 +257,20 @@ private fun AssistantBubble(text: String) {
 private fun ToolCard(item: AgentUiItem.ToolItem) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             Text(
-                text = if (item.running) "\u25b6 ${item.name}" else "\u2713 ${item.name}",
-                style = MaterialTheme.typography.labelMedium,
+                text = if (item.running) "\u25B6 ${item.name}" else "\u2713 ${item.name}",
+                style = MaterialTheme.typography.labelSmall,
                 color = if (item.running) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary,
                 fontFamily = MonoFont
             )
             if (!item.output.isNullOrBlank()) {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = item.output!!.take(500),
+                    text = item.output!!.take(400),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = MonoFont
@@ -184,35 +284,58 @@ private fun ToolCard(item: AgentUiItem.ToolItem) {
 private fun SystemMsgBubble(item: AgentUiItem.SystemMsg) {
     Text(
         text = item.text,
-        modifier = Modifier.fillMaxWidth().padding(4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
         color = if (item.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary,
-        style = MaterialTheme.typography.bodyMedium,
-        fontFamily = MonoFont
+        style = MaterialTheme.typography.labelSmall,
+        fontFamily = MonoFont,
+        textAlign = TextAlign.Center
     )
 }
 
 @Composable
-private fun AgentInputBar(
-    value: String,
-    enabled: Boolean,
-    onValueChange: (String) -> Unit,
-    onSend: (String) -> Unit
-) {
-    var text by remember(value) { mutableStateOf(value) }
+private fun InputBar(value: String, onValueChange: (String) -> Unit, onSend: () -> Unit, enabled: Boolean) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.Bottom
     ) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
-            modifier = Modifier.weight(1f),
-            placeholder = { Text("\u8f93\u5165\u4efb\u52a1\uff0c\u5982\uff1a\u521b\u5efa\u4e00\u4e2a\u8ba1\u7b97\u5668\u9879\u76ee\u5e76\u6784\u5efa") },
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier
+                .weight(1f)
+                .background(
+                    Brush.linearGradient(listOf(Color(0x301A1730), Color(0x201A1730))),
+                    RoundedCornerShape(14.dp)
+                )
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            textStyle = androidx.compose.ui.text.TextStyle(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 14.sp
+            ),
             maxLines = 4
         )
         Spacer(Modifier.width(8.dp))
-        Button(onClick = { onSend(text) }, enabled = enabled && text.isNotBlank()) {
-            Text("\u53d1\u9001")
+        IconButton(
+            onClick = onSend,
+            enabled = enabled && value.isNotBlank(),
+            modifier = Modifier
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), Color.Transparent),
+                        center = Offset(0.5f, 0.5f),
+                        radius = 96f
+                    ),
+                    androidx.compose.foundation.shape.CircleShape
+                )
+        ) {
+            Icon(
+                Icons.Outlined.Send,
+                contentDescription = "Send",
+                tint = if (enabled && value.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
