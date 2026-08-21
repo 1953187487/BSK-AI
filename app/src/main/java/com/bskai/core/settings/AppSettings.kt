@@ -22,12 +22,14 @@ enum class OrchestrationMode(val key: String, val display: String) {
 
 data class AppSettings(
     val darkTheme: Boolean = true,
-    val dynamicColor: Boolean = false,
     val accentColor: Long = 0xFF6366F1,
     val protocolAgreed: Boolean = false,
     val language: BskLanguage = BskLanguage.ZH,
     val languageChosen: Boolean = false,
     val autoApproveTools: Boolean = false,
     val orchestrationMode: OrchestrationMode = OrchestrationMode.SEQUENTIAL,
-    val maxPipelineRounds: Int = 2
+    val maxPipelineRounds: Int = 2,
+    val providerUrl: String = "",
+    val apiKey: String = "",
+    val selectedModel: String = ""
 )

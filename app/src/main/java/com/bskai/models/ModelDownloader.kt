@@ -22,8 +22,8 @@ class ModelDownloader(
     private val onFinished: (String, Boolean, String) -> Unit
 ) {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(300, TimeUnit.SECONDS)
         .build()
 
     @Volatile

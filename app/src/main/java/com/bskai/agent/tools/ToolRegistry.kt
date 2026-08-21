@@ -18,7 +18,8 @@ object ToolRegistry {
         NewProjectTool,
         ListModelsTool,
         DownloadModelTool,
-        BuildProjectTool
+        BuildProjectTool,
+        AnalyzeApkTool
     )
 
     fun all(): List<Tool> = registry

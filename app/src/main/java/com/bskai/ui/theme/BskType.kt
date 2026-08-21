@@ -16,14 +16,16 @@ val BskTypography = Typography(
     titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
     bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 22.sp),
     bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 20.sp),
+    bodySmall = TextStyle(fontSize = 12.sp, lineHeight = 16.sp),
     labelLarge = TextStyle(fontWeight = FontWeight.Medium, fontSize = 14.sp),
-    labelMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 12.sp)
+    labelMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 12.sp),
+    labelSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 11.sp)
 )
 
 val MonoFont = FontFamily.Monospace
 
 val BskShapes = Shapes(
     small = RoundedCornerShape(10.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(24.dp)
+    medium = RoundedCornerShape(14.dp),
+    large = RoundedCornerShape(20.dp)
 )

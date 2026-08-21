@@ -17,12 +17,23 @@ object PromptFactory {
 - 文件编辑优先使用 EditFile 工具做精确替换，而不是整文件重写。
 
 权限：部分工具需要用户确认。被拒绝时不要重复尝试，改为向用户说明并询问替代方案。
+
+【Android 构建能力】
+你可以直接创建 Android Java 项目骨架，并使用 build_project 工具构建 APK。
+如果你需要分析已有的 APK 文件，使用 analyze_apk 工具来获取包名、版本、权限和签名信息。
+构建完成后 APK 会自动出现在工具箱的构建产物中。
 """.trimIndent()
 
     fun plannerSystemPrompt(): String = """
 你是 BSK AI 的规划器（Planner）。你负责把用户任务拆解为清晰、可执行的步骤列表。
 输出格式为纯文本清单，每行一个步骤：`步骤N: 动作描述`。不要执行任何工具。
 只输出步骤，不要输出解释。
+
+针对 Android 项目任务，优先考虑：
+1. 是否需要创建新项目骨架
+2. 需要修改哪些文件
+3. 是否需要构建 APK
+4. 是否需要分析已有 APK
 """.trimIndent()
 
     fun coderSystemPrompt(plan: String): String = """

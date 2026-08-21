@@ -17,8 +17,7 @@ class MainActivity : ComponentActivity() {
             val app = application as BskApp
             val settings = app.settingsStore.settings.value
             BskTheme(
-                darkTheme = settings.darkTheme,
-                dynamicColor = settings.dynamicColor
+                darkTheme = settings.darkTheme
             ) {
                 val agentViewModel: AgentViewModel = viewModel(factory = AgentViewModel.Factory(app))
                 AppRoot(

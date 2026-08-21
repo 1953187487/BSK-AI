@@ -20,7 +20,6 @@ class SettingsStore(context: Context) {
         val s = _settings.value
         prefs.edit()
             .putBoolean("dark_theme", s.darkTheme)
-            .putBoolean("dynamic_color", s.dynamicColor)
             .putLong("accent_color", s.accentColor)
             .putBoolean("protocol_agreed", s.protocolAgreed)
             .putString("language", s.language.code)
@@ -28,6 +27,9 @@ class SettingsStore(context: Context) {
             .putBoolean("auto_approve_tools", s.autoApproveTools)
             .putString("orchestration_mode", s.orchestrationMode.key)
             .putInt("max_pipeline_rounds", s.maxPipelineRounds)
+            .putString("provider_url", s.providerUrl)
+            .putString("api_key", s.apiKey)
+            .putString("selected_model", s.selectedModel)
             .apply()
     }
 
@@ -37,13 +39,15 @@ class SettingsStore(context: Context) {
 
     private fun load(): AppSettings = AppSettings(
         darkTheme = prefs.getBoolean("dark_theme", true),
-        dynamicColor = prefs.getBoolean("dynamic_color", false),
         accentColor = prefs.getLong("accent_color", 0xFF6366F1),
         protocolAgreed = prefs.getBoolean("protocol_agreed", false),
         language = BskLanguage.fromCode(prefs.getString("language", null)),
         languageChosen = prefs.getBoolean("language_chosen", false),
         autoApproveTools = prefs.getBoolean("auto_approve_tools", false),
         orchestrationMode = OrchestrationMode.fromKey(prefs.getString("orchestration_mode", null)),
-        maxPipelineRounds = prefs.getInt("max_pipeline_rounds", 2)
+        maxPipelineRounds = prefs.getInt("max_pipeline_rounds", 2),
+        providerUrl = prefs.getString("provider_url", "") ?: "",
+        apiKey = prefs.getString("api_key", "") ?: "",
+        selectedModel = prefs.getString("selected_model", "") ?: ""
     )
 }
