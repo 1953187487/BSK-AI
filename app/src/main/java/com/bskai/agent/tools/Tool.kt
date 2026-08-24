@@ -1,6 +1,8 @@
 package com.bskai.agent.tools
 
 import android.content.Context
+import com.bskai.agent.Workspace
+import com.bskai.agent.WorkspaceEntry
 import org.json.JSONObject
 
 data class ToolResult(
@@ -18,10 +20,12 @@ interface Tool {
 
 class ToolContext(
     val app: Context,
-    val workspaceRoot: String
+    val workspace: Workspace
 ) {
-    fun resolveWorkspace(path: String): String {
-        val p = path.removePrefix("/").removePrefix("./")
-        return if (p.isEmpty()) workspaceRoot else "$workspaceRoot/$p"
-    }
+    suspend fun exists(path: String): Boolean = workspace.exists(path)
+    suspend fun isDirectory(path: String): Boolean = workspace.isDirectory(path)
+    suspend fun readText(path: String): String = workspace.readText(path)
+    suspend fun writeText(path: String, content: String) = workspace.writeText(path, content)
+    suspend fun list(path: String): List<WorkspaceEntry> = workspace.list(path)
+    fun realPathFor(path: String): String? = workspace.realPathFor(path)
 }

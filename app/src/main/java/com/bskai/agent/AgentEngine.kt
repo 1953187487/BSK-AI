@@ -14,6 +14,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
@@ -23,7 +24,7 @@ import java.util.concurrent.TimeUnit
 class AgentEngine(
     private val appContext: Context,
     private val provider: ProviderConfig,
-    private val workspaceRoot: String = "",
+    private val workspace: Workspace = FileWorkspace(File("")),
     private val autoApprove: Boolean = false,
     private val permissionResolver: suspend (Tool, JSONObject) -> Boolean = { _, _ -> false }
 ) {
@@ -46,7 +47,7 @@ class AgentEngine(
         onEvent: (AgentEvent) -> Unit
     ) {
         cancelled = false
-        val ctx = ToolContext(appContext, workspaceRoot)
+        val ctx = ToolContext(appContext, workspace)
         var guard = 0
 
         while (!cancelled && guard < 12) {
@@ -62,18 +63,16 @@ class AgentEngine(
                 return
             }
 
-            // 组装 assistant 消息（含工具调用）
+            // 组装 assistant 消息（携带本轮全部工具调用）
             messages.add(
                 AgentMessage(
                     role = "assistant",
                     content = content,
-                    toolName = toolCalls.first().name,
-                    toolCallId = toolCalls.first().id,
-                    toolArgs = toolCalls.first().args
+                    toolCalls = toolCalls
                 )
             )
 
-            // 逐个执行工具
+            // 逐个执行工具，每个结果按 tool_call_id 关联写入历史
             for (call in toolCalls) {
                 if (cancelled) return
                 val tool = ToolRegistry.find(call.name)
@@ -217,10 +216,4 @@ class AgentEngine(
         var name: String = ""
         val args = StringBuilder()
     }
-
-    data class ToolCallData(
-        val id: String,
-        val name: String,
-        val args: JSONObject
-    )
 }

@@ -1,7 +1,6 @@
 package com.bskai.agent.tools
 
 import org.json.JSONObject
-import java.io.File
 
 object ReadFileTool : Tool {
     override val name = "read_file"
@@ -16,11 +15,10 @@ object ReadFileTool : Tool {
         .put("required", JSONArrayOf("path"))
 
     override suspend fun execute(args: JSONObject, ctx: ToolContext): ToolResult {
-        val path = ctx.resolveWorkspace(args.optString("path"))
-        val file = File(path)
-        if (!file.exists()) return ToolResult(false, "文件不存在: $path")
-        if (file.isDirectory) return ToolResult(false, "这是目录: $path")
-        val lines = file.readLines()
+        val path = args.optString("path")
+        if (!ctx.exists(path)) return ToolResult(false, "文件不存在: $path")
+        if (ctx.isDirectory(path)) return ToolResult(false, "这是目录: $path")
+        val lines = ctx.readText(path).lines()
         val offset = (args.optInt("offset", 1)).coerceAtLeast(1)
         val maxLines = args.optInt("maxLines", 200)
         val slice = lines.drop(offset - 1).take(maxLines)
@@ -50,12 +48,12 @@ object WriteFileTool : Tool {
         .put("required", JSONArrayOf("path", "content"))
 
     override suspend fun execute(args: JSONObject, ctx: ToolContext): ToolResult {
-        val path = ctx.resolveWorkspace(args.optString("path"))
+        val path = args.optString("path")
         val content = args.optString("content")
-        val file = File(path)
-        file.parentFile?.mkdirs()
-        file.writeText(content)
-        return ToolResult(true, "已写入 ${file.length()} 字节 -> $path")
+        return runCatching {
+            ctx.writeText(path, content)
+            ToolResult(true, "已写入 ${content.length} 字符 -> $path")
+        }.getOrElse { ToolResult(false, "写入失败: ${it.message}") }
     }
 }
 
@@ -72,17 +70,15 @@ object EditFileTool : Tool {
         .put("required", JSONArrayOf("path", "old", "new"))
 
     override suspend fun execute(args: JSONObject, ctx: ToolContext): ToolResult {
-        val path = ctx.resolveWorkspace(args.optString("path"))
+        val path = args.optString("path")
         val old = args.optString("old")
         val new = args.optString("new")
-        val file = File(path)
-        if (!file.exists()) return ToolResult(false, "文件不存在: $path")
-        val content = file.readText()
+        if (!ctx.exists(path)) return ToolResult(false, "文件不存在: $path")
+        val content = ctx.readText(path)
         if (!content.contains(old)) {
             return ToolResult(false, "未找到匹配的原文片段，请确认内容与缩进完全一致")
         }
-        val updated = content.replace(old, new)
-        file.writeText(updated)
+        ctx.writeText(path, content.replace(old, new))
         return ToolResult(true, "替换成功 -> $path")
     }
 }
@@ -98,15 +94,14 @@ object ListDirTool : Tool {
         .put("required", JSONArrayOf())
 
     override suspend fun execute(args: JSONObject, ctx: ToolContext): ToolResult {
-        val path = ctx.resolveWorkspace(args.optString("path"))
-        val dir = File(path)
-        if (!dir.exists()) return ToolResult(false, "目录不存在: $path")
-        if (!dir.isDirectory) return ToolResult(false, "不是目录: $path")
-        val items = dir.listFiles()?.sortedBy { !it.isDirectory } ?: emptyList()
+        val path = args.optString("path")
+        if (!ctx.exists(path)) return ToolResult(false, "目录不存在: $path")
+        if (!ctx.isDirectory(path)) return ToolResult(false, "不是目录: $path")
+        val items = ctx.list(path)
         val sb = StringBuilder()
         sb.appendLine("目录: $path")
         items.forEach { f ->
-            val suffix = if (f.isDirectory) "/" else "  (${f.length()})"
+            val suffix = if (f.isDirectory) "/" else "  (${f.size})"
             sb.appendLine("  ${f.name}$suffix")
         }
         if (items.isEmpty()) sb.appendLine("  (空)")

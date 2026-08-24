@@ -52,11 +52,13 @@ fun OrchestrateScreen(app: BskApp, pipelineStore: PipelineStore) {
     var pendingAllow by remember { mutableStateOf<Boolean?>(null) }
     val scope = rememberCoroutineScope()
 
-    val workspaceDir = remember {
-        java.io.File(
-            app.getExternalFilesDir(null) ?: app.filesDir,
-            "workspace"
-        ).apply { mkdirs() }.absolutePath
+    val workspace = remember {
+        com.bskai.agent.FileWorkspace(
+            java.io.File(
+                app.getExternalFilesDir(null) ?: app.filesDir,
+                "workspace"
+            ).apply { mkdirs() }
+        )
     }
 
     fun startPipeline() {
@@ -67,7 +69,7 @@ fun OrchestrateScreen(app: BskApp, pipelineStore: PipelineStore) {
         val engine = OrchestratorEngine(
             appContext = app,
             provider = provider,
-            workspaceRoot = workspaceDir,
+            workspace = workspace,
             store = pipelineStore,
             autoApprove = settings.autoApproveTools,
             maxRounds = settings.maxPipelineRounds,

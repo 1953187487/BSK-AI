@@ -15,14 +15,18 @@ object ShellTool : Tool {
         .put("required", JSONArrayOf("command"))
 
     override suspend fun execute(args: JSONObject, ctx: ToolContext): ToolResult {
+        if (!ctx.workspace.supportsRealPath) {
+            return ToolResult(false, "当前工作区为外部目录(SAF)，shell 命令需要切换到应用私有目录后使用")
+        }
         val command = args.optString("command")
-        val cwd = ctx.resolveWorkspace(args.optString("cwd"))
+        val cwd = ctx.realPathFor(args.optString("cwd"))
+            ?: return ToolResult(false, "无法解析工作目录")
         return runCatching {
-        val procDir = File(cwd)
-        val proc = ProcessBuilder("sh", "-c", command)
-            .apply { if (procDir.exists()) directory(procDir) }
-            .redirectErrorStream(true)
-            .start()
+            val procDir = File(cwd)
+            val proc = ProcessBuilder("sh", "-c", command)
+                .apply { if (procDir.exists()) directory(procDir) }
+                .redirectErrorStream(true)
+                .start()
             val output = proc.inputStream.bufferedReader().readText()
             val code = proc.waitFor()
             val truncated = output.take(6000)

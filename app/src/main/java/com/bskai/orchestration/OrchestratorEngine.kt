@@ -5,6 +5,7 @@ import com.bskai.agent.AgentEngine
 import com.bskai.agent.AgentEvent
 import com.bskai.agent.AgentMessage
 import com.bskai.agent.PromptFactory
+import com.bskai.agent.Workspace
 import com.bskai.models.ProviderConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +19,7 @@ import kotlinx.coroutines.withContext
 class OrchestratorEngine(
     private val appContext: Context,
     private val provider: ProviderConfig,
-    private val workspaceRoot: String,
+    private val workspace: Workspace,
     private val store: PipelineStore,
     private val autoApprove: Boolean = false,
     private val permissionResolver: suspend (com.bskai.agent.tools.Tool, org.json.JSONObject) -> Boolean = { _, _ -> false },
@@ -137,7 +138,7 @@ class OrchestratorEngine(
         val engine = AgentEngine(
             appContext = appContext,
             provider = provider,
-            workspaceRoot = workspaceRoot,
+            workspace = workspace,
             autoApprove = autoApprove,
             permissionResolver = permissionResolver
         )

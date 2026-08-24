@@ -19,8 +19,8 @@ data class ProjectConfig(
  */
 object ProjectScaffold {
 
-    fun create(context: Context, config: ProjectConfig): File? {
-        val root = File(
+    fun create(context: Context, config: ProjectConfig, rootDir: File? = null): File? {
+        val root = rootDir ?: File(
             context.getExternalFilesDir(null) ?: context.filesDir,
             "projects/${config.name}"
         )
@@ -78,7 +78,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         TextView tv = new TextView(this);
-        tv.setText("${c.appLabel}\n构建成功! (BSK AI v1.0.6)");
+        tv.setText("${c.appLabel}\n构建成功! (BSK AI v1.0.8)");
         tv.setTextSize(20);
         tv.setPadding(32, 96, 32, 0);
         tv.setTextColor(Color.WHITE);

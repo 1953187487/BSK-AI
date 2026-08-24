@@ -20,6 +20,9 @@ object NewProjectTool : Tool {
         .put("required", JSONArrayOf("name", "package", "appLabel"))
 
     override suspend fun execute(args: JSONObject, ctx: ToolContext): ToolResult {
+        if (!ctx.workspace.supportsRealPath) {
+            return ToolResult(false, "当前工作区为外部目录(SAF)，创建项目需要切换到应用私有目录后使用")
+        }
         val name = args.optString("name").lowercase().filter { it.isLetterOrDigit() || it == '_' }
         if (name.isEmpty()) return ToolResult(false, "项目名不合法")
         val config = ProjectConfig(
@@ -27,7 +30,12 @@ object NewProjectTool : Tool {
             packageName = args.optString("package"),
             appLabel = args.optString("appLabel")
         )
-        val root = ProjectScaffold.create(ctx.app, config)
+        val rootOverride = ctx.realPathFor(name)
+        val root = if (rootOverride != null) {
+            ProjectScaffold.create(ctx.app, config, java.io.File(rootOverride))
+        } else {
+            ProjectScaffold.create(ctx.app, config)
+        }
         return if (root != null && root.exists()) {
             ToolResult(true, "项目已创建: ${root.absolutePath}\n构建命令: 使用 build_project 工具")
         } else {
@@ -95,6 +103,9 @@ object BuildProjectTool : Tool {
         .put("required", JSONArrayOf("projectName"))
 
     override suspend fun execute(args: JSONObject, ctx: ToolContext): ToolResult {
+        if (!ctx.workspace.supportsRealPath) {
+            return ToolResult(false, "当前工作区为外部目录(SAF)，构建 APK 需要切换到应用私有目录后使用")
+        }
         val name = args.optString("projectName")
         val builder = com.bskai.toolkit.ApkBuilder(ctx.app)
         val err = builder.build(name)

@@ -20,6 +20,23 @@ enum class OrchestrationMode(val key: String, val display: String) {
     }
 }
 
+enum class WorkspaceMode(val key: String) {
+    DEFAULT("default"),
+    FILE("file"),
+    SAF("saf");
+
+    companion object {
+        fun fromKey(key: String?): WorkspaceMode =
+            entries.firstOrNull { it.key == key } ?: DEFAULT
+    }
+}
+
+data class AgentWorkspaceConfig(
+    val mode: WorkspaceMode = WorkspaceMode.DEFAULT,
+    val path: String = "",
+    val treeUri: String = ""
+)
+
 data class AppSettings(
     val darkTheme: Boolean = true,
     val dynamicColor: Boolean = false,
@@ -29,5 +46,6 @@ data class AppSettings(
     val languageChosen: Boolean = false,
     val autoApproveTools: Boolean = false,
     val orchestrationMode: OrchestrationMode = OrchestrationMode.SEQUENTIAL,
-    val maxPipelineRounds: Int = 2
+    val maxPipelineRounds: Int = 2,
+    val agentWorkspace: AgentWorkspaceConfig = AgentWorkspaceConfig()
 )

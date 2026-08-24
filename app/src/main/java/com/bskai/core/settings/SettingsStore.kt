@@ -28,6 +28,9 @@ class SettingsStore(context: Context) {
             .putBoolean("auto_approve_tools", s.autoApproveTools)
             .putString("orchestration_mode", s.orchestrationMode.key)
             .putInt("max_pipeline_rounds", s.maxPipelineRounds)
+            .putString("agent_ws_mode", s.agentWorkspace.mode.key)
+            .putString("agent_ws_path", s.agentWorkspace.path)
+            .putString("agent_ws_uri", s.agentWorkspace.treeUri)
             .apply()
     }
 
@@ -44,6 +47,11 @@ class SettingsStore(context: Context) {
         languageChosen = prefs.getBoolean("language_chosen", false),
         autoApproveTools = prefs.getBoolean("auto_approve_tools", false),
         orchestrationMode = OrchestrationMode.fromKey(prefs.getString("orchestration_mode", null)),
-        maxPipelineRounds = prefs.getInt("max_pipeline_rounds", 2)
+        maxPipelineRounds = prefs.getInt("max_pipeline_rounds", 2),
+        agentWorkspace = AgentWorkspaceConfig(
+            mode = WorkspaceMode.fromKey(prefs.getString("agent_ws_mode", null)),
+            path = prefs.getString("agent_ws_path", "") ?: "",
+            treeUri = prefs.getString("agent_ws_uri", "") ?: ""
+        )
     )
 }
