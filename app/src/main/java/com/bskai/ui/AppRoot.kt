@@ -19,6 +19,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import com.bskai.BskApp
 import com.bskai.orchestration.PipelineStore
 import com.bskai.ui.screens.agent.AgentScreen
