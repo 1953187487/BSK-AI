@@ -122,6 +122,19 @@ fun AgentScreen(viewModel: AgentViewModel = viewModel()) {
                 }
                 if (streaming.isNotEmpty()) {
                     item { AssistantBubble(streaming + " \u258c") }
+                    // 流动式输出指示：半透明液态玻璃提示
+                    item {
+                        Text(
+                            text = "流动式输出中...",
+                            modifier = Modifier.padding(horizontal = 8.dp).background(
+                                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.35f),
+                                RoundedCornerShape(12.dp)
+                            ).padding(horizontal = 8.dp, vertical = 4.dp),
+                            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.9f),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = MonoFont
+                        )
+                    }
                 }
             }
             AgentInputBar(
@@ -214,9 +227,9 @@ private fun UserBubble(text: String) {
             text = text,
             modifier = Modifier
                 .widthIn(max = 320.dp)
-                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f), RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp))
                 .padding(horizontal = 14.dp, vertical = 10.dp),
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.95f),
             style = MaterialTheme.typography.bodyLarge
         )
     }
@@ -229,9 +242,9 @@ private fun AssistantBubble(text: String) {
             text = text,
             modifier = Modifier
                 .widthIn(max = 340.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(18.dp, 18.dp, 18.dp, 4.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f), RoundedCornerShape(18.dp, 18.dp, 18.dp, 4.dp))
                 .padding(horizontal = 14.dp, vertical = 10.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f),
             style = MaterialTheme.typography.bodyMedium,
             fontFamily = MonoFont
         )

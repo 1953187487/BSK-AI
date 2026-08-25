@@ -35,10 +35,12 @@ private data class TabItem(
 )
 
 private val tabs = listOf(
-    TabItem("智能体", Icons.Outlined.Terminal, "agent"),
-    TabItem("编排", Icons.Outlined.AccountTree, "orchestrate"),
-    TabItem("模型", Icons.Outlined.Memory, "models"),
-    TabItem("工具链", Icons.Outlined.Build, "toolchain"),
+    // 编排和对话合在一起
+    TabItem("对话/编排", Icons.Outlined.Terminal, "agent"),
+    // 模型和设置合并，模型可下载本地
+    TabItem("模型/设置", Icons.Outlined.Memory, "models"),
+    // 新增安卓应用开发（开发）在原来位置
+    TabItem("开发", Icons.Outlined.Build, "dev"),
     TabItem("设置", Icons.Outlined.Settings, "settings")
 )
 
@@ -64,13 +66,25 @@ fun AppRoot(
             }
         }
     ) { padding ->
-        androidx.compose.foundation.layout.Box(Modifier.padding(padding)) {
-            when (current) {
-                "agent" -> AgentScreen(agentViewModel)
-                "orchestrate" -> OrchestrateScreen(app, pipelineStore)
-                "models" -> ModelHubScreen(app)
-                "toolchain" -> ToolchainScreen(app)
-                "settings" -> SettingsScreen(app)
+        androidx.compose.foundation.layout.Column(Modifier.padding(padding)) {
+            // 工作区与计划模式放在对话框上面
+            androidx.compose.foundation.layout.Box(Modifier.weight(0.35f).padding(8.dp)) {
+                when (current) {
+                    "agent" -> Text("工作区：智能体与编排合并模式", modifier = Modifier.padding(8.dp))
+                    "orchestrate" -> Text("计划模式：流水线编排", modifier = Modifier.padding(8.dp))
+                    "dev" -> Text("安卓应用开发：构建与部署", modifier = Modifier.padding(8.dp))
+                    else -> {} // 其他页面保持原样
+                }
+            }
+            androidx.compose.foundation.layout.Box(Modifier.weight(0.65f)) {
+                when (current) {
+                    "agent" -> AgentScreen(agentViewModel)
+                    "orchestrate" -> OrchestrateScreen(app, pipelineStore)
+                    "models" -> ModelHubScreen(app) // 模型可下载本地
+                    "dev" -> ToolchainScreen(app) // 安卓应用开发（开发）
+                    "toolchain" -> ToolchainScreen(app)
+                    "settings" -> SettingsScreen(app)
+                }
             }
         }
     }

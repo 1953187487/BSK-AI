@@ -5,68 +5,90 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- 背景圆角方块：靛蓝渐变底色 -->
+    <!-- 液态玻璃背景：半透明靛蓝渐变 -->
     <path
-        android:fillColor="#4F46E5"
+        android:fillColor="#6366F1"
+        android:fillAlpha="0.55"
         android:pathData="M22,22h64a8,8 0 0 1 8,8v44a8,8 0 0 1 -8,8h-64a8,8 0 0 1 -8,-8v-44a8,8 0 0 1 8,-8z" />
 
-    <!-- 终端窗口框架 -->
+    <!-- 玻璃高光边缘 -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.2"
+        android:strokeAlpha="0.35"
+        android:pathData="M22,22h64a8,8 0 0 1 8,8v44a8,8 0 0 1 -8,8h-64a8,8 0 0 1 -8,-8v-44a8,8 0 0 1 8,-8z" />
+
+    <!-- 终端窗口框架：半透明深色 -->
     <path
         android:fillColor="#1E1B4B"
+        android:fillAlpha="0.7"
         android:pathData="M30,34h48v28h-48z" />
 
     <!-- 终端标题栏小圆点 -->
     <path
         android:fillColor="#F87171"
+        android:fillAlpha="0.8"
         android:pathData="M34,38a2,2 0 1 0 0,4a2,2 0 0 0 0,-4z" />
     <path
         android:fillColor="#FBBF24"
+        android:fillAlpha="0.8"
         android:pathData="M40,38a2,2 0 1 0 0,4a2,2 0 0 0 0,-4z" />
     <path
         android:fillColor="#34D399"
+        android:fillAlpha="0.8"
         android:pathData="M46,38a2,2 0 1 0 0,4a2,2 0 0 0 0,-4z" />
 
-    <!-- 命令行提示符 -->
+    <!-- 命令行提示符（流动式输出） -->
     <path
         android:fillColor="#34D399"
+        android:fillAlpha="0.85"
         android:pathData="M34,44l6,5l-6,5"
         android:strokeWidth="2"
         android:strokeColor="#34D399"
+        android:strokeAlpha="0.85"
         android:strokeLineJoin="round" />
 
     <!-- 光标闪烁条 -->
     <path
         android:fillColor="#818CF8"
+        android:fillAlpha="0.9"
         android:pathData="M43,43h2v10h-2z" />
 
     <!-- 代码提示符 -->
     <path
         android:fillColor="#A5B4FC"
+        android:fillAlpha="0.8"
         android:pathData="M48,44l4,4l-4,4"
         android:strokeWidth="2"
         android:strokeColor="#A5B4FC"
+        android:strokeAlpha="0.8"
         android:strokeLineJoin="round" />
 
-    <!-- 三个智能体节点（代表多智能体编排） -->
+    <!-- 三个智能体节点（多智能体编排） -->
     <path
         android:fillColor="#FBBF24"
+        android:fillAlpha="0.85"
         android:pathData="M76,58a3,3 0 1 0 0,6a3,3 0 0 0 0,-6z" />
     <path
         android:fillColor="#F472B6"
+        android:fillAlpha="0.85"
         android:pathData="M83,58a3,3 0 1 0 0,6a3,3 0 0 0 0,-6z" />
     <path
         android:fillColor="#34D399"
+        android:fillAlpha="0.85"
         android:pathData="M90,58a3,3 0 1 0 0,6a3,3 0 0 0 0,-6z" />
 
-    <!-- 连接线：节点到右侧 -->
+    <!-- 连接线 -->
     <path
         android:strokeColor="#818CF8"
         android:strokeWidth="1.5"
+        android:strokeAlpha="0.6"
         android:strokeLineCap="round"
         android:pathData="M79,61h8" />
     <path
         android:strokeColor="#818CF8"
         android:strokeWidth="1.5"
+        android:strokeAlpha="0.6"
         android:strokeLineCap="round"
         android:pathData="M86,61h8" />
 </vector>

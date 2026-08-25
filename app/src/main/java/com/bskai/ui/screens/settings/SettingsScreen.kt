@@ -57,6 +57,7 @@ import com.bskai.ui.theme.BskAmber
 import com.bskai.ui.theme.BskEmerald
 import com.bskai.ui.theme.BskIndigo
 import com.bskai.ui.theme.BskRose
+import java.net.URL
 
 @Composable
 fun SettingsScreen(app: BskApp) {

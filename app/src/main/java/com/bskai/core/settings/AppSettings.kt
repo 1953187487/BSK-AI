@@ -47,5 +47,10 @@ data class AppSettings(
     val autoApproveTools: Boolean = false,
     val orchestrationMode: OrchestrationMode = OrchestrationMode.SEQUENTIAL,
     val maxPipelineRounds: Int = 2,
-    val agentWorkspace: AgentWorkspaceConfig = AgentWorkspaceConfig()
+    val agentWorkspace: AgentWorkspaceConfig = AgentWorkspaceConfig(),
+    // 流动式输出配置：可选择流式输出或进入式流式输出
+    val streamingOutput: Boolean = true,
+    val streamingInputMode: Boolean = false,
+    // 逆向功能已去除，术语改为安卓分析（仅标签，不执行逆向工程）
+    val androidAnalysisLabel: String = "安卓分析（功能已禁用）"
 )

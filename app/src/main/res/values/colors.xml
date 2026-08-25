@@ -6,12 +6,12 @@
     <color name="bsk_secondary">#34D399</color>
     <color name="bsk_tertiary">#FBBF24</color>
     <color name="bsk_error">#F43F5E</color>
-    <color name="bsk_background">#12101E</color>
-    <color name="bsk_on_background">#E9E7F5</color>
-    <color name="bsk_surface">#1A1830</color>
-    <color name="bsk_on_surface">#E9E7F5</color>
-    <color name="bsk_surface_variant">#242140</color>
-    <color name="bsk_outline">#4A4670</color>
+    <color name="bsk_background">#12101EE6</color>
+    <color name="bsk_on_background">#E9E7F5CC</color>
+    <color name="bsk_surface">#1A1830CC</color>
+    <color name="bsk_on_surface">#E9E7F5CC</color>
+    <color name="bsk_surface_variant">#242140B3</color>
+    <color name="bsk_outline">#4A4670B3</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
 </resources>

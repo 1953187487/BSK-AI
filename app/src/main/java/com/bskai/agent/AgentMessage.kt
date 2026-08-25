@@ -15,7 +15,9 @@ data class AgentMessage(
     val toolCallId: String? = null,
     val toolName: String? = null,
     val toolArgs: JSONObject? = null,
-    val toolCalls: List<ToolCallData> = emptyList()
+    val toolCalls: List<ToolCallData> = emptyList(),
+    // 协议版本号：重排协议顺序，完整重写为半透明协议系统
+    val protocolVersion: String = "1.0.9"
 ) {
 
     private fun effectiveToolCalls(): List<ToolCallData> =
