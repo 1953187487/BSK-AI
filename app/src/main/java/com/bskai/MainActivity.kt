@@ -6,44 +6,42 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.*
 import com.bskai.ui.screens.AppRoot
 import com.bskai.ui.agreements.AgreementOverlay
 import com.bskai.ui.theme.AuraTheme
 import com.bskai.ui.viewmodel.MainViewModel
-import androidx.compose.runtime.*
 
 class MainActivity : ComponentActivity() {
-    private var showAgreements by mutableStateOf(true)
+
+    @Composable
+    fun AppContent() {
+        val prefs = remember { getSharedPreferences("aura_prefs", MODE_PRIVATE) }
+        var agreementsAccepted by remember { mutableStateOf(prefs.getBoolean("agreements_accepted", false)) }
+
+        val app = application as AuraApp
+
+        AuraTheme(darkTheme = true) {
+            if (!agreementsAccepted) {
+                AgreementOverlay(
+                    onAccept = {
+                        prefs.edit().putBoolean("agreements_accepted", true).apply()
+                        agreementsAccepted = true
+                    },
+                    onDecline = {
+                        finish()
+                    }
+                )
+            } else {
+                val viewModel: MainViewModel = viewModel(factory = MainViewModel.Companion.Factory)
+                AppRoot(app = app, viewModel = viewModel)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-
-        // Check if agreements were already accepted
-        val prefs = getSharedPreferences("aura_prefs", MODE_PRIVATE)
-        showAgreements = !prefs.getBoolean("agreements_accepted", false)
-
-        setContent {
-            val app = application as AuraApp
-            AuraTheme(darkTheme = true) {
-                if (showAgreements) {
-                    AgreementOverlay(
-                        onAccept = {
-                            prefs.edit().putBoolean("agreements_accepted", true).apply()
-                            showAgreements = false
-                        },
-                        onDecline = {
-                            finish()
-                        }
-                    )
-                } else {
-                    val viewModel: MainViewModel = viewModel(factory = MainViewModel.Companion.Factory)
-                    AppRoot(
-                        app = app,
-                        viewModel = viewModel
-                    )
-                }
-            }
-        }
+        setContent { AppContent() }
     }
 }
