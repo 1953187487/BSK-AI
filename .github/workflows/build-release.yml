@@ -34,32 +34,39 @@ jobs:
       - name: Grant execute permission
         run: chmod +x ./gradlew
 
-      # 如果有签名密钥，解码并使用；否则使用自动签名
+      # 如果有签名密钥，解码并使用；否则构建时使用自动签名
       - name: Prepare signing
         run: |
           if [ -n "$BSK_KEYSTORE_B64" ]; then
             echo "$BSK_KEYSTORE_B64" | base64 -d > bsk-release.keystore
-            echo "Signing keystore prepared"
+            echo "SIGNING=true" >> $GITHUB_ENV
           else
-            echo "No signing keystore found, using auto-signing for debug build"
+            echo "No signing keystore, using auto-signing"
+            echo "SIGNING=false" >> $GITHUB_ENV
           fi
         env:
           BSK_KEYSTORE_B64: ${{ secrets.BSK_KEYSTORE_B64 }}
 
-      - name: Build Debug APK (auto-signed)
-        run: ./gradlew assembleDebug
-        env:
-          BSK_KEYSTORE: "${{ github.workspace }}/bsk-release.keystore"
-          BSK_KEYSTORE_PASSWORD: "${{ secrets.BSK_KEYSTORE_PASSWORD }}"
-          BSK_KEY_PASSWORD: "${{ secrets.BSK_KEY_PASSWORD }}"
+      - name: Build Debug APK
+        run: |
+          if [ "$SIGNING" = "true" ]; then
+            ./gradlew assembleDebug \
+              -Pandroid.injected.signing.store.file=bsk-release.keystore \
+              -Pandroid.injected.signing.store.password=${{ secrets.BSK_KEYSTORE_PASSWORD }} \
+              -Pandroid.injected.signing.key.alias=aura \
+              -Pandroid.injected.signing.key.password=${{ secrets.BSK_KEY_PASSWORD }}
+          else
+            ./gradlew assembleDebug
+          fi
 
       - name: Build Release APK
-        if: secrets.BSK_KEYSTORE_B64 != ''
-        run: ./gradlew assembleRelease
-        env:
-          BSK_KEYSTORE: "${{ github.workspace }}/bsk-release.keystore"
-          BSK_KEYSTORE_PASSWORD: "${{ secrets.BSK_KEYSTORE_PASSWORD }}"
-          BSK_KEY_PASSWORD: "${{ secrets.BSK_KEY_PASSWORD }}"
+        if: env.SIGNING == 'true'
+        run: |
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=bsk-release.keystore \
+            -Pandroid.injected.signing.store.password=${{ secrets.BSK_KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=aura \
+            -Pandroid.injected.signing.key.password=${{ secrets.BSK_KEY_PASSWORD }}
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
@@ -68,7 +75,7 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
 
       - name: Upload Release APK
-        if: secrets.BSK_KEYSTORE_B64 != ''
+        if: env.SIGNING == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: AURA-release
@@ -80,7 +87,7 @@ jobs:
           VERSION=$(grep 'versionName' app/build.gradle | head -1 | sed 's/.*"\(.*\)".*/\1/')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release (Debug)
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
