@@ -2,72 +2,90 @@ package com.bskai.media
 
 import android.content.Context
 import android.media.AudioManager
-import android.media.MediaPlayer
-import java.io.IOException
+import android.media.session.MediaController
+import android.media.session.MediaSessionManager
 
-class AudioController(private val context: Context) {
+class AudioController(context: Context) {
 
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    private var player: MediaPlayer? = null
 
-    val isMuted: Boolean get() = audioManager.ringerMode == AudioManager.RINGER_MODE_SILENT
-    val currentVolume: Int get() = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-    val maxVolume: Int get() = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-    val isMediaPlaying: Boolean get() = player?.isPlaying == true
+    fun musicMaxVolume(): Int = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
 
-    fun setVolume(level: Int) {
-        val clamped = level.coerceIn(0, maxVolume)
-        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, clamped, 0)
+    fun musicVolume(): Int = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+
+    fun setMusicVolume(level: Int) {
+        val max = musicMaxVolume()
+        val safe = level.coerceIn(0, max)
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, safe, 0)
     }
 
-    fun toggleMute() {
-        audioManager.ringerMode = if (audioManager.ringerMode == AudioManager.RINGER_MODE_SILENT) {
-            AudioManager.RINGER_MODE_NORMAL
+    fun setMusicVolumePercent(percent: Int) {
+        val max = musicMaxVolume()
+        setMusicVolume(max * percent.coerceIn(0, 100) / 100)
+    }
+
+    fun volumeUp() {
+        audioManager.adjustStreamVolume(
+            AudioManager.STREAM_MUSIC,
+            AudioManager.ADJUST_RAISE,
+            AudioManager.FLAG_SHOW_UI
+        )
+    }
+
+    fun volumeDown() {
+        audioManager.adjustStreamVolume(
+            AudioManager.STREAM_MUSIC,
+            AudioManager.ADJUST_LOWER,
+            AudioManager.FLAG_SHOW_UI
+        )
+    }
+
+    fun isMuted(): Boolean {
+        return try {
+            audioManager.isStreamMute(AudioManager.STREAM_MUSIC)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun toggleMute(): Boolean {
+        return if (isMuted()) {
+            unmute()
+            false
         } else {
-            AudioManager.RINGER_MODE_SILENT
+            mute()
+            true
         }
     }
 
-    fun playNext() {
-        // Placeholder for now - would need a playlist to implement
+    private fun mute() {
+        audioManager.adjustStreamVolume(
+            AudioManager.STREAM_MUSIC,
+            AudioManager.ADJUST_MUTE,
+            0
+        )
     }
 
-    fun playPrevious() {
-        // Placeholder for now - would need a playlist to implement
+    private fun unmute() {
+        audioManager.adjustStreamVolume(
+            AudioManager.STREAM_MUSIC,
+            AudioManager.ADJUST_UNMUTE,
+            0
+        )
     }
 
-    fun pause() {
-        player?.pause()
-    }
-
-    fun resume() {
-        player?.start()
-    }
-
-    fun togglePlay() {
-        if (player?.isPlaying == true) pause() else startPlaying()
-    }
-
-    fun startPlaying() {
+    fun tryToggleMediaPlayPause(context: Context) {
         try {
-            player?.release()
-            player = MediaPlayer().apply {
-                isLooping = true
-                start()
+            val manager = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val sessions = manager.getActiveSessions(null)
+            if (sessions.isEmpty()) return
+            val controller: MediaController = sessions[0]
+            if (controller.playbackState?.isActive == true) {
+                controller.transportControls.pause()
+            } else {
+                controller.transportControls.play()
             }
-        } catch (e: Exception) {
-            player = null
+        } catch (_: Exception) {
         }
-    }
-
-    fun stopPlaying() {
-        player?.stop()
-        player?.release()
-        player = null
-    }
-
-    fun release() {
-        player?.release()
-        player = null
     }
 }

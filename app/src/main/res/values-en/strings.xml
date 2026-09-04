@@ -16,6 +16,7 @@
     <string name="perm_storage">Storage Permission</string>
     <string name="perm_notification">Notification Permission</string>
     <string name="service_running">AURA Background Listening</string>
+    <string name="service_channel_name">Voice Service</string>
     <string name="wake_word">Hey Aura / Hi Aura</string>
     <string name="version">Version %s</string>
     <string name="check_update">Check Update</string>

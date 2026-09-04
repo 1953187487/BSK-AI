@@ -16,6 +16,7 @@
     <string name="perm_storage">存储权限</string>
     <string name="perm_notification">通知权限</string>
     <string name="service_running">AURA 后台监听中</string>
+    <string name="service_channel_name">语音服务</string>
     <string name="wake_word">小爱同学 / 小欧</string>
     <string name="version">版本 %s</string>
     <string name="check_update">检查更新</string>
