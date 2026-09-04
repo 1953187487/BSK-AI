@@ -2,14 +2,13 @@ package com.bskai.media
 
 import android.content.Context
 import android.media.AudioManager
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
+import android.media.MediaPlayer
+import java.io.IOException
 
 class AudioController(private val context: Context) {
 
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    private var player: ExoPlayer? = null
+    private var player: MediaPlayer? = null
 
     val isMuted: Boolean get() = audioManager.ringerMode == AudioManager.RINGER_MODE_SILENT
     val currentVolume: Int get() = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
@@ -30,11 +29,11 @@ class AudioController(private val context: Context) {
     }
 
     fun playNext() {
-        player?.next()
+        // Placeholder for now - would need a playlist to implement
     }
 
     fun playPrevious() {
-        player?.previous()
+        // Placeholder for now - would need a playlist to implement
     }
 
     fun pause() {
@@ -42,26 +41,29 @@ class AudioController(private val context: Context) {
     }
 
     fun resume() {
-        player?.resume()
+        player?.start()
     }
 
     fun togglePlay() {
-        if (player?.isPlaying == true) pause() else resume()
+        if (player?.isPlaying == true) pause() else startPlaying()
     }
 
-    fun createPlayer(): ExoPlayer {
-        player?.release()
-        player = ExoPlayer.Builder(context).build().apply {
-            playWhenReady = true
+    fun startPlaying() {
+        try {
+            player?.release()
+            player = MediaPlayer().apply {
+                isLooping = true
+                start()
+            }
+        } catch (e: Exception) {
+            player = null
         }
-        return player!!
     }
 
-    fun playUri(uri: android.net.Uri) {
+    fun stopPlaying() {
         player?.stop()
-        player?.setMediaItem(MediaItem.fromUri(uri))
-        player?.prepare()
-        player?.play()
+        player?.release()
+        player = null
     }
 
     fun release() {
