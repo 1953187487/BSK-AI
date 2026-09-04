@@ -1,5 +1,7 @@
 package com.bskai.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,12 +16,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.bskai.ui.viewmodel.MainViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @Composable
 fun SettingsScreen(viewModel: MainViewModel) {
@@ -104,22 +107,26 @@ fun SettingsScreen(viewModel: MainViewModel) {
 
         item {
             SettingsSection(title = "权限管理") {
+                val context = LocalContext.current
                 PermissionStatusRow(
                     icon = Icons.Outlined.Mic,
                     title = "录音权限",
-                    permission = android.Manifest.permission.RECORD_AUDIO,
+                    permission = Manifest.permission.RECORD_AUDIO,
+                    context = context,
                     onGrant = { viewModel.requestPermissions() }
                 )
                 PermissionStatusRow(
                     icon = Icons.Outlined.Notifications,
                     title = "通知权限",
-                    permission = android.Manifest.permission.POST_NOTIFICATIONS,
+                    permission = Manifest.permission.POST_NOTIFICATIONS,
+                    context = context,
                     onGrant = { viewModel.requestPermissions() }
                 )
                 PermissionStatusRow(
                     icon = Icons.Outlined.Storage,
                     title = "存储权限",
-                    permission = android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                    permission = Manifest.permission.READ_EXTERNAL_STORAGE,
+                    context = context,
                     onGrant = { viewModel.requestPermissions() }
                 )
             }
@@ -236,9 +243,14 @@ private fun PermissionStatusRow(
     icon: ImageVector,
     title: String,
     permission: String,
+    context: android.content.Context,
     onGrant: () -> Unit
 ) {
-    val granted = remember { mutableStateOf(androidx.core.content.ContextCompat.checkSelfPermission(androidx.compose.ui.platform.LocalContext.current, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) }
+    val granted = remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        )
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()

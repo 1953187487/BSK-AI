@@ -5,6 +5,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -81,11 +83,11 @@ class SettingsStore(private val context: Context) {
         private val WAKE_WORD = stringPreferencesKey("wake_word")
         private val TTS_ENABLED = booleanPreferencesKey("tts_enabled")
         private val TTS_LANGUAGE = stringPreferencesKey("tts_language")
-        private val TTS_PITCH = androidx.datastore.preferences.core.floatPreferencesKey("tts_pitch")
-        private val TTS_SPEED = androidx.datastore.preferences.core.floatPreferencesKey("tts_speed")
+        private val TTS_PITCH = floatPreferencesKey("tts_pitch")
+        private val TTS_SPEED = floatPreferencesKey("tts_speed")
         private val VIBRATE = booleanPreferencesKey("vibrate")
         private val SHOW_WAVE = booleanPreferencesKey("show_wave")
-        private val MAX_HISTORY = androidx.datastore.preferences.core.intPreferencesKey("max_history")
+        private val MAX_HISTORY = intPreferencesKey("max_history")
         private val API_URL = stringPreferencesKey("api_url")
         private val API_KEY = stringPreferencesKey("api_key")
         private val API_MODEL = stringPreferencesKey("api_model")

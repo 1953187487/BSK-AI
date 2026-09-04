@@ -12,10 +12,6 @@ class VoiceAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val text = event?.text?.joinToString(" ") ?: return
-        checkForCommands(text)
-    }
-
-    private fun checkForCommands(text: String) {
         val lower = text.lowercase()
         when {
             lower.contains("打开") && lower.contains("设置") -> voiceEngine.speak("正在打开设置")

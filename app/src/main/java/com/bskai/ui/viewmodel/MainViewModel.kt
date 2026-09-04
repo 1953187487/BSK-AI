@@ -1,12 +1,11 @@
-package com.bskai
+package com.bskai.ui.viewmodel
 
 import android.app.Application
-import android.content.Intent
+import com.bskai.AuraApp
 import com.bskai.agent.AgentEngine
 import com.bskai.files.FileController
 import com.bskai.intent.IntentRegistry
 import com.bskai.media.AudioController
-import com.bskai.settings.SettingsStore
 import com.bskai.voice.PermissionManager
 import com.bskai.voice.VoiceEngine
 import kotlinx.coroutines.CoroutineScope
@@ -96,5 +95,10 @@ class MainViewModel(app: Application) : androidx.lifecycle.AndroidViewModel(app)
     fun shutdown() {
         voiceEngine.shutdown()
         audioController.release()
+    }
+
+    class Factory(private val app: Application) : androidx.lifecycle.ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T = MainViewModel(app) as T
     }
 }

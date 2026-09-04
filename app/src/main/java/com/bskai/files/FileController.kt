@@ -1,10 +1,23 @@
-package com.bskai.intent
+package com.bskai.files
 
 import android.content.Context
-import android.net.Uri
-import androidx.documentfile.provider.DocumentFile
+import android.os.Environment
 import java.io.File
-import java.io.FileOutputStream
+
+data class FileEntry(
+    val name: String,
+    val isDirectory: Boolean,
+    val size: Long,
+    val path: String
+)
+
+data class StorageInfo(
+    val total: Long,
+    val used: Long,
+    val free: Long
+) {
+    val usedPercent: Float get() = if (total > 0) used.toFloat() / total * 100 else 0f
+}
 
 class FileController(private val context: Context) {
 
@@ -71,16 +84,8 @@ class FileController(private val context: Context) {
 
     fun searchFiles(keyword: String, maxResults: Int = 20): List<FileEntry> {
         val results = mutableListOf<FileEntry>()
-        val storageDirs = listOf(
-            Environment.getExternalStorageDirectory(),
-            File("/sdcard"),
-            File("/storage/emulated/0")
-        )
-        for (rootDir in storageDirs) {
-            if (!rootDir.exists()) continue
-            searchRecursive(rootDir, keyword.lowercase(), results, maxResults - results.size)
-            if (results.size >= maxResults) break
-        }
+        val root = Environment.getExternalStorageDirectory()
+        searchRecursive(root, keyword.lowercase(), results, maxResults - results.size)
         return results
     }
 
@@ -93,16 +98,16 @@ class FileController(private val context: Context) {
     }
 
     private fun resolvePath(path: String): File? {
-        return when {
-            path.startsWith("/") -> File(path)
-            path.startsWith("content://") -> null
-            else -> File(Environment.getExternalStorageDirectory(), path)
-        }.takeIf { it?.exists() == true || path.isEmpty() }
+        return if (path.startsWith("/")) {
+            File(path).takeIf { it.exists() || path.isEmpty() }
+        } else {
+            File(Environment.getExternalStorageDirectory(), path)
+                .takeIf { it.exists() || path.isEmpty() }
+        }
     }
 
     private fun searchRecursive(dir: File, keyword: String, results: MutableList<FileEntry>, limit: Int) {
-        if (results.size >= limit) return
-        if (!dir.exists() || !dir.isDirectory) return
+        if (results.size >= limit || !dir.exists() || !dir.isDirectory) return
         for (file in dir.listFiles() ?: emptyArray()) {
             if (results.size >= limit) return
             if (file.isDirectory) {
@@ -112,19 +117,4 @@ class FileController(private val context: Context) {
             }
         }
     }
-}
-
-data class FileEntry(
-    val name: String,
-    val isDirectory: Boolean,
-    val size: Long,
-    val path: String
-)
-
-data class StorageInfo(
-    val total: Long,
-    val used: Long,
-    val free: Long
-) {
-    val usedPercent: Float get() = if (total > 0) used.toFloat() / total * 100 else 0f
 }

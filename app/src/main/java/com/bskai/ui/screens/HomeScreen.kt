@@ -1,7 +1,7 @@
 package com.bskai.ui.screens
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,19 +20,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bskai.ui.viewmodel.MainViewModel
-import kotlin.math.sin
 
 @Composable
 fun HomeScreen(viewModel: MainViewModel) {
     val isListening by viewModel.isListening.collectAsState()
     val isSpeaking by viewModel.isSpeaking.collectAsState()
     val history by viewModel.conversationHistory.collectAsState()
-
-    var expanded by remember { mutableStateOf(false) }
-
-    val animate = remember {
-        AnimationSpec
-    }
 
     Column(
         modifier = Modifier
@@ -93,12 +86,12 @@ fun HomeScreen(viewModel: MainViewModel) {
             QuickActionCard(
                 icon = Icons.Outlined.MusicNote,
                 label = "音乐控制",
-                onClick = { /* TODO */ }
+                onClick = {}
             )
             QuickActionCard(
                 icon = Icons.Outlined.Folder,
                 label = "文件管理",
-                onClick = { /* TODO */ }
+                onClick = {}
             )
         }
 
@@ -109,12 +102,12 @@ fun HomeScreen(viewModel: MainViewModel) {
             QuickActionCard(
                 icon = Icons.Outlined.Settings,
                 label = "系统设置",
-                onClick = { /* TODO */ }
+                onClick = {}
             )
             QuickActionCard(
                 icon = Icons.Outlined.Call,
                 label = "拨打电话",
-                onClick = { /* TODO */ }
+                onClick = {}
             )
         }
 
@@ -200,10 +193,9 @@ private fun QuickActionCard(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.weight(1f),
+        modifier = Modifier.weight(1f).clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E3A)),
-        onClick = onClick
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E3A))
     ) {
         Column(
             modifier = Modifier

@@ -3,6 +3,8 @@ package com.bskai.ui.screens
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,7 +22,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bskai.ui.viewmodel.MainViewModel
-import kotlin.math.sin
 
 @Composable
 fun VoiceScreen(viewModel: MainViewModel) {
@@ -28,8 +29,6 @@ fun VoiceScreen(viewModel: MainViewModel) {
     val isSpeaking by viewModel.isSpeaking.collectAsState()
     val response by viewModel.currentResponse.collectAsState()
     val history by viewModel.conversationHistory.collectAsState()
-
-    var wavePhase by remember { mutableStateOf(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "wave")
     val waveOffset by infiniteTransition.animateFloat(
@@ -42,15 +41,6 @@ fun VoiceScreen(viewModel: MainViewModel) {
         label = "wave"
     )
 
-    LaunchedEffect(isListening) {
-        if (isListening) {
-            while (isListening) {
-                wavePhase += 5f
-                delay(16)
-            }
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -59,7 +49,6 @@ fun VoiceScreen(viewModel: MainViewModel) {
     ) {
         Spacer(Modifier.height(32.dp))
 
-        // Title
         Text(
             text = "对 AURA 说话",
             style = MaterialTheme.typography.headlineSmall,
@@ -80,8 +69,6 @@ fun VoiceScreen(viewModel: MainViewModel) {
                 .clip(CircleShape)
                 .background(
                     Brush.radialGradient(
-                        center = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
-                        radius = 0.8f,
                         colors = if (isListening) listOf(
                             Color(0xFF6C5CE7).copy(alpha = 0.6f),
                             Color(0xFF00CED1).copy(alpha = 0.3f),
@@ -94,10 +81,9 @@ fun VoiceScreen(viewModel: MainViewModel) {
                 ),
             contentAlignment = Alignment.Center
         ) {
-            // Animated waves
             if (isListening) {
                 for (i in 0..2) {
-                    val scale = 1f + sin((waveOffset + i * 120f) * Math.PI / 180f) * 0.15f
+                    val scale = 1f + kotlin.math.sin((waveOffset + i * 120f) * Math.PI / 180f) * 0.15f
                     Box(
                         modifier = Modifier
                             .size((120 * scale).dp)
@@ -113,7 +99,6 @@ fun VoiceScreen(viewModel: MainViewModel) {
                     )
                 }
             }
-
             Icon(
                 imageVector = if (isListening) Icons.Filled.Mic else Icons.Outlined.Mic,
                 contentDescription = null,

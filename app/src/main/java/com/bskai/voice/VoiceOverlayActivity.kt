@@ -7,7 +7,6 @@ import android.provider.Settings
 class VoiceOverlayActivity : androidx.appcompat.app.AppCompatActivity() {
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
-        // Full-screen overlay for lock screen voice interaction
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             if (!Settings.canDrawOverlays(this)) {
                 val intent = android.content.Intent(
