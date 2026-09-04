@@ -2,11 +2,9 @@ package com.bskai.intent
 
 import android.content.Context
 import com.bskai.voice.VoiceEngine
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 sealed class VoiceIntent(val type: String, val rawText: String) {
-    data class PlayMusic(val query: String, text: String) : VoiceIntent("play_music", text)
+    data class PlayMusic(val query: String, val text: String) : VoiceIntent("play_music", text)
     data class StopMusic(val text: String) : VoiceIntent("stop_music", text)
     data class NextSong(val text: String) : VoiceIntent("next_song", text)
     data class PrevSong(val text: String) : VoiceIntent("prev_song", text)
@@ -26,52 +24,56 @@ sealed class VoiceIntent(val type: String, val rawText: String) {
 class IntentRegistry(private val context: Context, private val voiceEngine: VoiceEngine) {
 
     private val rules = listOf(
-        Regex("""(?:播放|听|放)(?:一)?[下]??(.+?)[曲歌音乐]?[\s]?(?:的|吧|吗)?[\s]*$""") to { text, m ->
-            val query = m?.groupValues?.get(1)?.trim() ?: text
+        Regex("""(?:播放|听|放)(?:一)?[下]??(.+?)[曲歌音乐]?[\s]?(?:的|吧|吗)?[\s]*$""") to { text: String, match: MatchResult? ->
+            val query = match?.groupValues?.get(1)?.trim() ?: text
             VoiceIntent.PlayMusic(query, text)
         },
-        Regex("""(?:停|停止|暂停|别播)(?:播放|音乐|歌)?[\s]*$""") to { text, _ -> VoiceIntent.StopMusic(text) },
-        Regex("""(?:下一|切到下一|换)(?:首|首歌|音乐)?[\s]*$""") to { text, _ -> VoiceIntent.NextSong(text) },
-        Regex("""(?:上一|切到上一|换上一)(?:首|首歌|音乐)?[\s]*$""") to { text, _ -> VoiceIntent.PrevSong(text) },
-        Regex("""音量(?:调到|设为|调至|开到)?(\d+)[%百分]?[\s]*$""") to { text, m ->
-            val level = m?.groupValues?.get(1)?.toIntOrNull() ?: 50
+        Regex("""(?:停|停止|暂停|别播)(?:播放|音乐|歌)?[\s]*$""") to { text: String, _: MatchResult? -> VoiceIntent.StopMusic(text) },
+        Regex("""(?:下一|切到下一|换)(?:首|首歌|音乐)?[\s]*$""") to { text: String, _: MatchResult? -> VoiceIntent.NextSong(text) },
+        Regex("""(?:上一|切到上一|换上一)(?:首|首歌|音乐)?[\s]*$""") to { text: String, _: MatchResult? -> VoiceIntent.PrevSong(text) },
+        Regex("""音量(?:调到|设为|调至|开到)?(\d+)[%百分]?[\s]*$""") to { text: String, match: MatchResult? ->
+            val level = match?.groupValues?.get(1)?.toIntOrNull() ?: 50
             VoiceIntent.SetVolume(level.coerceIn(0, 100), text)
         },
-        Regex("""(?:移动|转移|搬到|移到)(?:从)?(.+?)(?:到|至)(.+?)[\s]*$""") to { text, m ->
-            VoiceIntent.MoveFile(m?.groupValues?.get(1)?.trim() ?: "", m?.groupValues?.get(2)?.trim() ?: "", text)
+        Regex("""(?:移动|转移|搬到|移到)(?:从)?(.+?)(?:到|至)(.+?)[\s]*$""") to { text: String, match: MatchResult? ->
+            val g1 = match?.groupValues?.get(1)?.trim() ?: ""
+            val g2 = match?.groupValues?.get(2)?.trim() ?: ""
+            VoiceIntent.MoveFile(g1, g2, text)
         },
-        Regex("""(?:复制|拷贝)(?:从)?(.+?)(?:到|至)(.+?)[\s]*$""") to { text, m ->
-            VoiceIntent.CopyFile(m?.groupValues?.get(1)?.trim() ?: "", m?.groupValues?.get(2)?.trim() ?: "", text)
+        Regex("""(?:复制|拷贝)(?:从)?(.+?)(?:到|至)(.+?)[\s]*$""") to { text: String, match: MatchResult? ->
+            val g1 = match?.groupValues?.get(1)?.trim() ?: ""
+            val g2 = match?.groupValues?.get(2)?.trim() ?: ""
+            VoiceIntent.CopyFile(g1, g2, text)
         },
-        Regex("""(?:删除|删掉|移除)(.+?)[\s]*$""") to { text, m ->
-            VoiceIntent.DeleteFile(m?.groupValues?.get(1)?.trim() ?: "", text)
+        Regex("""(?:删除|删掉|移除)(.+?)[\s]*$""") to { text: String, match: MatchResult? ->
+            VoiceIntent.DeleteFile(match?.groupValues?.get(1)?.trim() ?: "", text)
         },
-        Regex("""(?:打开|启动|运行)(.+?)(?:应用|APP|app)?[\s]*$""") to { text, m ->
-            VoiceIntent.OpenApp(m?.groupValues?.get(1)?.trim() ?: text, text)
+        Regex("""(?:打开|启动|运行)(.+?)(?:应用|APP|app)?[\s]*$""") to { text: String, match: MatchResult? ->
+            VoiceIntent.OpenApp(match?.groupValues?.get(1)?.trim() ?: text, text)
         },
-        Regex("""(?:开启|打开|关闭|关掉|切换)(蓝牙|wifi|飞行模式|定位|手电筒|夜览|勿扰|旋转锁定|热点)[\s]*$""") to { text, m ->
-            VoiceIntent.ToggleSetting("${m?.groupValues?.get(1)}", text)
+        Regex("""(?:开启|打开|关闭|关掉|切换)(蓝牙|wifi|飞行模式|定位|手电筒|夜览|勿扰|旋转锁定|热点)[\s]*$""") to { text: String, match: MatchResult? ->
+            VoiceIntent.ToggleSetting(match?.groupValues?.get(1) ?: "", text)
         },
-        Regex("""(?:截屏|截图|截取屏幕)[\s]*$""") to { text, _ -> VoiceIntent.TakeScreenshot(text) },
-        Regex("""(?:打电话|拨打电话|致电|打给)(.+?)[\s]*$""") to { text, m ->
-            VoiceIntent.MakeCall(m?.groupValues?.get(1)?.trim() ?: "", text)
+        Regex("""(?:截屏|截图|截取屏幕)[\s]*$""") to { text: String, _: MatchResult? -> VoiceIntent.TakeScreenshot(text) },
+        Regex("""(?:打电话|拨打电话|致电|打给)(.+?)[\s]*$""") to { text: String, match: MatchResult? ->
+            VoiceIntent.MakeCall(match?.groupValues?.get(1)?.trim() ?: "", text)
         },
-        Regex("""(?:发消息|发送消息|发短信|发信息)(?:给)?(.+?)(?:说|道|：)?(.+)[\s]*$""") to { text, m ->
-            VoiceIntent.SendMsg(m?.groupValues?.get(1)?.trim() ?: "", m?.groupValues?.get(2)?.trim() ?: "", text)
+        Regex("""(?:发消息|发送消息|发短信|发信息)(?:给)?(.+?)(?:说|道|：)?(.+)[\s]*$""") to { text: String, match: MatchResult? ->
+            val g1 = match?.groupValues?.get(1)?.trim() ?: ""
+            val g2 = match?.groupValues?.get(2)?.trim() ?: ""
+            VoiceIntent.SendMsg(g1, g2, text)
         }
     )
 
-    fun recognize(text: String): VoiceIntent = runCatching {
-        withContext(Dispatchers.Default) {
-            for ((regex, factory) in rules) {
-                val match = regex.find(text)
-                if (match != null) {
-                    return@withContext factory(text, match)
-                }
+    fun recognize(text: String): VoiceIntent {
+        for ((regex, factory) in rules) {
+            val match = regex.find(text)
+            if (match != null) {
+                return factory(text, match)
             }
-            VoiceIntent.Unknown(text)
         }
-    }.getOrElse { VoiceIntent.Unknown(text) }
+        return VoiceIntent.Unknown(text)
+    }
 
     fun execute(intent: VoiceIntent): String = when (intent) {
         is VoiceIntent.PlayMusic -> handlePlayMusic(intent.query)

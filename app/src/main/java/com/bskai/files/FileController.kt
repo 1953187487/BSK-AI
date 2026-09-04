@@ -35,7 +35,8 @@ class FileController(private val context: Context) {
 
     fun writeFile(path: String, content: String): Result<String> {
         return runCatching {
-            val file = resolvePath(path) ?: return@runCatching Result.failure(Exception("路径不存在: $path"))
+            val file = resolvePath(path)
+            if (file == null) throw Exception("路径不存在: $path")
             file.parentFile?.mkdirs()
             file.writeText(content)
             "已写入 ${content.length} 字符到 $path"

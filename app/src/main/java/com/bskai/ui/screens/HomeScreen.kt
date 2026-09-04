@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bskai.ui.viewmodel.MainViewModel
+import androidx.compose.ui.graphics.vector.ImageVector
 
 @Composable
 fun HomeScreen(viewModel: MainViewModel) {
@@ -193,7 +194,7 @@ private fun QuickActionCard(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.weight(1f).clickable(onClick = onClick),
+        modifier = Modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E3A))
     ) {

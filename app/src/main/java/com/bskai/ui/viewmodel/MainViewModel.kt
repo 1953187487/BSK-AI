@@ -1,6 +1,7 @@
 package com.bskai.ui.viewmodel
 
 import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import com.bskai.AuraApp
 import com.bskai.agent.AgentEngine
 import com.bskai.files.FileController
@@ -15,7 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class MainViewModel(app: Application) : androidx.lifecycle.AndroidViewModel(app) {
+class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val auraApp = app as AuraApp
     private val voiceEngine = auraApp.voiceEngine

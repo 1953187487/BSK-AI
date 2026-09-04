@@ -1,4 +1,5 @@
 package com.bskai.service
+import com.bskai.AuraApp
 
 import android.content.BroadcastReceiver
 import android.content.Context

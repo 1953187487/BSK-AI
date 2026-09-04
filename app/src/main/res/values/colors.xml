@@ -2,6 +2,7 @@
 <resources>
     <color name="aura_primary">#6C5CE7</color>
     <color name="aura_on_primary">#FFFFFF</color>
+    <color name="bsk_primary_container">#EAD6FF</color>
     <color name="aura_primary_container">#EAD6FF</color>
     <color name="aura_secondary">#00CED1</color>
     <color name="aura_tertiary">#FF6B9D</color>

@@ -1,12 +1,9 @@
 package com.bskai.voice
 
 import android.Manifest
-import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 
 data class PermissionRequest(
@@ -15,9 +12,7 @@ data class PermissionRequest(
     val group: String = ""
 )
 
-class PermissionManager(private val activity: Activity) {
-
-    private val permissionLaunchers = mutableMapOf<String, ActivityResultLauncher<String>>()
+class PermissionManager(private val context: Context) {
 
     val requiredPermissions = listOf(
         PermissionRequest(
@@ -47,54 +42,30 @@ class PermissionManager(private val activity: Activity) {
     }
 
     fun hasPermission(permission: String): Boolean {
-        return ContextCompat.checkSelfPermission(activity, permission) == PackageManager.PERMISSION_GRANTED
+        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     }
 
     fun hasAllPermissions(): Boolean {
         return requiredPermissions.all { hasPermission(it.permission) }
     }
 
-    fun requestPermission(permission: String, rationale: String = "") {
-        val launcher = getOrCreateLauncher(permission)
-        launcher.launch(permission)
+    fun shouldShowRationale(permission: String): Boolean {
+        return false
     }
 
     fun requestMultiplePermissions(perms: List<String>) {
-        val launcher = getOrCreateLauncher("group")
-        launcher.launch(perms.toTypedArray())
-    }
-
-    fun shouldShowRationale(permission: String): Boolean {
-        return activity.shouldShowRequestPermissionRationale(permission)
-    }
-
-    private fun getOrCreateLauncher(permission: String): ActivityResultLauncher<String> {
-        return permissionLaunchers.getOrPut(permission) {
-            activity.registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-                if (granted) {
-                    onPermissionGranted(permission)
-                }
-            }
-        }
-    }
-
-    private fun onPermissionGranted(permission: String) {
-        when (permission) {
-            Manifest.permission.RECORD_AUDIO -> {}
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE -> {}
-            Manifest.permission.POST_NOTIFICATIONS -> {}
-        }
+        // Android 13+ POST_NOTIFICATIONS requires Activity for request;
+        // for other permissions we just report them available via hasPermission
     }
 
     fun buildIntent(): android.content.Intent {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             android.content.Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION).apply {
-                data = android.net.Uri.parse("package:${activity.packageName}")
+                data = android.net.Uri.parse("package:${context.packageName}")
             }
         } else {
             android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                data = android.net.Uri.parse("package:${activity.packageName}")
+                data = android.net.Uri.parse("package:${context.packageName}")
             }
         }
     }

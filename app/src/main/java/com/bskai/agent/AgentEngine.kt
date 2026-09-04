@@ -72,7 +72,7 @@ class AgentEngine(
         return if (network != null && network.isConnected) {
             when (network.type) {
                 android.net.ConnectivityManager.TYPE_WIFI -> "WiFi"
-                android.net.ConnectivityManager.TYPE_CELLULAR -> "移动数据"
+                android.net.ConnectivityManager.TYPE_MOBILE -> "移动数据"
                 else -> network.typeName
             }
         } else "无网络"
