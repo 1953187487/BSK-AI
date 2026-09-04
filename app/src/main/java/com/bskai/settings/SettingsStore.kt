@@ -57,7 +57,7 @@ class SettingsStore(context: Context) {
         _settings.value = load()
     }
 
-    private fun load(): AppSettings = AppSettings(
+    fun load(): AppSettings = AppSettings(
         darkTheme = prefs.getBoolean("dark_theme", true),
         autoStartService = prefs.getBoolean("auto_start", false),
         wakeWordEnabled = prefs.getBoolean("wake_word_enabled", false),

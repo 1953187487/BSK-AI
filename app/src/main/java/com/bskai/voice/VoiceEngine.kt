@@ -1,7 +1,6 @@
 package com.bskai.voice
 
 import android.content.Context
-import android.content.Intent
 import android.media.AudioManager
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -9,7 +8,6 @@ import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -85,7 +83,7 @@ class VoiceEngine(private val context: Context) : TextToSpeech.OnInitListener {
 
     fun startListening() {
         if (isListening) return
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+        val intent = android.content.Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.CHINESE)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
@@ -110,20 +108,6 @@ class VoiceEngine(private val context: Context) : TextToSpeech.OnInitListener {
         stopListening()
     }
 
-    suspend fun recognize(): String = withContext(Dispatchers.IO) {
-        suspendCoroutine { cont ->
-            onRecognized = { text ->
-                cont.resume(text)
-                onRecognized = null
-            }
-            onError = { _ ->
-                cont.resume("")
-                onRecognized = null
-            }
-            startListening()
-        }
-    }
-
     fun speak(text: String, queueMode: Int = TextToSpeech.QUEUE_FLUSH) {
         tts?.speak(text, queueMode, null, "aura_${System.currentTimeMillis()}")
     }
@@ -146,12 +130,6 @@ class VoiceEngine(private val context: Context) : TextToSpeech.OnInitListener {
     }
 
     fun checkMute(): Boolean = audioManager.ringerMode == AudioManager.RINGER_MODE_SILENT
-
-    fun unmuteforSpeaking() {
-        if (audioManager.ringerMode == AudioManager.RINGER_MODE_SILENT) {
-            audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
-        }
-    }
 
     fun shutdown() {
         tts?.stop()

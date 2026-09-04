@@ -7,6 +7,7 @@ import com.bskai.agent.AgentEngine
 import com.bskai.files.FileController
 import com.bskai.intent.IntentRegistry
 import com.bskai.media.AudioController
+import com.bskai.settings.SettingsStore
 import com.bskai.voice.PermissionManager
 import com.bskai.voice.VoiceEngine
 import kotlinx.coroutines.CoroutineScope
@@ -21,7 +22,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val auraApp = app as AuraApp
     private val voiceEngine = auraApp.voiceEngine
     private val intentRegistry = auraApp.intentRegistry
-    private val settingsStore = auraApp.settingsStore
+    val settingsStore = auraApp.settingsStore
     private val fileController = FileController(app)
     private val audioController = AudioController(app)
 
@@ -38,10 +39,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _currentResponse = MutableStateFlow("")
     val currentResponse: StateFlow<String> = _currentResponse
 
-    private val _permissionManager = PermissionManager(app)
-    val permissionManager: PermissionManager = _permissionManager
+    val permissionManager: PermissionManager = PermissionManager(app)
 
-    private val _agent = AgentEngine(app, voiceEngine, intentRegistry, fileController, audioController)
+    private val _agent = AgentEngine(app, voiceEngine, intentRegistry, fileController, audioController, settingsStore)
 
     init {
         voiceEngine.onRecognized = { text ->
@@ -71,7 +71,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         voiceEngine.stopListening()
     }
 
-    private suspend fun processCommand(text: String) {
+    fun processTextCommand(text: String) {
+        _scope.launch { processCommand(text) }
+    }
+
+    private fun processCommand(text: String) {
         _conversationHistory.value = _conversationHistory.value + text
         if (_conversationHistory.value.size > 50) {
             _conversationHistory.value = _conversationHistory.value.drop(_conversationHistory.value.size - 50)
@@ -85,11 +89,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _currentResponse.value = ""
     }
 
-    fun checkPermissions(): Boolean = _permissionManager.hasAllPermissions()
+    fun checkPermissions(): Boolean = permissionManager.hasAllPermissions()
 
     fun requestPermissions() {
-        _permissionManager.requestMultiplePermissions(
-            _permissionManager.requiredPermissions.map { it.permission }
+        permissionManager.requestMultiplePermissions(
+            permissionManager.requiredPermissions.map { it.permission }
         )
     }
 
@@ -98,8 +102,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         audioController.release()
     }
 
-    class Factory(private val app: Application) : androidx.lifecycle.ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T = MainViewModel(app) as T
+    companion object {
+        val Factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T = MainViewModel(android.app.Application()) as T
+        }
     }
 }
