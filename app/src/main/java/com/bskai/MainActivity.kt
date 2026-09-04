@@ -6,24 +6,20 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bskai.ui.AppRoot
-import com.bskai.ui.screens.agent.AgentViewModel
-import com.bskai.ui.theme.BskTheme
+import com.bskai.ui.theme.AuraTheme
+import com.bskai.ui.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
-            val app = application as BskApp
-            val settings = app.settingsStore.settings.value
-            BskTheme(
-                darkTheme = settings.darkTheme,
-                dynamicColor = settings.dynamicColor
-            ) {
-                val agentViewModel: AgentViewModel = viewModel(factory = AgentViewModel.Factory(app))
+            val app = application as AuraApp
+            AuraTheme(darkTheme = true) {
+                val viewModel: MainViewModel = viewModel(factory = MainViewModel.Factory(app))
                 AppRoot(
                     app = app,
-                    agentViewModel = agentViewModel
+                    viewModel = viewModel
                 )
             }
         }

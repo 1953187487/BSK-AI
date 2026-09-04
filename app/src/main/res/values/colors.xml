@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bsk_primary">#6366F1</color>
-    <color name="bsk_on_primary">#FFFFFF</color>
-    <color name="bsk_primary_container">#4F46E5</color>
-    <color name="bsk_secondary">#34D399</color>
-    <color name="bsk_tertiary">#FBBF24</color>
-    <color name="bsk_error">#F43F5E</color>
-    <color name="bsk_background">#12101EE6</color>
-    <color name="bsk_on_background">#E9E7F5CC</color>
-    <color name="bsk_surface">#1A1830CC</color>
-    <color name="bsk_on_surface">#E9E7F5CC</color>
-    <color name="bsk_surface_variant">#242140B3</color>
-    <color name="bsk_outline">#4A4670B3</color>
+    <color name="aura_primary">#6C5CE7</color>
+    <color name="aura_on_primary">#FFFFFF</color>
+    <color name="aura_primary_container">#EAD6FF</color>
+    <color name="aura_secondary">#00CED1</color>
+    <color name="aura_tertiary">#FF6B9D</color>
+    <color name="aura_error">#FF4757</color>
+    <color name="aura_background">#0D0D1A</color>
+    <color name="aura_on_background">#F0EEFF</color>
+    <color name="aura_surface">#16162A</color>
+    <color name="aura_on_surface">#F0EEFF</color>
+    <color name="aura_surface_variant">#1E1E3A</color>
+    <color name="aura_outline">#3D3C68</color>
+    <color name="aura_glow">#6C5CE740</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
 </resources>

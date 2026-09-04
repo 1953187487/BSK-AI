@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">BSK AI</string>
-    <string name="repo_url">https://github.com/1953187487/bsk-ai</string>
-    <string name="repo_releases_url">https://github.com/1953187487/bsk-ai/releases</string>
-
-    <string name="nav_agent">Agent</string>
-    <string name="nav_orchestrate">Pipeline</string>
-    <string name="nav_models">Models</string>
-    <string name="nav_toolchain">Toolkit</string>
+    <string name="app_name">AURA</string>
+    <string name="app_tagline">Aura Voice Assistant</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_voice">Voice</string>
+    <string name="nav_skills">Skills</string>
     <string name="nav_settings">Settings</string>
+    <string name="btn_listen">Hold to Speak</string>
+    <string name="btn_voice">Voice Input</string>
+    <string name="status_listening">Listening...</string>
+    <string name="status_processing">Processing...</string>
+    <string name="status_error">Recognition failed, please retry</string>
+    <string name="permission_required">Permission required for this feature</string>
+    <string name="perm_audio">Microphone Permission</string>
+    <string name="perm_storage">Storage Permission</string>
+    <string name="perm_notification">Notification Permission</string>
+    <string name="service_running">AURA Background Listening</string>
+    <string name="wake_word">Hey Aura / Hi Aura</string>
+    <string name="version">Version %s</string>
+    <string name="check_update">Check Update</string>
+    <string name="auto_update">Auto Update</string>
 </resources>

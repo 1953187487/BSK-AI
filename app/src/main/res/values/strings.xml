@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">BSK AI</string>
-    <string name="repo_url">https://github.com/1953187487/bsk-ai</string>
-    <string name="repo_releases_url">https://github.com/1953187487/bsk-ai/releases</string>
-
-    <string name="nav_agent">智能体</string>
-    <string name="nav_orchestrate">编排</string>
-    <string name="nav_models">模型</string>
-    <string name="nav_toolchain">工具链</string>
+    <string name="app_name">AURA</string>
+    <string name="app_tagline">你的智能语音助手</string>
+    <string name="nav_home">首页</string>
+    <string name="nav_voice">语音</string>
+    <string name="nav_skills">技能</string>
     <string name="nav_settings">设置</string>
+    <string name="btn_listen">按住说话</string>
+    <string name="btn_voice">语音输入</string>
+    <string name="status_listening">正在聆听...</string>
+    <string name="status_processing">正在处理...</string>
+    <string name="status_error">识别失败，请重试</string>
+    <string name="permission_required">需要权限才能使用此功能</string>
+    <string name="perm_audio">录音权限</string>
+    <string name="perm_storage">存储权限</string>
+    <string name="perm_notification">通知权限</string>
+    <string name="service_running">AURA 后台监听中</string>
+    <string name="wake_word">小爱同学 / 小欧</string>
+    <string name="version">版本 %s</string>
+    <string name="check_update">检查更新</string>
+    <string name="auto_update">自动更新</string>
 </resources>

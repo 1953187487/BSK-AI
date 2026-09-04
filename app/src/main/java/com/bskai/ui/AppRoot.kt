@@ -1,91 +1,96 @@
 package com.bskai.ui
 
-import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountTree
-import androidx.compose.material.icons.outlined.Build
-import androidx.compose.material.icons.outlined.Memory
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Terminal
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.bskai.BskApp
-import com.bskai.orchestration.PipelineStore
-import com.bskai.ui.screens.agent.AgentScreen
-import com.bskai.ui.screens.agent.AgentViewModel
-import com.bskai.ui.screens.models.ModelHubScreen
-import com.bskai.ui.screens.orchestrate.OrchestrateScreen
-import com.bskai.ui.screens.settings.SettingsScreen
-import com.bskai.ui.screens.toolchain.ToolchainScreen
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.bskai.AuraApp
+import com.bskai.ui.screens.HomeScreen
+import com.bskai.ui.screens.SkillsScreen
+import com.bskai.ui.screens.SettingsScreen
+import com.bskai.ui.screens.VoiceScreen
+import com.bskai.ui.viewmodel.MainViewModel
 
-private data class TabItem(
+private data class BottomTab(
     val label: String,
     val icon: ImageVector,
+    val selectedIcon: ImageVector,
     val route: String
 )
 
 private val tabs = listOf(
-    // 编排和对话合在一起
-    TabItem("对话/编排", Icons.Outlined.Terminal, "agent"),
-    // 模型和设置合并，模型可下载本地
-    TabItem("模型/设置", Icons.Outlined.Memory, "models"),
-    // 新增安卓应用开发（开发）在原来位置
-    TabItem("开发", Icons.Outlined.Build, "dev"),
-    TabItem("设置", Icons.Outlined.Settings, "settings")
+    BottomTab("首页", Icons.Outlined.Home, Icons.Filled.Home, "home"),
+    BottomTab("语音", Icons.Outlined.Mic, Icons.Filled.Mic, "voice"),
+    BottomTab("技能", Icons.Outlined.Build, Icons.Filled.Build, "skills"),
+    BottomTab("设置", Icons.Outlined.Settings, Icons.Filled.Settings, "settings")
 )
 
 @Composable
 fun AppRoot(
-    app: BskApp,
-    agentViewModel: AgentViewModel
+    app: AuraApp,
+    viewModel: MainViewModel = viewModel(factory = MainViewModel.Factory(app))
 ) {
-    var current by rememberSaveable { mutableStateOf("agent") }
-    val pipelineStore = androidx.compose.runtime.remember { PipelineStore() }
+    var currentRoute by remember { mutableStateOf("home") }
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = Color(0xFF16162A).copy(alpha = 0.95f),
+                tonalElevation = 0.dp
+            ) {
                 tabs.forEach { tab ->
                     NavigationBarItem(
-                        selected = current == tab.route,
-                        onClick = { current = tab.route },
-                        icon = { Icon(tab.icon, contentDescription = tab.label) },
-                        label = { Text(tab.label) }
+                        selected = currentRoute == tab.route,
+                        onClick = { currentRoute = tab.route },
+                        icon = {
+                            Icon(
+                                if (currentRoute == tab.route) tab.selectedIcon else tab.icon,
+                                contentDescription = tab.label,
+                                tint = if (currentRoute == tab.route) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        label = { Text(tab.label) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            indicatorColor = Color.Transparent
+                        )
                     )
                 }
             }
         }
     ) { padding ->
-        androidx.compose.foundation.layout.Column(Modifier.padding(padding)) {
-            // 工作区与计划模式放在对话框上面
-            androidx.compose.foundation.layout.Box(Modifier.weight(0.35f).padding(8.dp)) {
-                when (current) {
-                    "agent" -> Text("工作区：智能体与编排合并模式", modifier = Modifier.padding(8.dp))
-                    "orchestrate" -> Text("计划模式：流水线编排", modifier = Modifier.padding(8.dp))
-                    "dev" -> Text("安卓应用开发：构建与部署", modifier = Modifier.padding(8.dp))
-                    else -> {} // 其他页面保持原样
-                }
-            }
-            androidx.compose.foundation.layout.Box(Modifier.weight(0.65f)) {
-                when (current) {
-                    "agent" -> AgentScreen(agentViewModel)
-                    "orchestrate" -> OrchestrateScreen(app, pipelineStore)
-                    "models" -> ModelHubScreen(app) // 模型可下载本地
-                    "dev" -> ToolchainScreen(app) // 安卓应用开发（开发）
-                    "toolchain" -> ToolchainScreen(app)
-                    "settings" -> SettingsScreen(app)
-                }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            when (currentRoute) {
+                "home" -> HomeScreen(viewModel = viewModel)
+                "voice" -> VoiceScreen(viewModel = viewModel)
+                "skills" -> SkillsScreen(viewModel = viewModel)
+                "settings" -> SettingsScreen(viewModel = viewModel)
             }
         }
     }

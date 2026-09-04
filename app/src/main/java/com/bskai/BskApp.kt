@@ -2,24 +2,25 @@ package com.bskai
 
 import android.app.Application
 import android.content.Intent
-import com.bskai.core.settings.SettingsStore
-import com.bskai.models.ModelStore
-import com.bskai.models.ProviderStore
+import com.bskai.settings.AppSettings
+import com.bskai.settings.SettingsStore
+import com.bskai.voice.VoiceEngine
+import com.bskai.intent.IntentRegistry
 
-class BskApp : Application() {
+class AuraApp : Application() {
 
     lateinit var settingsStore: SettingsStore
         private set
-    lateinit var providerStore: ProviderStore
+    lateinit var voiceEngine: VoiceEngine
         private set
-    lateinit var modelStore: ModelStore
+    lateinit var intentRegistry: IntentRegistry
         private set
 
     override fun onCreate() {
         super.onCreate()
         settingsStore = SettingsStore(this)
-        providerStore = ProviderStore(this)
-        modelStore = ModelStore(this)
+        voiceEngine = VoiceEngine(this)
+        intentRegistry = IntentRegistry(this, voiceEngine)
 
         Thread.setDefaultUncaughtExceptionHandler { _, _ ->
             val i = Intent(this, MainActivity::class.java)
