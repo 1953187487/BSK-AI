@@ -32,15 +32,21 @@ jobs:
           cmdline-tools-version: 11076708
 
       - name: Grant execute permission
-        run: chmod +x gradlew
+        run: chmod +x ./gradlew
 
-      - name: Decode signing keystore
+      # 如果有签名密钥，解码并使用；否则使用自动签名
+      - name: Prepare signing
         run: |
-          echo "$BSK_KEYSTORE_B64" | base64 -d > bsk-release.keystore
+          if [ -n "$BSK_KEYSTORE_B64" ]; then
+            echo "$BSK_KEYSTORE_B64" | base64 -d > bsk-release.keystore
+            echo "Signing keystore prepared"
+          else
+            echo "No signing keystore found, using auto-signing for debug build"
+          fi
         env:
           BSK_KEYSTORE_B64: ${{ secrets.BSK_KEYSTORE_B64 }}
 
-      - name: Build Debug APK
+      - name: Build Debug APK (auto-signed)
         run: ./gradlew assembleDebug
         env:
           BSK_KEYSTORE: "${{ github.workspace }}/bsk-release.keystore"
@@ -48,6 +54,7 @@ jobs:
           BSK_KEY_PASSWORD: "${{ secrets.BSK_KEY_PASSWORD }}"
 
       - name: Build Release APK
+        if: secrets.BSK_KEYSTORE_B64 != ''
         run: ./gradlew assembleRelease
         env:
           BSK_KEYSTORE: "${{ github.workspace }}/bsk-release.keystore"
@@ -61,6 +68,7 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
 
       - name: Upload Release APK
+        if: secrets.BSK_KEYSTORE_B64 != ''
         uses: actions/upload-artifact@v4
         with:
           name: AURA-release
@@ -72,28 +80,39 @@ jobs:
           VERSION=$(grep 'versionName' app/build.gradle | head -1 | sed 's/.*"\(.*\)".*/\1/')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release (Debug)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: AURA v${{ steps.version.outputs.version }}
+          name: AURA v${{ steps.version.outputs.version }} 预测试版
           body: |
             ## AURA v${{ steps.version.outputs.version }} 预测试版
 
-            ### 新增功能
-            - 实时后台语音监听服务
-            - 中文语音指令意图识别
-            - 文件管理（移动/复制/删除/搜索）
-            - 媒体控制（播放/暂停/音量）
-            - 系统设置切换（蓝牙/WiFi/手电筒等）
-            - 无障碍服务辅助屏幕操控
+            ### 核心功能
+            - 实时后台语音监听服务（前台通知持续运行）
+            - 中文语音指令意图识别引擎
+            - 文件管理：移动/复制/删除/搜索手机文件
+            - 媒体控制：播放/暂停/下一首/音量调节
+            - 系统设置切换：蓝牙/WiFi/手电筒/飞行模式等
+            - 无障碍服务辅助屏幕操作
             - 开机自启 + 自动更新检查
             - 全新深色紫蓝渐变 UI（Material 3）
 
             ### 安装说明
-            下载 AURA-release.apk 安装到手机，首次启动需要授予录音、存储、通知等权限。
+            1. 下载下方 APK 文件
+            2. 安装到手机（允许未知来源）
+            3. 首次启动授予录音、存储、通知等权限
+            4. 点击麦克风按钮开始语音对话
+
+            ### 支持的语音指令
+            - "播放音乐" / "停止播放" / "下一首" / "音量调到50%"
+            - "移动XX到XX" / "复制XX到XX" / "删除XX"
+            - "打开微信" / "打开设置"
+            - "打开蓝牙" / "关闭WiFi" / "打开手电筒"
+            - "打电话给张三" / "发信息给李四说你好"
+            - "截个图" / "现在几点了" / "今天几号"
           files: |
-            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/debug/*.apk
           prerelease: true
           generate_release_notes: true
         env:
