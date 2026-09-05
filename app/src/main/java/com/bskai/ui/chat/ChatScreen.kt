@@ -39,7 +39,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Mic
@@ -47,7 +46,6 @@ import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -93,8 +91,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun ChatScreen(
     app: AuraApp,
-    onShowUpdate: (UpdateCheckResult) -> Unit,
-    onShowHistory: (List<RemoteRelease>) -> Unit,
     onOpenSettings: () -> Unit
 ) {
     val conversation by app.agent.conversation.collectAsState()
@@ -108,7 +104,6 @@ fun ChatScreen(
     var input by remember { mutableStateOf("") }
     var showModelMenu by remember { mutableStateOf(false) }
     var showTopMenu by remember { mutableStateOf(false) }
-    var checkingUpdate by remember { mutableStateOf(false) }
     var voiceActive by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -132,38 +127,6 @@ fun ChatScreen(
         input = ""
     }
 
-    val onCheckUpdate: () -> Unit = onCheckUpdate@{
-        if (checkingUpdate) return@onCheckUpdate
-        checkingUpdate = true
-        scope.launch {
-            val releases = GitHubApi.listReleases()
-            checkingUpdate = false
-            val currentCode = BuildConfig.BUILD_NUMBER
-            val parsed = releases
-                .filter { it.versionCode > 0 }
-                .sortedByDescending { it.versionCode }
-            val latest = parsed.firstOrNull()
-            val hasUpdate = latest != null && latest.versionCode > currentCode
-            onShowUpdate(
-                UpdateCheckResult(
-                    releases = parsed,
-                    latestRelease = latest,
-                    hasUpdate = hasUpdate
-                )
-            )
-        }
-    }
-    val triggerHistory: () -> Unit = {
-        scope.launch {
-            val releases = GitHubApi.listReleases()
-            onShowHistory(
-                releases
-                    .filter { it.versionCode > 0 }
-                    .sortedByDescending { it.versionCode }
-            )
-        }
-    }
-
     val style = settings.themeStyle
     val hasRecordAudio = Permissions.hasRecordAudio(context)
 
@@ -184,20 +147,18 @@ fun ChatScreen(
                     permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                 }
             },
-            onMicRelease = {
-                app.coordinator.stopListening()
-                voiceActive = false
-            },
-            voiceActive = voiceActive,
-            onOpenTopMenu = {
-                showTopMenu = true
-            },
-            onCheckUpdate = onCheckUpdate,
-            onShowHistory = triggerHistory,
-            onOpenSettings = onOpenSettings,
-            showTopMenu = showTopMenu,
-            onDismissTopMenu = { showTopMenu = false }
-        )
+             onMicRelease = {
+                 app.coordinator.stopListening()
+                 voiceActive = false
+             },
+             voiceActive = voiceActive,
+             onOpenTopMenu = {
+                 showTopMenu = true
+             },
+             onOpenSettings = onOpenSettings,
+             showTopMenu = showTopMenu,
+             onDismissTopMenu = { showTopMenu = false }
+         )
         else -> StandardLayout(
             app = app,
             conversation = conversation,
@@ -215,21 +176,19 @@ fun ChatScreen(
                     permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                 }
             },
-            onMicRelease = {
-                app.coordinator.stopListening()
-                voiceActive = false
-            },
-            voiceActive = voiceActive,
-            hasRecordAudio = hasRecordAudio,
-            onPermissionRequest = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
-            showModelMenu = showModelMenu,
-            onShowModelMenu = { showModelMenu = it },
-            showTopMenu = showTopMenu,
-            onShowTopMenu = { showTopMenu = it },
-            onCheckUpdate = onCheckUpdate,
-            onShowHistory = triggerHistory,
-            onOpenSettings = onOpenSettings
-        )
+             onMicRelease = {
+                 app.coordinator.stopListening()
+                 voiceActive = false
+             },
+             voiceActive = voiceActive,
+             hasRecordAudio = hasRecordAudio,
+             onPermissionRequest = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+             showModelMenu = showModelMenu,
+             onShowModelMenu = { showModelMenu = it },
+             showTopMenu = showTopMenu,
+             onShowTopMenu = { showTopMenu = it },
+             onOpenSettings = onOpenSettings
+         )
     }
 }
 
@@ -252,29 +211,25 @@ private fun StandardLayout(
     onPermissionRequest: () -> Unit,
     showModelMenu: Boolean,
     onShowModelMenu: (Boolean) -> Unit,
-    showTopMenu: Boolean,
-    onShowTopMenu: (Boolean) -> Unit,
-    onCheckUpdate: () -> Unit,
-    onShowHistory: () -> Unit,
-    onOpenSettings: () -> Unit
-) {
-    val settings by app.settings.settings.collectAsState()
-    val style = settings.themeStyle
+     showTopMenu: Boolean,
+     onShowTopMenu: (Boolean) -> Unit,
+     onOpenSettings: () -> Unit
+ ) {
+     val settings by app.settings.settings.collectAsState()
+     val style = settings.themeStyle
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        ThemeBackdrop(style = style, dark = settings.darkTheme)
+     Box(modifier = Modifier.fillMaxSize()) {
+         ThemeBackdrop(style = style, dark = settings.darkTheme)
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            TopHeader(
-                app = app,
-                showModelMenu = showModelMenu,
-                onShowModelMenu = onShowModelMenu,
-                showTopMenu = showTopMenu,
-                onShowTopMenu = onShowTopMenu,
-                onCheckUpdate = onCheckUpdate,
-                onShowHistory = onShowHistory,
-                onOpenSettings = onOpenSettings
-            )
+         Column(modifier = Modifier.fillMaxSize()) {
+             TopHeader(
+                 app = app,
+                 showModelMenu = showModelMenu,
+                 onShowModelMenu = onShowModelMenu,
+                 showTopMenu = showTopMenu,
+                 onShowTopMenu = onShowTopMenu,
+                 onOpenSettings = onOpenSettings
+             )
 
             if (!hasRecordAudio) {
                 PermissionHint(text = "未授权录音权限，语音功能不可用") {
@@ -341,54 +296,42 @@ private fun VoiceLayout(
     onMicPress: () -> Unit,
     onMicRelease: () -> Unit,
     voiceActive: Boolean,
-    onOpenTopMenu: () -> Unit,
-    onCheckUpdate: () -> Unit,
-    onShowHistory: () -> Unit,
-    onOpenSettings: () -> Unit,
-    showTopMenu: Boolean,
-    onDismissTopMenu: () -> Unit
-) {
-    val settings by app.settings.settings.collectAsState()
-    val style = settings.themeStyle
+     onOpenTopMenu: () -> Unit,
+     onOpenSettings: () -> Unit,
+     showTopMenu: Boolean,
+     onDismissTopMenu: () -> Unit
+ ) {
+     val settings by app.settings.settings.collectAsState()
+     val style = settings.themeStyle
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        ThemeBackdrop(style = style, dark = settings.darkTheme)
+     Box(modifier = Modifier.fillMaxSize()) {
+         ThemeBackdrop(style = style, dark = settings.darkTheme)
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Slim header: just menu
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Spacer(Modifier.weight(1f))
-                ModelBadge(settings.apiModel.ifBlank { "未选择模型" }, settings.apiConfigured)
-                Spacer(Modifier.weight(1f))
-                Box {
-                    IconButton(onClick = onOpenTopMenu) {
-                        Icon(Icons.Default.MoreVert, contentDescription = null)
-                    }
-                    DropdownMenu(
-                        expanded = showTopMenu,
-                        onDismissRequest = onDismissTopMenu
-                    ) {
-                        DropdownMenuItem(
-                            leadingIcon = { Icon(Icons.Default.SystemUpdateAlt, contentDescription = null) },
-                            text = { Text("检查更新") },
-                            onClick = { onDismissTopMenu(); onCheckUpdate() }
-                        )
-                        DropdownMenuItem(
-                            leadingIcon = { Icon(Icons.Default.History, contentDescription = null) },
-                            text = { Text("历史版本") },
-                            onClick = { onDismissTopMenu(); onShowHistory() }
-                        )
-                        DropdownMenuItem(
-                            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                            text = { Text("设置") },
-                            onClick = { onDismissTopMenu(); onOpenSettings() }
-                        )
-                    }
-                }
-            }
+         Column(modifier = Modifier.fillMaxSize()) {
+             // Slim header: just menu
+             Row(
+                 modifier = Modifier.fillMaxWidth().padding(8.dp),
+                 verticalAlignment = Alignment.CenterVertically
+             ) {
+                 Spacer(Modifier.weight(1f))
+                 ModelBadge(settings.apiModel.ifBlank { "未选择模型" }, settings.apiConfigured)
+                 Spacer(Modifier.weight(1f))
+                 Box {
+                     IconButton(onClick = onOpenTopMenu) {
+                         Icon(Icons.Default.MoreVert, contentDescription = null)
+                     }
+                     DropdownMenu(
+                         expanded = showTopMenu,
+                         onDismissRequest = onDismissTopMenu
+                     ) {
+                         DropdownMenuItem(
+                             leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                             text = { Text("设置") },
+                             onClick = { onDismissTopMenu(); onOpenSettings() }
+                         )
+                     }
+                 }
+             }
 
             if (!hasRecordAudio) {
                 PermissionHint(text = "未授权录音权限，语音功能不可用") {
@@ -439,14 +382,12 @@ private fun TopHeader(
     onShowModelMenu: (Boolean) -> Unit,
     showTopMenu: Boolean,
     onShowTopMenu: (Boolean) -> Unit,
-    onCheckUpdate: () -> Unit,
-    onShowHistory: () -> Unit,
     onOpenSettings: () -> Unit
-) {
-    val settings by app.settings.settings.collectAsState()
-    val currentModel = settings.apiModel.ifBlank { "未选择模型" }
-    val configured = settings.apiConfigured
-    var showThemeMenu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+ ) {
+     val settings by app.settings.settings.collectAsState()
+     val currentModel = settings.apiModel.ifBlank { "未选择模型" }
+     val configured = settings.apiConfigured
+     var showThemeMenu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -565,28 +506,18 @@ private fun TopHeader(
                         }
                     }
                 }
-                DropdownMenuItem(
-                    leadingIcon = { Icon(Icons.Default.SystemUpdateAlt, contentDescription = null) },
-                    text = { Text("检查更新") },
-                    onClick = { onShowTopMenu(false); onCheckUpdate() }
-                )
-                DropdownMenuItem(
-                    leadingIcon = { Icon(Icons.Default.History, contentDescription = null) },
-                    text = { Text("历史版本") },
-                    onClick = { onShowTopMenu(false); onShowHistory() }
-                )
-                DropdownMenuItem(
-                    leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                    text = { Text("设置") },
-                    onClick = { onShowTopMenu(false); onOpenSettings() }
-                )
-                DropdownMenuItem(
-                    text = { Text("当前：${BuildConfig.APP_VERSION}") },
-                    enabled = false,
-                    onClick = {}
-                )
-            }
-        }
+                 DropdownMenuItem(
+                     leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                     text = { Text("设置") },
+                     onClick = { onShowTopMenu(false); onOpenSettings() }
+                 )
+                 DropdownMenuItem(
+                     text = { Text("当前：${BuildConfig.APP_VERSION}") },
+                     enabled = false,
+                     onClick = {}
+                 )
+             }
+         }
     }
 }
 

@@ -9,14 +9,14 @@ android {
 
     defaultConfig {
         applicationId "com.bskai"
-        minSdk 26
+        minSdk 31
         targetSdk 34
-        versionCode 300
-        versionName "2.0.0"
+        versionCode 301
+        versionName "2.0.1"
 
         buildConfigField "String", "APP_NAME", '"AURA"'
-        buildConfigField "String", "APP_VERSION", '"2.0.0"'
-        buildConfigField "int", "BUILD_NUMBER", "300"
+        buildConfigField "String", "APP_VERSION", '"2.0.1"'
+        buildConfigField "int", "BUILD_NUMBER", "301"
     }
 
     signingConfigs {

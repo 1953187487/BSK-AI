@@ -27,8 +27,6 @@ import com.bskai.ui.legal.AgreementDecision
 import com.bskai.ui.legal.AgreementDialog
 import com.bskai.ui.settings.SettingsScreen
 import com.bskai.ui.terminal.TerminalScreen
-import com.bskai.ui.update.CombinedUpdateDialog
-import com.bskai.update.UpdateCheckResult
 import kotlinx.coroutines.launch
 
 @Composable
@@ -76,7 +74,6 @@ fun AuraScaffold(app: AuraApp) {
         }
     }
 
-    var updateResult by remember { mutableStateOf<UpdateCheckResult?>(null) }
     var showSettings by remember { mutableStateOf(false) }
     var showTerminal by remember { mutableStateOf(false) }
 
@@ -95,12 +92,10 @@ fun AuraScaffold(app: AuraApp) {
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            ChatScreen(
-                app = app,
-                onShowUpdate = { updateResult = it },
-                onShowHistory = { /* absorbed by CombinedUpdateDialog */ },
-                onOpenSettings = { showSettings = true }
-            )
+             ChatScreen(
+                 app = app,
+                 onOpenSettings = { showSettings = true }
+             )
 
             if (showSettings) {
                 SettingsScreen(
@@ -120,20 +115,6 @@ fun AuraScaffold(app: AuraApp) {
                 )
             }
         }
-    }
-
-    updateResult?.let { result ->
-        CombinedUpdateDialog(
-            result = result,
-            currentVersionSigned = app.settings.agreementVersion() ?: "未签",
-            onAgreementNeeded = { releaseVersion ->
-                !app.settings.sessionAgreementAck(releaseVersion)
-            },
-            onAgreementRequested = { releaseVersion ->
-                pendingAgreementFor = releaseVersion
-            },
-            onDismiss = { updateResult = null }
-        )
     }
 
     pendingAgreementFor?.let { version ->
