@@ -69,15 +69,17 @@ private fun backdropFor(style: ThemeStyle, dark: Boolean): ThemeBackdropSpec = w
         blobSizeDp = 360,
         blobAlpha = if (dark) 0.40f else 0.28f
     )
-    ThemeStyle.VOICE -> ThemeBackdropSpec(
-        baseGradient = listOf(
-            Color(0xFF0A0A12), Color(0xFF1A0A14), Color(0xFF0A0A12)
+    ThemeStyle.LIQUID -> ThemeBackdropSpec(
+        baseGradient = if (dark) listOf(
+            Color(0xFF0A0F1A), Color(0xFF0F1A2E), Color(0xFF0A1628)
+        ) else listOf(
+            Color(0xFFF0F7FF), Color(0xFFE6F3FF), Color(0xFFF5F9FF)
         ),
         blobColors = listOf(
-            Color(0xFFFF5252), Color(0xFFFFD740), Color(0xFF80CBC4)
+            Color(0xFF4FC3F7), Color(0xFF29B6F6), Color(0xFF81D4FA)
         ),
-        blobSizeDp = 340,
-        blobAlpha = 0.32f
+        blobSizeDp = 300,
+        blobAlpha = if (dark) 0.45f else 0.25f
     )
 }
 

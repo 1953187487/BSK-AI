@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -48,6 +49,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -80,8 +82,7 @@ import androidx.compose.ui.unit.sp
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
 import com.bskai.agent.ChatMsg
-import com.bskai.data.ChatMode
-import com.bskai.data.ChatRole
+import com.bskai.agent.LlmClient
 import com.bskai.data.DefaultModelPresets
 import com.bskai.data.ThemeStyle
 import com.bskai.ui.theme.ThemeBackdrop
@@ -93,17 +94,16 @@ fun ChatScreen(
     onOpenSettings: () -> Unit
 ) {
     val conversation by app.agent.conversation.collectAsState()
-    val processing by app.coordinator.processing.collectAsState()
+    val processing by app.agent.processing.collectAsState()
     val settings by app.settings.settings.collectAsState()
-    val context = LocalContext.current
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
     var input by remember { mutableStateOf("") }
     var showTopMenu by remember { mutableStateOf(false) }
-    var showRoleDialog by rememberSaveable { mutableStateOf(false) }
-    var showModeDialog by rememberSaveable { mutableStateOf(false) }
     var showModelDialog by rememberSaveable { mutableStateOf(false) }
+    var showSlashSuggestions by rememberSaveable { mutableStateOf(false) }
+    var slashQuery by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(conversation.size) {
         if (conversation.isNotEmpty()) {
@@ -113,41 +113,63 @@ fun ChatScreen(
 
     fun submitText() {
         if (input.isBlank()) return
-        app.coordinator.submit(input)
+        val text = input.trim()
+        if (text.startsWith("/")) {
+            // Handle slash command
+            val parts = text.removePrefix("/").split(" ", limit = 2)
+            val cmd = parts.firstOrNull() ?: ""
+            val arg = if (parts.size > 1) parts[1] else ""
+            val command = app.slashRegistry.get(cmd)
+            if (command != null) {
+                val outcome = command.resolve(arg)
+                when (outcome) {
+                    is com.bskai.agent.slash.SlashOutcome.SendToAi -> {
+                        app.coordinator.submit(outcome.text)
+                    }
+                    is com.bskai.agent.slash.SlashOutcome.LocalMessage -> {
+                        app.agent.notifyAssistant(outcome.message)
+                    }
+                    is com.bskai.agent.slash.SlashOutcome.Cancel -> {}
+                }
+            }
+        } else {
+            app.coordinator.submit(text)
+        }
         input = ""
+        showSlashSuggestions = false
+    }
+
+    fun detectSlash(query: String) {
+        slashQuery = query
+        showSlashSuggestions = query.startsWith("/") && query.length > 1
     }
 
     val style = settings.themeStyle
-    val currentRole = settings.roles.firstOrNull { it.id == settings.currentRoleId } ?: settings.roles.firstOrNull()
-    val currentMode = settings.modes.firstOrNull { it.id == settings.currentModeId } ?: settings.modes.firstOrNull()
+    val thinkingLevel = settings.thinkingLevel
 
     Box(modifier = Modifier.fillMaxSize()) {
         ThemeBackdrop(style = style, dark = settings.darkTheme)
 
         Column(modifier = Modifier.fillMaxSize()) {
-            // ───── Top Bar: Role + Model + Mode ─────
+            // ───── Top Bar ─────
             Surface(
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                shadowElevation = 2.dp
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                shadowElevation = 4.dp
             ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    // Row 1: Role avatar + name + menu
+                    // Row 1: AURA avatar + name + menu
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Role avatar + name (clickable)
+                        // AURA avatar + name
                         Row(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(20.dp))
-                                .clickable { showRoleDialog = true }
-                                .padding(4.dp),
+                            modifier = Modifier.weight(1f),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(36.dp)
+                                    .size(40.dp)
                                     .clip(CircleShape)
                                     .background(
                                         Brush.linearGradient(
@@ -159,50 +181,43 @@ fun ChatScreen(
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = currentRole?.avatar ?: "🤖",
-                                    fontSize = 18.sp
-                                )
+                                Text("🤖", fontSize = 20.sp)
                             }
-                            Spacer(Modifier.width(8.dp))
-                            Column(modifier = Modifier.weight(1f)) {
+                            Spacer(Modifier.width(10.dp))
+                            Column {
                                 Text(
-                                    text = currentRole?.name ?: "AURA",
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    text = "AURA",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    maxLines = 1
                                 )
                                 Text(
-                                    text = currentMode?.name ?: "聊天",
+                                    text = "思考模式 · 深度 $thinkingLevel",
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Icon(
-                                Icons.Default.KeyboardArrowDown,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
                         // Settings button
                         IconButton(onClick = onOpenSettings) {
-                            Icon(Icons.Default.Settings, contentDescription = "设置", modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.Settings, contentDescription = "设置", modifier = Modifier.size(22.dp))
                         }
                         // More menu
                         Box {
                             IconButton(onClick = { showTopMenu = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = null, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.MoreVert, contentDescription = null, modifier = Modifier.size(22.dp))
                             }
                             DropdownMenu(expanded = showTopMenu, onDismissRequest = { showTopMenu = false }) {
                                 DropdownMenuItem(
-                                    text = { Text("角色管理") },
-                                    onClick = { showTopMenu = false; showRoleDialog = true }
+                                    text = { Text("思考深度: $thinkingLevel/3") },
+                                    onClick = {}
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("模式切换") },
-                                    onClick = { showTopMenu = false; showModeDialog = true }
+                                    text = { Text("清空对话") },
+                                    onClick = {
+                                        showTopMenu = false
+                                        app.agent.clearConversation()
+                                    }
                                 )
                                 DropdownMenuItem(
                                     text = { Text("当前：${BuildConfig.APP_VERSION}") },
@@ -215,7 +230,7 @@ fun ChatScreen(
 
                     Spacer(Modifier.height(6.dp))
 
-                    // Row 2: Model selector (half width rectangle) + Mode switcher
+                    // Row 2: Model selector + thinking toggle
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -225,18 +240,18 @@ fun ChatScreen(
                         Surface(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(36.dp)
+                                .height(38.dp)
                                 .clickable { showModelDialog = true },
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = settings.apiModel.ifBlank { "选择模型" },
-                                    fontSize = 12.sp,
+                                    fontSize = 13.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.weight(1f),
@@ -246,46 +261,70 @@ fun ChatScreen(
                                 Icon(
                                     Icons.Default.KeyboardArrowDown,
                                     contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
+                                    modifier = Modifier.size(16.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
 
-                        // Mode switcher - compact
+                        // Thinking level toggle
                         Surface(
                             modifier = Modifier
-                                .height(36.dp)
-                                .clickable { showModeDialog = true },
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                .height(38.dp)
+                                .clickable {
+                                    val next = if (thinkingLevel >= 3) 1 else thinkingLevel + 1
+                                    app.settings.update { it.copy(thinkingLevel = next) }
+                                },
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 10.dp),
+                                modifier = Modifier.padding(horizontal = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
+                                Text("🧠", fontSize = 16.sp)
                                 Text(
-                                    text = currentMode?.icon ?: "💬",
-                                    fontSize = 14.sp
-                                )
-                                Text(
-                                    text = currentMode?.name ?: "聊天",
+                                    text = "思考 $thinkingLevel",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium
                                 )
-                                if (currentMode?.id == "think" || settings.thinkingLevel > 0) {
-                                    Text(
-                                        text = "·${settings.thinkingLevel.coerceAtLeast(1)}",
-                                        fontSize = 10.sp,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                                Icon(
-                                    Icons.Default.KeyboardArrowDown,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ───── Slash command suggestions ─────
+            if (showSlashSuggestions) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    shadowElevation = 2.dp
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+                        val suggestions = app.slashRegistry.suggestions(slashQuery)
+                        suggestions.forEach { cmd ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        input = "/${cmd.key} "
+                                        showSlashSuggestions = false
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "/${cmd.key}",
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.width(70.dp)
+                                )
+                                Text(
+                                    text = cmd.description,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 13.sp
                                 )
                             }
                         }
@@ -295,15 +334,13 @@ fun ChatScreen(
 
             // ───── Chat messages ─────
             Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                modifier = Modifier.weight(1f).fillMaxWidth()
             ) {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(vertical = 12.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp)
                 ) {
                     if (conversation.isEmpty()) {
                         item { EmptyHint(settings.apiConfigured, style) }
@@ -313,7 +350,7 @@ fun ChatScreen(
                                 msg === conversation.lastOrNull { it.role == "assistant" } &&
                                 msg.content.isNotEmpty() &&
                                 conversation.last() === msg
-                            ChatBubble(msg, style, streaming = isStreaming, roleAvatar = currentRole?.avatar ?: "🤖")
+                            ChatBubble(msg, style, streaming = isStreaming)
                         }
                     }
                 }
@@ -322,7 +359,7 @@ fun ChatScreen(
             // ───── Input bar ─────
             ChatInputBar(
                 text = input,
-                onTextChange = { input = it },
+                onTextChange = { input = it; detectSlash(it) },
                 onSubmit = { submitText() },
                 processing = processing
             )
@@ -330,18 +367,6 @@ fun ChatScreen(
     }
 
     // ───── Dialogs ─────
-    if (showRoleDialog) {
-        RoleManagementDialog(
-            app = app,
-            onDismiss = { showRoleDialog = false }
-        )
-    }
-    if (showModeDialog) {
-        ModeSelectionDialog(
-            app = app,
-            onDismiss = { showModeDialog = false }
-        )
-    }
     if (showModelDialog) {
         ModelSelectionDialog(
             app = app,
@@ -363,7 +388,7 @@ private fun ChatInputBar(
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-        shadowElevation = 4.dp,
+        shadowElevation = 8.dp,
         modifier = Modifier
             .fillMaxWidth()
             .imePadding()
@@ -377,8 +402,8 @@ private fun ChatInputBar(
                 value = text,
                 onValueChange = onTextChange,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("说点什么，或输入 / 使用命令…", fontSize = 14.sp) },
-                shape = RoundedCornerShape(20.dp),
+                placeholder = { Text("输入消息，/ 使用命令…", fontSize = 14.sp) },
+                shape = RoundedCornerShape(24.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = {
                     if (text.isNotBlank()) onSubmit()
@@ -390,7 +415,7 @@ private fun ChatInputBar(
             val canSend = text.isNotBlank() && !processing
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .background(
                         if (canSend) MaterialTheme.colorScheme.primary
@@ -400,13 +425,14 @@ private fun ChatInputBar(
                 contentAlignment = Alignment.Center
             ) {
                 if (processing) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
                 } else {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "发送",
                         tint = if (canSend) MaterialTheme.colorScheme.onPrimary
-                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -418,12 +444,39 @@ private fun ChatInputBar(
 private fun ChatBubble(
     msg: ChatMsg,
     style: ThemeStyle,
-    compact: Boolean = false,
-    streaming: Boolean = false,
-    roleAvatar: String = "🤖"
+    streaming: Boolean = false
 ) {
     val isUser = msg.role == "user"
-    val glass = style == ThemeStyle.GLASS
+    val isTool = msg.role == "tool"
+    val glass = style == ThemeStyle.GLASS || style == ThemeStyle.LIQUID
+
+    if (isTool) {
+        // Tool call bubble
+        Surface(
+            modifier = Modifier.fillMaxWidth(0.85f),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+        ) {
+            Column(modifier = Modifier.padding(10.dp)) {
+                Text(
+                    text = "🔧 ${msg.toolName ?: "工具调用"}",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = msg.content,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 5,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        return
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
@@ -432,7 +485,7 @@ private fun ChatBubble(
         if (!isUser) {
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
                     .background(
                         Brush.linearGradient(
@@ -444,54 +497,56 @@ private fun ChatBubble(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = roleAvatar, fontSize = 16.sp)
+                Text(text = "🤖", fontSize = 18.sp)
             }
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(8.dp))
         }
         Surface(
-            shape = MaterialTheme.shapes.medium,
+            shape = if (isUser) RoundedCornerShape(20.dp, 6.dp, 20.dp, 20.dp) else RoundedCornerShape(6.dp, 20.dp, 20.dp, 20.dp),
             color = when {
                 isUser -> MaterialTheme.colorScheme.primary
-                glass -> MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                glass -> MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)
                 else -> MaterialTheme.colorScheme.surfaceVariant
             },
             modifier = Modifier.fillMaxWidth(0.78f)
         ) {
-            Column {
-                if (msg.role == "tool") {
+            Column(modifier = Modifier.padding(12.dp)) {
+                // Show tool calls if present
+                if (msg.toolCalls.isNotEmpty()) {
+                    msg.toolCalls.forEach { call ->
+                        Text(
+                            text = "⚡ 调用 ${call.name}(${call.argumentsJson.take(60)}${if (call.argumentsJson.length > 60) "..." else ""})",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    if (msg.content.isNotBlank()) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 6.dp),
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                        )
+                    }
+                }
+                if (msg.content.isNotBlank()) {
                     Text(
-                        text = "🔧 ${msg.toolName ?: "工具调用"}",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
+                        text = msg.content,
+                        color = if (isUser) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurface,
+                        fontSize = 15.sp
                     )
                 }
-                Text(
-                    text = msg.content,
-                    modifier = Modifier.padding(
-                        start = 12.dp,
-                        end = 12.dp,
-                        top = if (msg.role == "tool") 0.dp else 10.dp,
-                        bottom = 10.dp
-                    ),
-                    color = if (isUser) MaterialTheme.colorScheme.onPrimary
-                    else MaterialTheme.colorScheme.onSurface,
-                    fontSize = if (compact) 14.sp else 15.sp
-                )
                 if (streaming && !isUser && msg.content.isNotEmpty()) {
-                    StreamingCursor(
-                        modifier = Modifier.padding(start = 12.dp, bottom = 10.dp),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Spacer(Modifier.height(4.dp))
+                    StreamingCursor(color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
         if (isUser) {
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(8.dp))
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.secondary),
                 contentAlignment = Alignment.Center
@@ -500,7 +555,7 @@ private fun ChatBubble(
                     Icons.Default.Person,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -524,312 +579,48 @@ private fun StreamingCursor(
         )
     Box(
         modifier = modifier
-            .size(width = 2.dp, height = 14.dp)
-            .background(color.copy(alpha = alpha))
+            .size(width = 2.dp, height = 16.dp)
+            .background(color.copy(alpha = alpha), RoundedCornerShape(1.dp))
     )
 }
 
 @Composable
 private fun EmptyHint(apiConfigured: Boolean, style: ThemeStyle) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 64.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Text("🤖", fontSize = 56.sp)
+        Spacer(Modifier.height(16.dp))
         Text(
-            text = "🤖",
-            fontSize = 48.sp
+            text = "你好，我是 AURA",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
-            text = "向 AURA 说点什么",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = "打字输入，选择角色和模式开始对话",
+            text = "配置 AI 服务后开始对话\n输入 / 查看可用命令",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodySmall
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            lineHeight = 22.sp
         )
         if (!apiConfigured) {
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "尚未配置 AI 服务，前往设置添加 API 或下载本地模型",
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(horizontal = 24.dp),
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
-
-@Composable
-private fun RoleManagementDialog(
-    app: AuraApp,
-    onDismiss: () -> Unit
-) {
-    val settings by app.settings.settings.collectAsState()
-    val scope = rememberCoroutineScope()
-    var showCreateDialog by rememberSaveable { mutableStateOf(false) }
-    var createName by rememberSaveable { mutableStateOf("") }
-    var createPrompt by rememberSaveable { mutableStateOf("") }
-    var createAvatar by rememberSaveable { mutableStateOf("🤖") }
-    var generating by remember { mutableStateOf(false) }
-
-    val avatarOptions = listOf("🤖", "💻", "✍️", "📊", "🎓", "🔬", "🎨", "🧠", "⚡", "🌟", "🔥", "💡")
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("角色管理", fontWeight = FontWeight.SemiBold) },
-        text = {
-            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
-                items(settings.roles) { role ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clickable {
-                                app.settings.update { it.copy(currentRoleId = role.id) }
-                                onDismiss()
-                            },
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (role.id == settings.currentRoleId)
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(text = role.avatar, fontSize = 20.sp)
-                            }
-                            Spacer(Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(role.name, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(
-                                    role.systemPrompt.take(40) + if (role.systemPrompt.length > 40) "..." else "",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                            if (role.id == settings.currentRoleId) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = { showCreateDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("新建")
-                }
-                TextButton(onClick = onDismiss) { Text("关闭") }
+            Spacer(Modifier.height(16.dp))
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            ) {
+                Text(
+                    text = "尚未配置 AI 服务\n前往设置添加 API 或下载本地模型",
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center
+                )
             }
         }
-    )
-
-    if (showCreateDialog) {
-        AlertDialog(
-            onDismissRequest = { showCreateDialog = false },
-            title = { Text("创建角色", fontWeight = FontWeight.SemiBold) },
-            text = {
-                LazyColumn {
-                    item {
-                        Text("头像", style = MaterialTheme.typography.labelMedium)
-                        Spacer(Modifier.height(4.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            avatarOptions.chunked(6).forEach { row ->
-                                row.forEach { avatar ->
-                                    Box(
-                                        modifier = Modifier
-                                            .size(36.dp)
-                                            .clip(CircleShape)
-                                            .background(
-                                                if (avatar == createAvatar) MaterialTheme.colorScheme.primaryContainer
-                                                else MaterialTheme.colorScheme.surfaceVariant
-                                            )
-                                            .clickable { createAvatar = avatar },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(avatar, fontSize = 18.sp)
-                                    }
-                                }
-                            }
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = createName,
-                            onValueChange = { createName = it },
-                            label = { Text("角色名称") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = createPrompt,
-                            onValueChange = { createPrompt = it },
-                            label = { Text("角色设定（System Prompt）") },
-                            minLines = 3,
-                            maxLines = 5,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        if (generating) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                Spacer(Modifier.width(8.dp))
-                                Text("AI 生成中…", style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            generating = true
-                            val prompt = if (createPrompt.isBlank()) {
-                                "请为名为「$createName」的角色生成一段简洁的 system prompt，描述其性格和能力。"
-                            } else {
-                                createPrompt
-                            }
-                            try {
-                                val generatedPrompt = app.agent.generateText(prompt)
-                                val role = ChatRole(
-                                    id = "role_${System.currentTimeMillis()}",
-                                    name = createName.ifBlank { "新角色" },
-                                    avatar = createAvatar,
-                                    systemPrompt = generatedPrompt.ifBlank { prompt },
-                                    isAiGenerated = true
-                                )
-                                app.settings.update { it.copy(roles = it.roles + role) }
-                            } catch (_: Exception) {
-                                val role = ChatRole(
-                                    id = "role_${System.currentTimeMillis()}",
-                                    name = createName.ifBlank { "新角色" },
-                                    avatar = createAvatar,
-                                    systemPrompt = createPrompt.ifBlank { "你是一个有用的AI助手。" }
-                                )
-                                app.settings.update { it.copy(roles = it.roles + role) }
-                            }
-                            generating = false
-                            showCreateDialog = false
-                            createName = ""
-                            createPrompt = ""
-                            createAvatar = "🤖"
-                        }
-                    },
-                    enabled = !generating && createName.isNotBlank()
-                ) {
-                    Text("创建")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCreateDialog = false }) { Text("取消") }
-            }
-        )
     }
-}
-
-@Composable
-private fun ModeSelectionDialog(
-    app: AuraApp,
-    onDismiss: () -> Unit
-) {
-    val settings by app.settings.settings.collectAsState()
-    var showThinkingSlider by rememberSaveable { mutableStateOf(false) }
-    var tempThinkingLevel by rememberSaveable { mutableIntStateOf(settings.thinkingLevel) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("模式切换", fontWeight = FontWeight.SemiBold) },
-        text = {
-            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                items(settings.modes) { mode ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clickable {
-                                app.settings.update { it.copy(currentModeId = mode.id, thinkingLevel = if (mode.id == "think") mode.thinkingLevel else it.thinkingLevel) }
-                                if (mode.id == "think") {
-                                    showThinkingSlider = true
-                                    tempThinkingLevel = settings.thinkingLevel.coerceAtLeast(1)
-                                } else {
-                                    onDismiss()
-                                }
-                            },
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (mode.id == settings.currentModeId)
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(mode.icon, fontSize = 24.sp)
-                            Spacer(Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(mode.name, fontWeight = FontWeight.Medium)
-                                Text(
-                                    mode.description,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            if (mode.id == settings.currentModeId) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    }
-                }
-
-                if (showThinkingSlider) {
-                    item {
-                        Spacer(Modifier.height(12.dp))
-                        HorizontalDivider()
-                        Spacer(Modifier.height(12.dp))
-                        Text("思考深度: $tempThinkingLevel/3", fontWeight = FontWeight.Medium)
-                        Spacer(Modifier.height(4.dp))
-                        Slider(
-                            value = tempThinkingLevel.toFloat(),
-                            onValueChange = { tempThinkingLevel = it.toInt() },
-                            onValueChangeFinished = {
-                                app.settings.update { it.copy(thinkingLevel = tempThinkingLevel) }
-                                onDismiss()
-                            },
-                            valueRange = 1f..3f,
-                            steps = 1
-                        )
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("简要", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("标准", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("深入", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
-    )
 }
 
 @Composable
@@ -839,35 +630,183 @@ private fun ModelSelectionDialog(
     onOpenSettings: () -> Unit
 ) {
     val settings by app.settings.settings.collectAsState()
+    val scope = rememberCoroutineScope()
     val allApiModels = (DefaultModelPresets + settings.customModelList).distinct()
+
+    // Local AI provider state
+    var selectedProvider by rememberSaveable { mutableStateOf("") }
+    var providerUrl by rememberSaveable { mutableStateOf("") }
+    var providerKey by rememberSaveable { mutableStateOf("") }
+    var availableModels by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isLoadingModels by remember { mutableStateOf(false) }
+    var downloadProgress by remember { mutableStateOf(mapOf<String, Float>()) }
+
+    val providers = listOf(
+        "Ollama" to "http://localhost:11434/v1",
+        "LM Studio" to "http://localhost:1234/v1",
+        "vLLM" to "http://localhost:8000/v1",
+        "OpenAI" to "https://api.openai.com/v1",
+        "DeepSeek" to "https://api.deepseek.com/v1",
+        "DashScope" to "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "Custom" to ""
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择模型", fontWeight = FontWeight.SemiBold) },
+        title = { Text("选择模型", fontWeight = FontWeight.Bold) },
         text = {
-            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                if (settings.localModels.isNotEmpty()) {
-                    item {
-                        Text("本地模型", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(4.dp))
-                    }
-                    items(settings.localModels) { model ->
-                        ModelItem(
-                            name = model.name,
-                            subtitle = "${model.category} · ${model.sizeBytes / 1024 / 1024}MB",
-                            selected = model.id == settings.apiModel && settings.modelSource == "local",
-                            onClick = {
-                                app.settings.update { it.copy(apiModel = model.id, modelSource = "local") }
-                                onDismiss()
+            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp)) {
+                // Local AI Provider Section
+                item {
+                    Text("本地 AI 提供商", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    // Provider grid
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        providers.chunked(3).forEach { row ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                row.forEach { (name, url) ->
+                                    Surface(
+                                        modifier = Modifier.weight(1f).height(44.dp)
+                                            .clickable {
+                                                selectedProvider = name
+                                                providerUrl = url
+                                                availableModels = emptyList()
+                                            },
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = if (selectedProvider == name) MaterialTheme.colorScheme.primaryContainer
+                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                name,
+                                                fontSize = 11.sp,
+                                                fontWeight = if (selectedProvider == name) FontWeight.Bold else FontWeight.Normal,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+                                // Fill remaining space if row has fewer than 3 items
+                                repeat(3 - row.size) {
+                                    Spacer(Modifier.weight(1f))
+                                }
                             }
-                        )
+                        }
                     }
+                    Spacer(Modifier.height(10.dp))
+                }
+
+                // Provider URL + Key input
+                if (selectedProvider.isNotEmpty()) {
                     item {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        Text("API 模型", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = providerUrl,
+                            onValueChange = { providerUrl = it },
+                            label = { Text("API 地址") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = providerKey,
+                            onValueChange = { providerKey = it },
+                            label = { Text("API Key (可选)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    isLoadingModels = true
+                                    try {
+                                        val models = LlmClient(app).listModels(providerUrl, providerKey)
+                                        availableModels = models
+                                        // Auto-save provider settings
+                                        app.settings.update {
+                                            it.copy(
+                                                apiProviderUrl = providerUrl,
+                                                apiProviderKey = providerKey,
+                                                apiModel = models.firstOrNull() ?: "",
+                                                modelSource = "local"
+                                            )
+                                        }
+                                    } catch (_: Exception) {
+                                        availableModels = emptyList()
+                                    }
+                                    isLoadingModels = false
+                                }
+                            },
+                            enabled = providerUrl.isNotBlank() && !isLoadingModels,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(if (isLoadingModels) "连接中…" else "连接并获取模型")
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+
+                    if (availableModels.isNotEmpty()) {
+                        item {
+                            Text(
+                                "可用模型 (${availableModels.size})",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(Modifier.height(4.dp))
+                        }
+                        items(availableModels) { model ->
+                            val progress = downloadProgress[model]
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 3.dp)
+                                    .clickable {
+                                        app.settings.update {
+                                            it.copy(apiModel = model)
+                                        }
+                                        onDismiss()
+                                    },
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (model == settings.apiModel) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(model, fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                                        if (progress != null) {
+                                            Spacer(Modifier.height(4.dp))
+                                            LinearProgressIndicator(
+                                                progress = { progress },
+                                                modifier = Modifier.fillMaxWidth().height(4.dp)
+                                            )
+                                        }
+                                    }
+                                    if (model == settings.apiModel) {
+                                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+
+                // Divider
+                item {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+                    Text("API 模型预设", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                }
+
                 items(allApiModels) { model ->
                     ModelItem(
                         name = model,
@@ -882,9 +821,7 @@ private fun ModelSelectionDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onOpenSettings) {
-                Text("管理模型")
-            }
+            TextButton(onClick = onOpenSettings) { Text("管理模型") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
     )
@@ -902,12 +839,12 @@ private fun ModelItem(
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(10.dp),
         color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
         else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(10.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {

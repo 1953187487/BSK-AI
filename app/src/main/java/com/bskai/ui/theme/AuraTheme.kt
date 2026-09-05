@@ -117,45 +117,46 @@ private val GlassLight = lightColorScheme(
 )
 val GlassTint = Color(0x66FFFFFF)
 
-// ───── Voice (large button, single-purpose) ─────
-private val VoiceDark = darkColorScheme(
-    primary = Color(0xFFFF5252),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFF6F1010),
-    onPrimaryContainer = Color(0xFFFFD6D6),
-    secondary = Color(0xFFFFD740),
-    onSecondary = Color(0xFF1A1000),
-    secondaryContainer = Color(0xFF665000),
-    onSecondaryContainer = Color(0xFFFFF0B0),
-    tertiary = Color(0xFF80CBC4),
-    background = Color(0xFF0A0A12),
-    onBackground = Color(0xFFFFEBEE),
-    surface = Color(0xFF12121E),
-    onSurface = Color(0xFFFFEBEE),
-    surfaceVariant = Color(0xFF1E1E2A),
-    onSurfaceVariant = Color(0xFFCFC4C8),
-    outline = Color(0xFF5C2A2A),
-    error = Color(0xFFFF5252),
+// ───── Liquid Glass (iOS 27 style) ─────
+private val LiquidDark = darkColorScheme(
+    primary = Color(0xFF66E3FF),
+    onPrimary = Color(0xFF002A3A),
+    primaryContainer = Color(0xFF004F5A),
+    onPrimaryContainer = Color(0xFFB3F5FF),
+    secondary = Color(0xFFB4E8FF),
+    onSecondary = Color(0xFF002A3A),
+    secondaryContainer = Color(0xFF004A5A),
+    onSecondaryContainer = Color(0xFFD4F4FF),
+    tertiary = Color(0xFFFFB3E6),
+    background = Color(0xFF0A0E1A),
+    onBackground = Color(0xFFE8F4FF),
+    surface = Color(0xDD1A2030),
+    onSurface = Color(0xFFE8F4FF),
+    surfaceVariant = Color(0xDD252D42),
+    onSurfaceVariant = Color(0xFFB0C4D8),
+    outline = Color(0xFF3D4A68),
+    error = Color(0xFFFF6B8A),
     onError = Color.White
 )
-private val VoiceLight = lightColorScheme(
-    primary = Color(0xFFE53935),
+private val LiquidLight = lightColorScheme(
+    primary = Color(0xFF0077B6),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFFFD6D6),
-    onPrimaryContainer = Color(0xFF5C0000),
-    secondary = Color(0xFFF9A825),
+    primaryContainer = Color(0xFFB3E5FC),
+    onPrimaryContainer = Color(0xFF003355),
+    secondary = Color(0xFF0097A7),
     onSecondary = Color.White,
-    tertiary = Color(0xFF00695C),
-    background = Color(0xFFFFF8F8),
-    onBackground = Color(0xFF221010),
-    surface = Color.White,
-    onSurface = Color(0xFF221010),
-    surfaceVariant = Color(0xFFF8E5E5),
-    onSurfaceVariant = Color(0xFF5C4242),
-    outline = Color(0xFFA78686),
-    error = Color(0xFFD32F2F),
+    tertiary = Color(0xFFE91E63),
+    background = Color(0xFFF0F4F8),
+    onBackground = Color(0xFF1A1A2E),
+    surface = Color(0xEEFFFFFF),
+    onSurface = Color(0xFF1A1A2E),
+    surfaceVariant = Color(0xEEEEF2F6),
+    onSurfaceVariant = Color(0xFF4A5568),
+    outline = Color(0xFF94A3B8),
+    error = Color(0xFFE53935),
     onError = Color.White
 )
+val LiquidGradient = listOf(Color(0xFF66E3FF), Color(0xFF0077B6), Color(0xFFB4E8FF))
 
 private val SoftShapes = Shapes(
     extraSmall = RoundedCornerShape(10.dp),
@@ -173,12 +174,12 @@ private val SharpShapes = Shapes(
     extraLarge = RoundedCornerShape(20.dp)
 )
 
-private val PillShapes = Shapes(
-    extraSmall = RoundedCornerShape(20.dp),
-    small = RoundedCornerShape(40.dp),
-    medium = RoundedCornerShape(60.dp),
-    large = RoundedCornerShape(80.dp),
-    extraLarge = RoundedCornerShape(120.dp)
+private val LiquidShapes = Shapes(
+    extraSmall = RoundedCornerShape(12.dp),
+    small = RoundedCornerShape(16.dp),
+    medium = RoundedCornerShape(24.dp),
+    large = RoundedCornerShape(32.dp),
+    extraLarge = RoundedCornerShape(40.dp)
 )
 
 private val SimpleTypography = Typography()
@@ -193,7 +194,7 @@ fun AuraTheme(
         ThemeStyle.AURORA -> (if (darkTheme) AuroraDark else AuroraLight) to SoftShapes
         ThemeStyle.NEON -> NeonDark to SharpShapes
         ThemeStyle.GLASS -> (if (darkTheme) GlassDark else GlassLight) to SoftShapes
-        ThemeStyle.VOICE -> (if (darkTheme) VoiceDark else VoiceLight) to PillShapes
+        ThemeStyle.LIQUID -> (if (darkTheme) LiquidDark else LiquidLight) to LiquidShapes
     }
     MaterialTheme(
         colorScheme = colors,

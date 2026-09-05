@@ -24,11 +24,14 @@ class AgentEngine(
     var slashRegistry: SlashRegistry? = null
 
     val workspaceEnabled: Boolean
-        get() = settings.settings.value.agentToolsEnabled
+        get() = settings.settings.value.workspaceEnabled
 
     fun setWorkspaceEnabled(enabled: Boolean) {
-        settings.update { it.copy(agentToolsEnabled = enabled) }
+        settings.update { it.copy(workspaceEnabled = enabled) }
     }
+
+    private val _processing = MutableStateFlow(false)
+    val processing: StateFlow<Boolean> = _processing.asStateFlow()
 
     /**
      * 用户发言入口。先入栈 user 消息，再启动一次 assistant 回复。
@@ -38,21 +41,26 @@ class AgentEngine(
         val text = userText.trim()
         if (text.isEmpty()) return "请再说一遍"
 
-        val s = settings.settings.value
-        append(ChatMsg("user", text))
+        _processing.value = true
+        try {
+            val s = settings.settings.value
+            append(ChatMsg("user", text))
 
-        if (!s.apiConfigured) {
-            val fallback = localReply(text)
-            append(ChatMsg("assistant", fallback))
-            return fallback
+            if (!s.apiConfigured) {
+                val fallback = localReply(text)
+                append(ChatMsg("assistant", fallback))
+                return fallback
+            }
+
+            val registry = toolRegistry
+            if (registry != null && registry.all().isNotEmpty()) {
+                return runToolLoop(registry)
+            }
+
+            return runStreamingReply()
+        } finally {
+            _processing.value = false
         }
-
-        val registry = toolRegistry
-        if (s.agentToolsEnabled && registry != null && registry.all().isNotEmpty()) {
-            return runToolLoop(registry)
-        }
-
-        return runStreamingReply()
     }
 
     /**
@@ -142,39 +150,16 @@ class AgentEngine(
 
     private fun buildRequestMessages(): List<ChatMsg> {
         val s = settings.settings.value
-        val rolePrompt = s.roles.firstOrNull { it.id == s.currentRoleId }?.systemPrompt
-            ?: "你是一个智能AI助手AURA，运行在Android设备上。你友好、专业、乐于助人。"
-        val modePrompt = buildModePrompt(s)
-        val system = ChatMsg("system", "$rolePrompt$modePrompt")
+        val systemPrompt = "你是一个智能AI助手AURA，运行在Android设备上。你友好、专业、乐于助人。" +
+                when {
+                    s.thinkingLevel == 1 -> "\n请简要分析问题并给出答案。"
+                    s.thinkingLevel == 2 -> "\n请逐步推理，考虑多种可能性。"
+                    s.thinkingLevel >= 3 -> "\n请深入分析，考虑所有角度，给出详细推理过程。"
+                    else -> ""
+                }
+        val system = ChatMsg("system", systemPrompt)
         val history = _conversation.value.takeLast(s.maxHistoryLength.coerceAtLeast(10))
         return listOf(system) + history
-    }
-
-    private fun buildModePrompt(s: com.bskai.data.AppSettings): String {
-        val mode = s.modes.firstOrNull { it.id == s.currentModeId }
-        val sb = StringBuilder()
-        if (mode != null && mode.systemPrompt.isNotBlank()) {
-            sb.append("\n").append(mode.systemPrompt)
-        }
-        if (mode?.id == "think" || s.thinkingLevel > 0) {
-            val level = if (s.thinkingLevel > 0) s.thinkingLevel else mode?.thinkingLevel ?: 1
-            sb.append("\n请进行深度思考，思考深度等级：$level/3。")
-            when (level) {
-                1 -> sb.append("请简要分析问题并给出答案。")
-                2 -> sb.append("请逐步推理，考虑多种可能性。")
-                3 -> sb.append("请深入分析，考虑所有角度，给出详细推理过程。")
-            }
-        }
-        if (mode?.id == "analyze") {
-            sb.append("\n你正在分析模式。请分析工作区中的APK应用，提取包名、权限、组件等信息。")
-        }
-        if (mode?.id == "dev") {
-            sb.append("\n你正在开发模式。你可以安全地分析APK、下载必要依赖、请求必要权限。")
-        }
-        if (workspaceEnabled) {
-            sb.append(" 当前已启用工作区工具，你可以读写文件、执行 shell 命令。")
-        }
-        return sb.toString()
     }
 
     fun notifyAssistant(text: String) {
@@ -186,8 +171,7 @@ class AgentEngine(
     }
 
     /**
-     * 单次文本生成（非流式），用于 AI 生成角色 prompt 等场景。
-     * 发送单条 user 消息，返回 assistant 文本内容。
+     * 单次文本生成（非流式），用于 AI 生成等场景。
      */
     suspend fun generateText(prompt: String): String {
         val s = settings.settings.value

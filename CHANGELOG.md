@@ -1,5 +1,19 @@
 # AURA 更新记录
 
+## v2.0.3
+- 移除所有后台服务（VoiceService/BootReceiver/MediaButtonReceiver）
+- 彻底删除语音引擎（VoiceEngine/VoiceCoordinator/AudioController）
+- 简化为单角色 AURA + 思考模式（3 级深度）
+- iOS 27 液态玻璃 UI：新增 LIQUID 主题风格
+- 本地 AI 提供商选择：Ollama/LM Studio/vLLM/Jan/Custom，自动拉取模型列表
+- 模型选择后自动替换到聊天框
+- 斜杠命令自动弹出：输入 / 后显示命令列表
+- AI 回答流式输出 + 工具调用显示
+- SettingsScreen 全面重写（外观/思考模式/模型管理/工具与工作区/权限/更新/关于）
+- Coordinator 替代 VoiceCoordinator，纯文本→AgentEngine 桥梁
+- minSdk 28，targetSdk 34
+- versionCode 303
+
 ## v2.0.2
 - 角色系统：聊天框顶部圆形头像+名字，支持 5 个默认角色（AURA/代码专家/写作助手/数据分析师/知识导师），可自建角色并支持 AI 自动生成 prompt
 - 模式切换：8 种内置模式（聊天/思考/分析/开发/创意/编程/翻译/教学），思考模式支持 3 级深度调节

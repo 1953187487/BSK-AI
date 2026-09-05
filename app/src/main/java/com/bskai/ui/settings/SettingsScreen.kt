@@ -21,59 +21,43 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.InstallMobile
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -81,21 +65,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
 import com.bskai.agent.LlmClient
 import com.bskai.data.DefaultApiUrlPresets
 import com.bskai.data.DefaultModelPresets
-import com.bskai.data.LocalModelEntry
 import com.bskai.data.ThemeStyle
-import com.bskai.data.languageList
 import com.bskai.permission.ShizukuBridge
 import com.bskai.update.DownloadStatus
 import com.bskai.update.GitHubApi
@@ -104,9 +85,9 @@ import com.bskai.update.UpdateInstaller
 import com.bskai.util.Permissions
 import com.bskai.workspace.WorkspaceEntry
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 @Composable
 fun SettingsScreen(
@@ -131,7 +112,6 @@ fun SettingsScreen(
     var showAboutDialog by rememberSaveable { mutableStateOf(false) }
     var showUpdateDialog by rememberSaveable { mutableStateOf(false) }
 
-    val recordAudioLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val notifPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -154,17 +134,29 @@ fun SettingsScreen(
                 SectionDivider()
             }
             item {
-                SectionHeader("语音与反馈", Icons.Default.Speaker)
-                SettingRowSwitch("语音播报", "关闭后 AURA 只在屏幕上回答", settings.ttsEnabled, Icons.Default.Speaker) { app.settings.update { s -> s.copy(ttsEnabled = it) } }
-                SettingRowButton("播报语言", "当前：${languageList.find { p -> p.first == settings.ttsLanguage }?.second ?: settings.ttsLanguage}", Icons.Default.Language, "选择") { showLanguageDialog = true }
-                SliderRow("语速", settings.ttsSpeed, 0.5f..2.0f) { app.settings.update { s -> s.copy(ttsSpeed = it) } }
-                SliderRow("音调", settings.ttsPitch, 0.5f..2.0f) { app.settings.update { s -> s.copy(ttsPitch = it) } }
-                SettingRowSwitch("交互反馈", "说话时震动与波形动画", settings.vibrateOnResponse, Icons.Default.Vibration) { app.settings.update { s -> s.copy(vibrateOnResponse = it, showWaveAnimation = it) } }
+                SectionHeader("思考模式", Icons.Default.Tune)
+                Text("思考深度: ${settings.thinkingLevel}/3", fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(4.dp))
+                Slider(
+                    value = settings.thinkingLevel.toFloat(),
+                    onValueChange = { },
+                    onValueChangeFinished = {
+                        val next = if (settings.thinkingLevel >= 3) 1 else settings.thinkingLevel + 1
+                        app.settings.update { it.copy(thinkingLevel = next) }
+                    },
+                    valueRange = 1f..3f,
+                    steps = 1
+                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("简要", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("标准", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("深入", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 SectionDivider()
             }
             item {
                 SectionHeader("模型管理", Icons.Default.Tune)
-                SettingRowButton("本地模型", if (settings.localModels.isEmpty()) "未下载本地模型" else "已下载 ${settings.localModels.size} 个本地模型", Icons.Default.CloudDownload, "下载") { showLocalModelDialog = true }
+                SettingRowButton("本地 AI", if (settings.localModels.isEmpty()) "选择本地 AI 提供商" else "已下载 ${settings.localModels.size} 个本地模型", Icons.Default.CloudDownload, "配置") { showLocalModelDialog = true }
                 SettingRowButton("外接模型（API）", if (settings.apiConfigured) "已配置 ${settings.apiModel}" else "未配置外接模型", Icons.Default.SwapHoriz, "配置") { showProviderDialog = true }
                 if (settings.customModelList.isNotEmpty()) {
                     Text("已保存 ${settings.customModelList.size} 个自定义模型", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -179,20 +171,14 @@ fun SettingsScreen(
                 SectionDivider()
             }
             item {
-                SectionHeader("后台服务", Icons.Default.Vibration)
-                SettingRowSwitch("开机自启后台监听", "手机开机后保持后台语音服务", settings.autoStartService, Icons.Default.Vibration) { app.settings.update { s -> s.copy(autoStartService = it) } }
-                SectionDivider()
-            }
-            item {
                 SectionHeader("权限", Icons.Default.Security)
-                PermissionRow("录音权限", "用于语音输入", Permissions.hasRecordAudio(context), Icons.Default.Mic) { recordAudioLauncher.launch(Manifest.permission.RECORD_AUDIO) }
-                PermissionRow("通知权限", "用于播报与后台服务", Permissions.hasNotification(context), Icons.Default.Notifications) { notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }
+                PermissionRow("通知权限", "用于后台通知", Permissions.hasNotification(context), Icons.Default.Notifications) { notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }
                 PermissionRow("Shizuku", "提权终端命令（无需 root）", shizukuState == ShizukuBridge.State.GRANTED, Icons.Default.Security) { if (shizukuState == ShizukuBridge.State.NEED_PERMISSION) app.shizuku.requestPermission() }
                 SectionDivider()
             }
             item {
                 SectionHeader("更新", Icons.Default.SystemUpdateAlt)
-                SettingRowButton("检查更新", "当前 ${BuildConfig.APP_VERSION} (${BuildConfig.BUILD_NUMBER})", Icons.Default.SystemUpdateAlt, "检查") { showUpdateDialog = true }
+                SettingRowButton("检查更新", "当前 ${BuildConfig.APP_VERSION}", Icons.Default.SystemUpdateAlt, "检查") { showUpdateDialog = true }
                 SettingRowButton("历史版本", "浏览与下载历史版本", Icons.Default.History, "查看") { showUpdateDialog = true }
                 ApkCleanerCard(context)
                 SectionDivider()
@@ -206,9 +192,9 @@ fun SettingsScreen(
     }
 
     if (showProviderDialog) ProviderConfigDialog(app, { showProviderDialog = false }, { showProviderDialog = false })
-    if (showLocalModelDialog) LocalModelDownloadDialog(app) { showLocalModelDialog = false }
+    if (showLocalModelDialog) LocalAIRegistryDialog(app) { showLocalModelDialog = false }
     if (showWorkspaceDialog) WorkspaceManageDialog(app.workspace, { showWorkspaceDialog = false })
-    if (showLanguageDialog) LanguageSelectDialog(settings.ttsLanguage, { lang -> app.settings.update { s -> s.copy(ttsLanguage = lang) }; app.voice.applyTtsSettings(settings.copy(ttsLanguage = lang)) }, { showLanguageDialog = false })
+    if (showLanguageDialog) LanguageSelectDialog(settings.selectedLanguage, { lang -> app.settings.update { s -> s.copy(selectedLanguage = lang) } }, { showLanguageDialog = false })
     if (showUpdateDialog) UpdateCenterDialog({ showUpdateDialog = false })
     if (showAboutDialog) AboutAuraDialog({ showAboutDialog = false })
 }
@@ -249,260 +235,233 @@ fun SettingRowButton(title: String, description: String, icon: ImageVector, butt
             Text(title, fontWeight = FontWeight.Medium)
             Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
-        OutlinedButton(onClick = onClick) { Text(buttonText) }
+        TextButton(onClick = onClick) { Text(buttonText) }
     }
 }
 
 @Composable
-private fun PermissionRow(name: String, description: String, granted: Boolean, icon: ImageVector, onRequest: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable(enabled = !granted, onClick = onRequest),
-        shape = RoundedCornerShape(12.dp),
-        color = if (granted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-    ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(if (granted) Icons.Default.CheckCircle else icon, contentDescription = null, tint = if (granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(name, fontWeight = FontWeight.Medium)
-                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (!granted) Button(onClick = onRequest, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("去授权") }
-            else Text("已授权", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+fun PermissionRow(title: String, description: String, granted: Boolean, icon: ImageVector, onRequest: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = if (granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+        Spacer(Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.Medium)
+            Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        if (granted) {
+            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+        } else {
+            TextButton(onClick = onRequest) { Text("授权") }
         }
     }
 }
 
 @Composable
-private fun SliderRow(title: String, value: Float, range: ClosedFloatingPointRange<Float>, onChange: (Float) -> Unit) {
-    Column(modifier = Modifier.padding(vertical = 6.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
-            Text(String.format("%.2f", value), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Slider(value = value, onValueChange = onChange, valueRange = range)
-    }
-}
-
-@Composable
-private fun ThemePicker(current: ThemeStyle, onSelect: (ThemeStyle) -> Unit) {
-    Column(modifier = Modifier.padding(vertical = 6.dp)) {
-        Text("界面主题", fontWeight = FontWeight.Medium)
-        Text("切换后立即生效", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(8.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ThemeStyle.entries.forEach { style ->
-                ThemeOptionRow(style = style, selected = style == current, onClick = { onSelect(style) })
+fun ThemePicker(current: ThemeStyle, onSelect: (ThemeStyle) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ThemeStyle.entries.forEach { style ->
+            Surface(
+                modifier = Modifier.weight(1f).height(56.dp).clickable { onSelect(style) },
+                shape = RoundedCornerShape(12.dp),
+                color = if (current == style) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(style.label, fontSize = 12.sp, fontWeight = if (current == style) FontWeight.Bold else FontWeight.Normal)
+                        Text(style.description, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ThemeOptionRow(style: ThemeStyle, selected: Boolean, onClick: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
-    ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            ThemeSwatch(style)
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(style.label, fontWeight = FontWeight.SemiBold)
-                Text(style.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            if (selected) Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        }
-    }
-}
-
-@Composable
-private fun ThemeSwatch(style: ThemeStyle) {
-    val brush = when (style) {
-        ThemeStyle.AURORA -> Brush.linearGradient(com.bskai.ui.theme.AuroraGradient)
-        ThemeStyle.NEON -> Brush.linearGradient(com.bskai.ui.theme.NeonGlow)
-        ThemeStyle.GLASS -> Brush.linearGradient(listOf(com.bskai.ui.theme.GlassTint, com.bskai.ui.theme.GlassTint, MaterialTheme.colorScheme.surface))
-        ThemeStyle.VOICE -> Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary))
-    }
-    Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(brush))
-}
-
-@Composable
-private fun ProviderConfigDialog(app: AuraApp, onDismiss: () -> Unit, onSaved: () -> Unit) {
+fun ProviderConfigDialog(app: AuraApp, onDismiss: () -> Unit, onSaved: () -> Unit) {
     val settings by app.settings.settings.collectAsState()
+    val scope = rememberCoroutineScope()
     var url by rememberSaveable { mutableStateOf(settings.apiProviderUrl) }
     var key by rememberSaveable { mutableStateOf(settings.apiProviderKey) }
     var model by rememberSaveable { mutableStateOf(settings.apiModel) }
-    var showPresets by rememberSaveable { mutableStateOf(false) }
-    var showModelPresets by rememberSaveable { mutableStateOf(false) }
-    var testResult by remember { mutableStateOf<String?>(null) }
     var testing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val customModels = remember { mutableStateListOf<String>().apply { addAll(settings.customModelList) } }
+    var testResult by remember { mutableStateOf<String?>(null) }
+    var models by remember { mutableStateOf<List<String>>(emptyList()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("自定义服务商", fontWeight = FontWeight.SemiBold) },
+        title = { Text("配置外接模型", fontWeight = FontWeight.Bold) },
         text = {
-            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp)) {
+            LazyColumn {
                 item {
-                    Text("服务商地址", style = MaterialTheme.typography.labelMedium)
-                    OutlinedTextField(value = url, onValueChange = { url = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("https://api.openai.com/v1") })
-                    OutlinedButton(onClick = { showPresets = !showPresets }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                        Text("选择预设服务商"); Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                    OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("API 地址") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(value = key, onValueChange = { key = it }, label = { Text("API Key") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        DefaultApiUrlPresets.forEach { preset ->
+                            Surface(
+                                modifier = Modifier.clickable { url = preset },
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                            ) {
+                                Text(preset.removePrefix("https://").removeSuffix("/v1"), fontSize = 10.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
                     }
-                    if (showPresets) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            DefaultApiUrlPresets.forEach { presetUrl ->
-                                OutlinedButton(onClick = { url = presetUrl }, modifier = Modifier.fillMaxWidth()) {
-                                    Text(presetUrl, modifier = Modifier.weight(1f))
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    testing = true
+                                    testResult = null
+                                    models = emptyList()
+                                    try {
+                                        val result = LlmClient(app).listModels(url, key)
+                                        models = result
+                                        testResult = "连接成功！找到 ${result.size} 个模型"
+                                    } catch (e: Exception) {
+                                        testResult = "连接失败: ${e.message}"
+                                    }
+                                    testing = false
                                 }
-                            }
+                            },
+                            enabled = url.isNotBlank() && !testing
+                        ) {
+                            Text(if (testing) "测试中…" else "测试连接")
+                        }
+                        if (models.isNotEmpty()) {
+                            Text("${models.size} 个模型可用", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
+                    if (testResult != null) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(testResult!!, style = MaterialTheme.typography.bodySmall, color = if (testResult!!.startsWith("连接成功")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                    }
+                    if (models.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text("可用模型", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(4.dp))
+                    }
                 }
-                item {
-                    Text("API Key", style = MaterialTheme.typography.labelMedium)
-                    OutlinedTextField(value = key, onValueChange = { key = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("sk-...") })
-                    Spacer(Modifier.height(8.dp))
-                }
-                item {
-                    Text("模型名称", style = MaterialTheme.typography.labelMedium)
-                    OutlinedTextField(value = model, onValueChange = { model = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("gpt-4o-mini") })
-                    OutlinedButton(onClick = { showModelPresets = !showModelPresets }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                        Text("选择预设模型"); Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
-                    }
-                    if (showModelPresets) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            DefaultModelPresets.forEach { presetModel ->
-                                OutlinedButton(onClick = { model = presetModel }, modifier = Modifier.fillMaxWidth()) {
-                                    Text(presetModel, modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                }
-                item {
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("自定义模型列表", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
-                        TextButton(onClick = { customModels.add("") }) { Text("添加") }
-                    }
-                    customModels.forEachIndexed { index, m ->
-                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedTextField(value = m, onValueChange = { customModels[index] = it }, modifier = Modifier.weight(1f), singleLine = true, placeholder = { Text("模型 ID") })
-                            IconButton(onClick = { customModels.removeAt(index) }) { Icon(Icons.Default.Delete, contentDescription = "删除") }
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                }
-                item {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    Button(onClick = {
-                        scope.launch {
-                            testing = true; testResult = null
-                            try {
-                                val models = LlmClient(app).listModels(url, key)
-                                testResult = if (models.isNotEmpty()) "成功 · 找到 ${models.size} 个模型" else "成功 · 但未返回模型列表"
-                            } catch (e: Exception) {
-                                testResult = "失败: ${e.message}"
-                            }
-                            testing = false
-                        }
-                    }, modifier = Modifier.fillMaxWidth(), enabled = !testing && url.isNotBlank() && key.isNotBlank()) {
-                        if (testing) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp) else Icon(Icons.Default.SwapHoriz, contentDescription = null)
-                        Spacer(Modifier.width(8.dp)); Text("测试连接")
-                    }
-                    testResult?.let { result ->
-                        Text(result, color = if (result.startsWith("成功")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                items(models) { m ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp).clickable { model = m },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (m == model) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    ) {
+                        Text(m, modifier = Modifier.padding(10.dp), fontWeight = if (m == model) FontWeight.SemiBold else FontWeight.Normal)
                     }
                 }
             }
         },
         confirmButton = {
             Button(onClick = {
-                app.settings.update { s -> s.copy(apiProviderUrl = url, apiProviderKey = key, apiModel = model, customModelList = customModels.filter { it.isNotBlank() }) }
+                app.settings.update { it.copy(apiProviderUrl = url, apiProviderKey = key, apiModel = model) }
                 onSaved()
-            }) { Text("保存") }
+            }, enabled = url.isNotBlank() && key.isNotBlank() && model.isNotBlank()) { Text("保存") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
     )
 }
 
 @Composable
-private fun WorkspaceManageDialog(workspaceManager: com.bskai.workspace.WorkspaceManager, onDismiss: () -> Unit) {
-    val workspaces by workspaceManager.workspaces.collectAsState()
-    val activeId by workspaceManager.activeId.collectAsState()
-    var showCreate by rememberSaveable { mutableStateOf(false) }
-    var newPath by rememberSaveable { mutableStateOf("") }
-    val context = LocalContext.current
+fun LocalAIRegistryDialog(app: AuraApp, onDismiss: () -> Unit) {
+    val settings by app.settings.settings.collectAsState()
+    val scope = rememberCoroutineScope()
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("工作区管理", fontWeight = FontWeight.SemiBold) },
-        text = {
-            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                items(workspaces) { ws ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { workspaceManager.setActive(ws.id) },
-                        colors = CardDefaults.cardColors(containerColor = if (ws.id == activeId) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    ) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Folder, contentDescription = null, tint = if (ws.id == activeId) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(ws.name, fontWeight = FontWeight.Medium)
-                                Text(ws.treeUri ?: "内部工作区", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                            if (ws.id == activeId) Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            else TextButton(onClick = { workspaceManager.setActive(ws.id) }) { Text("选择") }
-                            IconButton(onClick = { workspaceManager.remove(ws.id) }) { Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error) }
-                        }
-                    }
-                }
-                if (showCreate) {
-                    item {
-                        OutlinedTextField(value = newPath, onValueChange = { newPath = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("工作区路径") })
-                        Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                            TextButton(onClick = {
-                                if (newPath.isNotBlank()) {
-                                    workspaceManager.createInternal(newPath, newPath)
-                                    newPath = ""; showCreate = false
-                                }
-                            }) { Text("确认") }
-                            TextButton(onClick = { showCreate = false; newPath = "" }) { Text("取消") }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Row {
-                TextButton(onClick = { showCreate = true }) { Text("新建") }
-                TextButton(onClick = {
-                    val intent = android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT_TREE)
-                    (context as? android.app.Activity)?.startActivityForResult(intent, 1001)
-                }) { Text("导入") }
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
+    var selectedProvider by rememberSaveable { mutableStateOf("") }
+    var providerUrl by rememberSaveable { mutableStateOf("") }
+    var availableModels by remember { mutableStateOf<List<String>>(emptyList()) }
+    var downloading by remember { mutableStateOf("") }
+    var providerKey by rememberSaveable { mutableStateOf("") }
+
+    val providers = listOf(
+        "Ollama" to "http://localhost:11434/v1",
+        "LM Studio" to "http://localhost:1234/v1",
+        "vLLM" to "http://localhost:8000/v1",
+        "Jan" to "http://localhost:1337/v1",
+        "Custom" to ""
     )
-}
 
-@Composable
-private fun LanguageSelectDialog(current: String, onSelect: (String) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择播报语言", fontWeight = FontWeight.SemiBold) },
+        title = { Text("本地 AI 提供商", fontWeight = FontWeight.Bold) },
         text = {
-            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                items(languageList) { (code, label) ->
-                    Row(modifier = Modifier.fillMaxWidth().clickable { onSelect(code); onDismiss() }.padding(vertical = 8.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = code == current, onClick = { onSelect(code); onDismiss() })
-                        Spacer(Modifier.width(8.dp))
-                        Text(label)
+            LazyColumn {
+                item {
+                    Text("选择提供商", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        providers.chunked(2).forEach { row ->
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                row.forEach { (name, url) ->
+                                    Surface(
+                                        modifier = Modifier.weight(1f).height(48.dp)
+                                            .clickable {
+                                                selectedProvider = name
+                                                providerUrl = url
+                                                availableModels = emptyList()
+                                            },
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = if (selectedProvider == name) MaterialTheme.colorScheme.primaryContainer
+                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                                    ) {
+                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Text(name, fontSize = 13.sp, fontWeight = if (selectedProvider == name) FontWeight.Bold else FontWeight.Normal)
+                                        }
+                                    }
+                                }
+                                if (row.size == 1) Spacer(Modifier.weight(1f))
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                }
+                if (selectedProvider.isNotEmpty()) {
+                    item {
+                        OutlinedTextField(value = providerUrl, onValueChange = { providerUrl = it }, label = { Text("API 地址") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(6.dp))
+                        OutlinedTextField(value = providerKey, onValueChange = { providerKey = it }, label = { Text("API Key (可选)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    try {
+                                        val models = LlmClient(app).listModels(providerUrl, providerKey)
+                                        availableModels = models
+                                        app.settings.update { it.copy(apiProviderUrl = providerUrl, apiProviderKey = providerKey, apiModel = models.firstOrNull() ?: "", modelSource = "local") }
+                                    } catch (_: Exception) { availableModels = emptyList() }
+                                }
+                            },
+                            enabled = providerUrl.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("连接并获取模型") }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    items(availableModels) { model ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
+                                .clickable {
+                                    app.settings.update { it.copy(apiModel = model) }
+                                    onDismiss()
+                                },
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (model == settings.apiModel) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(model, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                                if (downloading == model) {
+                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                } else if (model == settings.apiModel) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -512,339 +471,137 @@ private fun LanguageSelectDialog(current: String, onSelect: (String) -> Unit, on
 }
 
 @Composable
-private fun UpdateCenterDialog(onDismiss: () -> Unit) {
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    var releases by remember { mutableStateOf<List<RemoteRelease>>(emptyList()) }
-    var loading by rememberSaveable { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
+fun LanguageSelectDialog(current: String, onSelect: (String) -> Unit, onDismiss: () -> Unit) {
+    val languageList = listOf(
+        "zh" to "简体中文", "zh-TW" to "繁體中文", "en" to "English",
+        "ja" to "日本語", "ko" to "한국어", "es" to "Español",
+        "fr" to "Français", "de" to "Deutsch", "ru" to "Русский"
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择语言", fontWeight = FontWeight.Bold) },
+        text = {
+            LazyColumn {
+                items(languageList) { (code, name) ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { onSelect(code); onDismiss() }.padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = code == current, onClick = { onSelect(code); onDismiss() })
+                        Spacer(Modifier.width(8.dp))
+                        Text(name)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
+    )
+}
+
+@Composable
+fun WorkspaceManageDialog(workspaceManager: com.bskai.workspace.WorkspaceManager, onDismiss: () -> Unit) {
+    val workspaces by workspaceManager.workspaces.collectAsState()
+    val activeId by workspaceManager.activeId.collectAsState()
+    var showCreate by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("工作区管理", fontWeight = FontWeight.Bold) },
+        text = {
+            LazyColumn {
+                items(workspaces) { ws ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                            .clickable { workspaceManager.setActive(ws.id); onDismiss() },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (ws.id == activeId) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                        )
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(ws.name, fontWeight = FontWeight.Medium)
+                                Text(if (ws.kind == WorkspaceEntry.Kind.INTERNAL) "内部存储" else "外部存储", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            if (ws.id == activeId) Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+                item {
+                    TextButton(onClick = { showCreate = true }) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("新建工作区")
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
+    )
+
+    if (showCreate) {
+        AlertDialog(
+            onDismissRequest = { showCreate = false },
+            title = { Text("新建工作区") },
+            text = { OutlinedTextField(value = newName, onValueChange = { newName = it }, label = { Text("名称") }) },
+            confirmButton = {
+                Button(onClick = { workspaceManager.createInternal(newName, newName); showCreate = false; newName = "" }, enabled = newName.isNotBlank()) { Text("创建") }
+            },
+            dismissButton = { TextButton(onClick = { showCreate = false }) { Text("取消") } }
+        )
+    }
+}
+
+@Composable
+fun UpdateCenterDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
-    var downloadStatus by remember { mutableStateOf<Map<String, DownloadStatus>>(emptyMap()) }
+    val scope = rememberCoroutineScope()
+    var releases by remember { mutableStateOf<List<RemoteRelease>>(emptyList()) }
+    var downloading by remember { mutableStateOf<String?>(null) }
+    var downloadStatus by remember { mutableStateOf<DownloadStatus?>(null) }
 
     LaunchedEffect(Unit) {
         scope.launch {
-            try {
+            withContext(Dispatchers.IO) {
                 releases = GitHubApi.listReleases()
-            } catch (e: Exception) {
-                error = e.message
             }
-            loading = false
         }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("更新中心", fontWeight = FontWeight.SemiBold) },
+        title = { Text("更新中心", fontWeight = FontWeight.Bold) },
         text = {
-            Column(modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp)) {
-                TabRow(selectedTabIndex = tab) {
-                    Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("最新版本") })
-                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("历史版本") })
-                }
-                Spacer(Modifier.height(8.dp))
-                if (loading) {
-                    Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                } else if (error != null) {
-                    Text("加载失败: $error", color = MaterialTheme.colorScheme.error)
-                } else {
-                    val current = releases.firstOrNull()
-                    if (tab == 0 && current != null) {
-                        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text(current.name, fontWeight = FontWeight.SemiBold)
-                                Text("版本: ${current.versionName}", style = MaterialTheme.typography.bodySmall)
-                                Text("发布: ${current.publishedAtLabel()}", style = MaterialTheme.typography.bodySmall)
-                                Spacer(Modifier.height(8.dp))
-                                val status = downloadStatus[current.tagName]
-                                when (status) {
-                                    is DownloadStatus.Downloading -> LinearProgressIndicator(progress = { status.percent / 100f }, modifier = Modifier.fillMaxWidth())
-                                    is DownloadStatus.Done -> {
-                                        Button(onClick = { UpdateInstaller.install(context, java.io.File(status.localPath)) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.InstallMobile, contentDescription = null); Spacer(Modifier.width(4.dp)); Text("安装") }
-                                    }
-                                    is DownloadStatus.Failed -> Text("下载失败: ${status.message}", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                                    else -> Button(onClick = {
-                                        scope.launch {
-                                            val target = java.io.File(context.cacheDir, "${current.tagName}.apk")
-                                            GitHubApi.downloadApk(current.apkUrl, target).collect { st ->
-                                                downloadStatus = downloadStatus + (current.tagName to st)
-                                            }
-                                        }
-                                    }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.CloudDownload, contentDescription = null); Spacer(Modifier.width(4.dp)); Text("下载") }
-                                }
-                            }
-                        }
-                    } else if (tab == 1) {
-                        LazyColumn {
-                            items(releases) { release ->
-                                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                                    Column(modifier = Modifier.padding(12.dp)) {
-                                        Text(release.name, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text("${release.versionName} · ${release.publishedAtLabel()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        val status = downloadStatus[release.tagName]
-                                        if (status is DownloadStatus.Done) {
-                                            TextButton(onClick = { UpdateInstaller.install(context, java.io.File(status.localPath)) }) { Text("安装") }
-                                        } else {
-                                            TextButton(onClick = {
-                                                scope.launch {
-                                                    val target = java.io.File(context.cacheDir, "${release.tagName}.apk")
-                                                    GitHubApi.downloadApk(release.apkUrl, target).collect { st ->
-                                                        downloadStatus = downloadStatus + (release.tagName to st)
-                                                    }
-                                                }
-                                            }) { Text("下载") }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
-    )
-}
-
-@Composable
-private fun ApkCleanerCard(context: Context) {
-    val currentVersion = remember { BuildConfig.APP_VERSION }
-    val downloadDir = remember { context.cacheDir }
-    var apkFiles by remember { mutableStateOf<List<File>>(emptyList()) }
-    var scanning by remember { mutableStateOf(true) }
-    var cleaned by rememberSaveable { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        val apks = downloadDir.listFiles { file ->
-            file.extension.equals("apk", ignoreCase = true) && !file.name.contains(currentVersion, ignoreCase = true)
-        }?.toList() ?: emptyList()
-        apkFiles = apks
-        scanning = false
-        if (apks.isNotEmpty()) {
-            apks.forEach { apk -> runCatching { apk.delete() } }
-            apkFiles = emptyList()
-            cleaned = true
-        }
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (cleaned || apkFiles.isEmpty()) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-            else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-        )
-    ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                if (cleaned) Icons.Default.CheckCircle else Icons.Default.Delete,
-                contentDescription = null,
-                tint = if (cleaned) MaterialTheme.colorScheme.primary else if (apkFiles.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("清除已安装的安装包", fontWeight = FontWeight.Medium)
-                if (scanning) {
-                    Text("扫描中…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else if (cleaned) {
-                    Text("已清理旧版本安装包", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                } else {
-                    Text("未发现旧版本安装包", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LocalModelDownloadDialog(app: AuraApp, onDismiss: () -> Unit) {
-    val settings by app.settings.settings.collectAsState()
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    var downloadUrl by rememberSaveable { mutableStateOf("") }
-    var modelName by rememberSaveable { mutableStateOf("") }
-    var downloading by remember { mutableStateOf(false) }
-    var downloadProgress by remember { mutableStateOf(0f) }
-    var downloadError by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-
-    val presetSources = remember {
-        listOf(
-            Triple("HuggingFace", "https://huggingface.co", "全球模型仓库，支持 GGUF/GGML 格式"),
-            Triple("ModelScope", "https://modelscope.cn", "国内模型仓库，支持 Qwen/DeepSeek 等"),
-            Triple("Ollama Library", "https://ollama.com/library", "Ollama 官方模型库"),
-            Triple("本地文件", "", "从设备存储导入 GGUF 文件")
-        )
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("本地模型", fontWeight = FontWeight.SemiBold) },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
-                TabRow(selectedTabIndex = tab) {
-                    Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("已下载") })
-                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("下载模型") })
-                }
-                Spacer(Modifier.height(12.dp))
-                if (tab == 0) {
-                    if (settings.localModels.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                            Text("暂无本地模型\n请前往「下载模型」页下载", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    } else {
-                        LazyColumn {
-                            items(settings.localModels) { model ->
-                                Card(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (model.id == settings.apiModel && settings.modelSource == "local")
-                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                                    )
-                                ) {
-                                    Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Code, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                                        Spacer(Modifier.width(10.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(model.name, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                            Text("${model.source} · ${model.sizeBytes / 1024 / 1024}MB", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        }
-                                        if (model.id == settings.apiModel && settings.modelSource == "local") {
-                                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                        } else {
-                                            TextButton(onClick = {
-                                                app.settings.update { it.copy(apiModel = model.id, modelSource = "local") }
-                                            }) { Text("使用") }
-                                        }
-                                        IconButton(onClick = {
-                                            val file = File(model.path)
-                                            if (file.exists()) file.delete()
-                                            app.settings.update { s ->
-                                                s.copy(localModels = s.localModels.filter { it.id != model.id })
-                                            }
-                                        }) { Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error) }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    LazyColumn {
-                        item {
-                            Text("选择下载源", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 8.dp))
-                            presetSources.forEach { (name, url, desc) ->
-                                OutlinedButton(
-                                    onClick = {
-                                        if (url.isNotEmpty()) {
-                                            downloadUrl = url
-                                        } else {
-                                            scope.launch {
-                                                val intent = android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
-                                                    addCategory(android.content.Intent.CATEGORY_OPENABLE)
-                                                    type = "*/*"
-                                                }
-                                                (context as? android.app.Activity)?.startActivityForResult(intent, 1002)
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(name, fontWeight = FontWeight.Medium)
-                                        Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.height(12.dp))
-                            HorizontalDivider()
-                            Spacer(Modifier.height(12.dp))
-                        }
-                        item {
-                            Text("自定义下载链接", style = MaterialTheme.typography.labelMedium)
-                            OutlinedTextField(
-                                value = downloadUrl,
-                                onValueChange = { downloadUrl = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                placeholder = { Text("https://huggingface.co/.../model.gguf") }
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = modelName,
-                                onValueChange = { modelName = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                placeholder = { Text("模型名称（可选）") }
-                            )
-                            Spacer(Modifier.height(12.dp))
-                            if (downloading) {
-                                LinearProgressIndicator(progress = { downloadProgress }, modifier = Modifier.fillMaxWidth())
-                                Text("下载中... ${(downloadProgress * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
-                            }
-                            downloadError?.let {
-                                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
-                            }
-                            Button(
+            LazyColumn {
+                items(releases) { release ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(release.tagName, fontWeight = FontWeight.Medium)
+                            Text(release.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(6.dp))
+                            val apkUrl = release.apkUrl
+                            val isDownloading = downloading == release.tagName
+                            TextButton(
                                 onClick = {
                                     scope.launch {
-                                        downloading = true
-                                        downloadError = null
-                                        downloadProgress = 0f
-                                        try {
-                                            val name = modelName.ifBlank { downloadUrl.substringAfterLast('/').substringBefore('?') }
-                                            val targetDir = File(context.filesDir, "models").also { it.mkdirs() }
-                                            val targetFile = File(targetDir, name)
-                                            withContext(Dispatchers.IO) {
-                                                val client = okhttp3.OkHttpClient.Builder().readTimeout(5, java.util.concurrent.TimeUnit.MINUTES).build()
-                                                val request = okhttp3.Request.Builder().url(downloadUrl).build()
-                                                val response = client.newCall(request).execute()
-                                                if (!response.isSuccessful) {
-                                                    downloadError = "下载失败: HTTP ${response.code}"
-                                                    downloading = false
-                                                    return@withContext
-                                                }
-                                                val body = response.body ?: run {
-                                                    downloadError = "空响应"
-                                                    downloading = false
-                                                    return@withContext
-                                                }
-                                                val total = body.contentLength()
-                                                body.byteStream().use { input ->
-                                                    targetFile.outputStream().use { output ->
-                                                        val buf = ByteArray(8192)
-                                                        var read: Int
-                                                        var sum = 0L
-                                                        while (input.read(buf).also { read = it } != -1) {
-                                                            output.write(buf, 0, read)
-                                                            sum += read
-                                                            if (total > 0) downloadProgress = sum.toFloat() / total
-                                                        }
-                                                    }
-                                                }
+                                        downloading = release.tagName
+                                        val targetFile = java.io.File(context.cacheDir, "aura-${release.tagName}.apk")
+                                        GitHubApi.downloadApk(apkUrl, targetFile).collect { status ->
+                                            downloadStatus = status
+                                            if (status is DownloadStatus.Done) {
+                                                downloading = null
+                                                UpdateInstaller.install(context, targetFile)
                                             }
-                                            val entry = LocalModelEntry(
-                                                id = "local_${System.currentTimeMillis()}",
-                                                name = name,
-                                                path = targetFile.absolutePath,
-                                                sizeBytes = targetFile.length(),
-                                                source = "自定义下载"
-                                            )
-                                            app.settings.update { s -> s.copy(localModels = s.localModels + entry) }
-                                            downloading = false
-                                            downloadUrl = ""
-                                            modelName = ""
-                                        } catch (e: Exception) {
-                                            downloadError = "下载失败: ${e.message}"
-                                            downloading = false
                                         }
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !downloading && downloadUrl.isNotBlank()
+                                enabled = !isDownloading
                             ) {
-                                Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("开始下载")
+                                Text(if (isDownloading) "下载中…" else "下载 APK")
                             }
                         }
                     }
@@ -856,20 +613,61 @@ private fun LocalModelDownloadDialog(app: AuraApp, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun AboutAuraDialog(onDismiss: () -> Unit) {
+fun AboutAuraDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("关于 AURA", fontWeight = FontWeight.SemiBold) },
+        title = { Text("关于 AURA", fontWeight = FontWeight.Bold) },
         text = {
-            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("AURA ${BuildConfig.APP_VERSION}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("构建号: ${BuildConfig.BUILD_NUMBER}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(12.dp))
-                Text("AURA 是一款 AI 语音助手，支持语音交互、AI 工具调用、内置终端、工作区管理等功能。", style = MaterialTheme.typography.bodyMedium)
+            Column {
+                Text("AURA ${BuildConfig.APP_VERSION}", fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(8.dp))
-                Text("升级指南: 下载最新 APK 后直接安装即可，数据会自动保留。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("AURA 是一款运行在 Android 设备上的 AI 助手，支持多种 AI 模型接入，提供智能对话、工具调用、工作区管理等功能。", style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(12.dp))
+                Text("功能特性:", fontWeight = FontWeight.Medium)
+                Text("• 多模型支持（OpenAI / DeepSeek / 本地 AI）", style = MaterialTheme.typography.bodySmall)
+                Text("• 思考模式（3 级深度调节）", style = MaterialTheme.typography.bodySmall)
+                Text("• AI 工具调用（终端 / 文件读写）", style = MaterialTheme.typography.bodySmall)
+                Text("• 斜杠命令（/ws /model /clear /help）", style = MaterialTheme.typography.bodySmall)
+                Text("• 工作区管理", style = MaterialTheme.typography.bodySmall)
+                Text("• 应用内更新", style = MaterialTheme.typography.bodySmall)
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
     )
+}
+
+@Composable
+fun ApkCleanerCard(context: Context) {
+    val scope = rememberCoroutineScope()
+    var cleaning by remember { mutableStateOf(false) }
+    var cleaned by remember { mutableStateOf(0) }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("清除旧安装包", fontWeight = FontWeight.Medium)
+                Text("自动扫描并删除旧版本 APK", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (cleaned > 0) {
+                Text("已清理 $cleaned 个", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            } else {
+                TextButton(onClick = {
+                    scope.launch {
+                        cleaning = true
+                        val cacheDir = context.cacheDir
+                        val apks = cacheDir.listFiles { f -> f.name.endsWith(".apk") && !f.name.contains(BuildConfig.APP_VERSION) }
+                        apks?.forEach { it.delete() }
+                        cleaned = apks?.size ?: 0
+                        cleaning = false
+                    }
+                }, enabled = !cleaning) {
+                    Text(if (cleaning) "清理中…" else "清理")
+                }
+            }
+        }
+    }
 }

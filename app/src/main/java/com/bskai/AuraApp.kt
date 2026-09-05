@@ -3,6 +3,7 @@ package com.bskai
 import android.app.Application
 import android.content.Context
 import com.bskai.agent.AgentEngine
+import com.bskai.agent.Coordinator
 import com.bskai.agent.slash.ClearCommand
 import com.bskai.agent.slash.HelpCommand
 import com.bskai.agent.slash.ModelPickCommand
@@ -13,23 +14,19 @@ import com.bskai.agent.tools.ReadFileTool
 import com.bskai.agent.tools.RunShellTool
 import com.bskai.agent.tools.ToolRegistry
 import com.bskai.agent.tools.WriteFileTool
-import com.bskai.core.VoiceCoordinator
 import com.bskai.data.SettingsRepository
 import com.bskai.i18n.LocaleManager
 import com.bskai.permission.ShizukuBridge
 import com.bskai.terminal.TerminalEngine
-import com.bskai.voice.VoiceEngine
 import com.bskai.workspace.WorkspaceManager
 
 class AuraApp : Application() {
 
     lateinit var settings: SettingsRepository
         private set
-    lateinit var voice: VoiceEngine
-        private set
     lateinit var agent: AgentEngine
         private set
-    lateinit var coordinator: VoiceCoordinator
+    lateinit var coordinator: Coordinator
         private set
     lateinit var shizuku: ShizukuBridge
         private set
@@ -50,7 +47,6 @@ class AuraApp : Application() {
         super.onCreate()
         settings = SettingsRepository(this)
         applyLocale()
-        voice = VoiceEngine(this, settings)
         shizuku = ShizukuBridge(this)
         terminal = TerminalEngine(shizuku)
         workspace = WorkspaceManager(this, settings)
@@ -83,7 +79,7 @@ class AuraApp : Application() {
             it.toolRegistry = toolRegistry
             it.slashRegistry = slashRegistry
         }
-        coordinator = VoiceCoordinator(this, settings, voice, agent)
+        coordinator = Coordinator(settings, agent)
     }
 
     fun applyLocale() {

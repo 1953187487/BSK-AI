@@ -1,6 +1,25 @@
 {
   "announcements": [
     {
+      "version": "2.0.3",
+      "title": "AURA 2.0.3 单角色思考模式 + 液态玻璃 UI + 本地 AI 提供商",
+      "content": "AURA 2.0.3 发布。移除所有后台服务与语音引擎，简化为单角色 AURA + 3 级思考模式，新增 iOS 27 液态玻璃 UI 风格，支持本地 AI 提供商（Ollama/LM Studio/vLLM/Jan/Custom）自动拉取模型，斜杠命令自动弹出，流式输出 + 工具调用显示。",
+      "changelog": [
+        "移除所有后台服务（VoiceService/BootReceiver/MicrophoneReceiver）",
+        "彻底删除语音引擎（VoiceEngine/VoiceCoordinator/AudioController）",
+        "简化为单角色 AURA + 思考模式（3 级深度）",
+        "iOS 27 液态玻璃 UI：新增 LIQUID 主题风格",
+        "本地 AI 提供商选择：Ollama/LM Studio/vLLM/Jan/Custom，自动拉取模型列表",
+        "模型选择后自动替换到聊天框",
+        "斜杠命令自动弹出：输入 / 后显示命令列表",
+        "AI 回答流式输出 + 工具调用显示",
+        "SettingsScreen 全面重写（外观/思考模式/模型管理/工具与工作区/权限/更新/关于）",
+        "Coordinator 替代 VoiceCoordinator，纯文本→AgentEngine 桥梁",
+        "minSdk 28，targetSdk 34",
+        "versionCode 303"
+      ]
+    },
+    {
       "version": "2.0.2",
       "title": "AURA 2.0.2 角色系统、模式切换与聊天栏重设计",
       "content": "AURA 2.0.2 发布。新增角色系统（5个默认角色+AI生成角色）、8种模式切换（含3级思考深度）、模型选择器半宽长方形、聊天栏彻底重写（圆角输入框+圆形发送按钮+流式光标）、ChatBubble带角色头像、彻底移除语音功能。",
