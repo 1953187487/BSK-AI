@@ -74,7 +74,9 @@ class VoiceEngine(
             @Deprecated("Deprecated in Java")
             override fun onError(utteranceId: String?) { _isSpeaking.value = false }
         })
-        ensureRecognizer()
+        // 注意：不在 init 里创建 SpeechRecognizer。
+        // 一些国产 ROM 上 ASR engine 未就绪时 createSpeechRecognizer 会抛异常或返回 null，
+        // 放进 startListening 内 ensureRecognizer() 才安全。
     }
 
     override fun onInit(status: Int) {
