@@ -17,13 +17,33 @@ data class LocalModelEntry(
     val path: String,
     val sizeBytes: Long,
     val source: String,
+    val category: String = "通用",
     val downloadedAt: Long = System.currentTimeMillis()
+)
+
+data class ChatRole(
+    val id: String,
+    val name: String,
+    val avatar: String,
+    val systemPrompt: String,
+    val isAiGenerated: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+data class ChatMode(
+    val id: String,
+    val name: String,
+    val icon: String,
+    val description: String,
+    val systemPrompt: String = "",
+    val thinkingLevel: Int = 0,
+    val isBuiltIn: Boolean = true
 )
 
 data class AppSettings(
     val darkTheme: Boolean = true,
     val autoStartService: Boolean = false,
-    val ttsEnabled: Boolean = true,
+    val ttsEnabled: Boolean = false,
     val ttsLanguage: String = "zh",
     val ttsPitch: Float = 1.0f,
     val ttsSpeed: Float = 1.0f,
@@ -38,7 +58,12 @@ data class AppSettings(
     val customModelList: List<String> = emptyList(),
     val agentToolsEnabled: Boolean = false,
     val localModels: List<LocalModelEntry> = emptyList(),
-    val modelSource: String = "api"
+    val modelSource: String = "api",
+    val currentRoleId: String = "default",
+    val currentModeId: String = "chat",
+    val thinkingLevel: Int = 0,
+    val roles: List<ChatRole> = emptyList(),
+    val modes: List<ChatMode> = emptyList()
 ) {
     val apiConfigured: Boolean
         get() = apiProviderUrl.isNotBlank() && apiProviderKey.isNotBlank() && apiModel.isNotBlank()
@@ -60,4 +85,23 @@ val DefaultApiUrlPresets: List<String> = listOf(
     "https://api.deepseek.com/v1",
     "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "https://generativelanguage.googleapis.com/v1beta/openai"
+)
+
+val DefaultModes: List<ChatMode> = listOf(
+    ChatMode("chat", "聊天", "💬", "自由对话模式"),
+    ChatMode("think", "思考", "🧠", "深度思考模式", thinkingLevel = 2),
+    ChatMode("analyze", "分析", "🔍", "分析工作区APK应用"),
+    ChatMode("dev", "开发", "🛠️", "开发模式，安全APK分析"),
+    ChatMode("creative", "创意", "🎨", "创意写作模式"),
+    ChatMode("code", "编程", "💻", "代码编写与调试"),
+    ChatMode("translate", "翻译", "🌐", "多语言翻译模式"),
+    ChatMode("tutor", "教学", "📚", "知识讲解模式")
+)
+
+val DefaultRoles: List<ChatRole> = listOf(
+    ChatRole("default", "AURA", "🤖", "你是一个智能AI助手AURA，运行在Android设备上。你友好、专业、乐于助人。"),
+    ChatRole("coder", "代码专家", "💻", "你是一个专业的编程专家，精通各种编程语言和技术栈。"),
+    ChatRole("writer", "写作助手", "✍️", "你是一个专业的写作助手，擅长创意写作、文案撰写和内容创作。"),
+    ChatRole("analyst", "数据分析师", "📊", "你是一个数据分析专家，擅长分析数据、发现趋势和提供洞察。"),
+    ChatRole("teacher", "知识导师", "🎓", "你是一个耐心的教师，擅长用简单易懂的方式解释复杂概念。")
 )

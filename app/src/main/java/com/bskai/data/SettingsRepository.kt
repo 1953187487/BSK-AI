@@ -25,10 +25,14 @@ class SettingsRepository(context: Context) {
     private fun load(): AppSettings {
         val localModelsJson = prefs.getString(KEY_LOCAL_MODELS, "[]") ?: "[]"
         val localModels = parseLocalModels(localModelsJson)
+        val rolesJson = prefs.getString(KEY_ROLES, "[]") ?: "[]"
+        val roles = parseRoles(rolesJson)
+        val modesJson = prefs.getString(KEY_MODES, "[]") ?: "[]"
+        val modes = parseModes(modesJson)
         return AppSettings(
             darkTheme = prefs.getBoolean(KEY_DARK_THEME, true),
             autoStartService = prefs.getBoolean(KEY_AUTO_START, false),
-            ttsEnabled = prefs.getBoolean(KEY_TTS_ENABLED, true),
+            ttsEnabled = prefs.getBoolean(KEY_TTS_ENABLED, false),
             ttsLanguage = prefs.getString(KEY_TTS_LANGUAGE, "zh") ?: "zh",
             ttsPitch = prefs.getFloat(KEY_TTS_PITCH, 1.0f),
             ttsSpeed = prefs.getFloat(KEY_TTS_SPEED, 1.0f),
@@ -46,7 +50,12 @@ class SettingsRepository(context: Context) {
                 ?: emptyList(),
             agentToolsEnabled = prefs.getBoolean(KEY_AGENT_TOOLS_ENABLED, false),
             localModels = localModels,
-            modelSource = prefs.getString(KEY_MODEL_SOURCE, "api") ?: "api"
+            modelSource = prefs.getString(KEY_MODEL_SOURCE, "api") ?: "api",
+            currentRoleId = prefs.getString(KEY_CURRENT_ROLE, "default") ?: "default",
+            currentModeId = prefs.getString(KEY_CURRENT_MODE, "chat") ?: "chat",
+            thinkingLevel = prefs.getInt(KEY_THINKING_LEVEL, 0),
+            roles = roles,
+            modes = modes
         )
     }
 
@@ -62,11 +71,55 @@ class SettingsRepository(context: Context) {
                     path = o.optString("path"),
                     sizeBytes = o.optLong("sizeBytes"),
                     source = o.optString("source"),
+                    category = o.optString("category", "通用"),
                     downloadedAt = o.optLong("downloadedAt")
                 )
             }
         } catch (_: Exception) {
             emptyList()
+        }
+    }
+
+    private fun parseRoles(json: String): List<ChatRole> {
+        if (json == "[]") return DefaultRoles
+        return try {
+            val arr = org.json.JSONArray(json)
+            val list = (0 until arr.length()).map { i ->
+                val o = arr.getJSONObject(i)
+                ChatRole(
+                    id = o.optString("id"),
+                    name = o.optString("name"),
+                    avatar = o.optString("avatar"),
+                    systemPrompt = o.optString("systemPrompt"),
+                    isAiGenerated = o.optBoolean("isAiGenerated"),
+                    createdAt = o.optLong("createdAt")
+                )
+            }
+            if (list.isEmpty()) DefaultRoles else list
+        } catch (_: Exception) {
+            DefaultRoles
+        }
+    }
+
+    private fun parseModes(json: String): List<ChatMode> {
+        if (json == "[]") return DefaultModes
+        return try {
+            val arr = org.json.JSONArray(json)
+            val list = (0 until arr.length()).map { i ->
+                val o = arr.getJSONObject(i)
+                ChatMode(
+                    id = o.optString("id"),
+                    name = o.optString("name"),
+                    icon = o.optString("icon"),
+                    description = o.optString("description"),
+                    systemPrompt = o.optString("systemPrompt"),
+                    thinkingLevel = o.optInt("thinkingLevel"),
+                    isBuiltIn = o.optBoolean("isBuiltIn", true)
+                )
+            }
+            if (list.isEmpty()) DefaultModes else list
+        } catch (_: Exception) {
+            DefaultModes
         }
     }
 
@@ -79,7 +132,33 @@ class SettingsRepository(context: Context) {
                     put("path", m.path)
                     put("sizeBytes", m.sizeBytes)
                     put("source", m.source)
+                    put("category", m.category)
                     put("downloadedAt", m.downloadedAt)
+                })
+            }
+        }.toString()
+        val rolesJson = org.json.JSONArray().apply {
+            s.roles.forEach { r ->
+                put(org.json.JSONObject().apply {
+                    put("id", r.id)
+                    put("name", r.name)
+                    put("avatar", r.avatar)
+                    put("systemPrompt", r.systemPrompt)
+                    put("isAiGenerated", r.isAiGenerated)
+                    put("createdAt", r.createdAt)
+                })
+            }
+        }.toString()
+        val modesJson = org.json.JSONArray().apply {
+            s.modes.forEach { m ->
+                put(org.json.JSONObject().apply {
+                    put("id", m.id)
+                    put("name", m.name)
+                    put("icon", m.icon)
+                    put("description", m.description)
+                    put("systemPrompt", m.systemPrompt)
+                    put("thinkingLevel", m.thinkingLevel)
+                    put("isBuiltIn", m.isBuiltIn)
                 })
             }
         }.toString()
@@ -102,6 +181,11 @@ class SettingsRepository(context: Context) {
             .putBoolean(KEY_AGENT_TOOLS_ENABLED, s.agentToolsEnabled)
             .putString(KEY_LOCAL_MODELS, localModelsJson)
             .putString(KEY_MODEL_SOURCE, s.modelSource)
+            .putString(KEY_CURRENT_ROLE, s.currentRoleId)
+            .putString(KEY_CURRENT_MODE, s.currentModeId)
+            .putInt(KEY_THINKING_LEVEL, s.thinkingLevel)
+            .putString(KEY_ROLES, rolesJson)
+            .putString(KEY_MODES, modesJson)
             .apply()
     }
 
@@ -165,5 +249,10 @@ class SettingsRepository(context: Context) {
         private const val KEY_AGENT_TOOLS_ENABLED = "agent_tools_enabled"
         private const val KEY_LOCAL_MODELS = "local_models"
         private const val KEY_MODEL_SOURCE = "model_source"
+        private const val KEY_CURRENT_ROLE = "current_role"
+        private const val KEY_CURRENT_MODE = "current_mode"
+        private const val KEY_THINKING_LEVEL = "thinking_level"
+        private const val KEY_ROLES = "roles"
+        private const val KEY_MODES = "modes"
     }
 }

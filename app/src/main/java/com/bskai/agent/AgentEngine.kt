@@ -141,13 +141,40 @@ class AgentEngine(
     }
 
     private fun buildRequestMessages(): List<ChatMsg> {
-        val system = ChatMsg(
-            "system",
-            "你是 AURA，一位手机语音助手。请用简体中文简洁回答，语气友好。" +
-                if (workspaceEnabled) " 当前已启用工作区工具，你可以读写文件、执行 shell 命令。" else ""
-        )
-        val history = _conversation.value.takeLast(settings.settings.value.maxHistoryLength.coerceAtLeast(10))
+        val s = settings.settings.value
+        val rolePrompt = s.roles.firstOrNull { it.id == s.currentRoleId }?.systemPrompt
+            ?: "你是一个智能AI助手AURA，运行在Android设备上。你友好、专业、乐于助人。"
+        val modePrompt = buildModePrompt(s)
+        val system = ChatMsg("system", "$rolePrompt$modePrompt")
+        val history = _conversation.value.takeLast(s.maxHistoryLength.coerceAtLeast(10))
         return listOf(system) + history
+    }
+
+    private fun buildModePrompt(s: com.bskai.data.AppSettings): String {
+        val mode = s.modes.firstOrNull { it.id == s.currentModeId }
+        val sb = StringBuilder()
+        if (mode != null && mode.systemPrompt.isNotBlank()) {
+            sb.append("\n").append(mode.systemPrompt)
+        }
+        if (mode?.id == "think" || s.thinkingLevel > 0) {
+            val level = if (s.thinkingLevel > 0) s.thinkingLevel else mode?.thinkingLevel ?: 1
+            sb.append("\n请进行深度思考，思考深度等级：$level/3。")
+            when (level) {
+                1 -> sb.append("请简要分析问题并给出答案。")
+                2 -> sb.append("请逐步推理，考虑多种可能性。")
+                3 -> sb.append("请深入分析，考虑所有角度，给出详细推理过程。")
+            }
+        }
+        if (mode?.id == "analyze") {
+            sb.append("\n你正在分析模式。请分析工作区中的APK应用，提取包名、权限、组件等信息。")
+        }
+        if (mode?.id == "dev") {
+            sb.append("\n你正在开发模式。你可以安全地分析APK、下载必要依赖、请求必要权限。")
+        }
+        if (workspaceEnabled) {
+            sb.append(" 当前已启用工作区工具，你可以读写文件、执行 shell 命令。")
+        }
+        return sb.toString()
     }
 
     fun notifyAssistant(text: String) {
@@ -156,6 +183,22 @@ class AgentEngine(
 
     fun clearConversation() {
         _conversation.value = emptyList()
+    }
+
+    /**
+     * 单次文本生成（非流式），用于 AI 生成角色 prompt 等场景。
+     * 发送单条 user 消息，返回 assistant 文本内容。
+     */
+    suspend fun generateText(prompt: String): String {
+        val s = settings.settings.value
+        if (!s.apiConfigured) throw IllegalStateException("未配置 AI 服务")
+        val messages = listOf(ChatMsg("user", prompt))
+        return try {
+            val resp = llm.chat(s, messages)
+            resp.content.ifEmpty { throw IllegalStateException("返回内容为空") }
+        } catch (e: Exception) {
+            throw e
+        }
     }
 
     fun recentMessages(max: Int): List<ChatMsg> = buildRequestMessages()
@@ -185,16 +228,16 @@ class AgentEngine(
 
     private fun localReply(text: String): String {
         val s = settings.settings.value
-        val tail = if (s.apiConfigured) "" else "\n\n提示：当前未配置 AI 服务，请到设置中填入 API。\n您仍可以按住说话，告诉我您要做什么。"
+        val tail = if (s.apiConfigured) "" else "\n\n提示：当前未配置 AI 服务，请到设置中填入 API。"
 
         val base = when {
             text.contains("你好") || text.contains("您好") || text.contains("hi") ||
                 text.contains("hello") || text.contains("嗨") ->
-                "你好呀，我是 AURA。按住说话就可以跟我聊天。"
+                "你好呀，我是 AURA。"
             text.contains("你是谁") || text.contains("介绍你自己") ->
-                "我是 AURA，本地语音助手。可以听你说话，连接 AI 服务后还能陪你聊天和回答各种问题。"
+                "我是 AURA，运行在 Android 设备上的 AI 助手。"
             text.contains("你能做什么") || text.contains("你会什么") || text.contains("有什么功能") ->
-                "在设置中配置 AI 服务后，我可以陪你自由对话，回答问题。"
+                "在设置中配置 AI 服务后，我可以陪你自由对话，回答各种问题。"
             text.contains("谢谢") -> "不客气，随时找我。"
             else -> "抱歉，我还没有完全听明白。在设置里配置 AI 服务后我能更好地回答您。"
         }
