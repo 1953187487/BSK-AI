@@ -36,6 +36,15 @@ data class UpdateCheckResult(
     val hasUpdate: Boolean
 )
 
+sealed interface DownloadStatus {
+    data object Idle : DownloadStatus
+    data class Downloading(val bytesRead: Long, val total: Long) : DownloadStatus {
+        val percent: Int get() = if (total > 0) ((bytesRead.toDouble() / total) * 100).toInt() else 0
+    }
+    data class Done(val localPath: String, val size: Long) : DownloadStatus
+    data class Failed(val message: String) : DownloadStatus
+}
+
 fun parseReleases(json: String): List<RemoteRelease> {
     val list = mutableListOf<RemoteRelease>()
     try {
