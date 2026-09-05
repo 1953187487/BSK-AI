@@ -1,6 +1,20 @@
 {
   "announcements": [
     {
+      "version": "2.0.0-beta.9",
+      "title": "AURA beta 9 流动式输出与语音修复",
+      "content": "对话回复改为 SSE 流式输出，每收到一段就实时刷新气泡，结尾带闪烁光标；语音识别修复国产 ROM 抢麦、识别器忙、5 秒无声音自动结束等问题。",
+      "changelog": [
+        "回复改为流式（SSE）：服务端每推一段就在气泡里追加，结尾有闪烁光标",
+        "VoiceEngine 持久化 SpeechRecognizer 实例，避免每次 create/destroy",
+        "startListening 失败后自动 destroy 重试一次",
+        "5 秒没听到声音自动 stopListening，避免麦克风常亮",
+        "识别器状态机新增 IDLE / STARTING / LISTENING / PROCESSING / ERROR",
+        "EXTRA_PREFER_OFFLINE = true，让本地 ASR 引擎优先",
+        "更详细的错误码映射（含 SERVER_DISCONNECTED / TOO_MANY_REQUESTS 等）"
+      ]
+    },
+    {
       "version": "2.0.0-beta.8",
       "title": "AURA beta 8 协议重签 + 多语言 + 主题背景重画",
       "content": "升级协议：每次更新到新版本时启动会重新弹出协议供审阅。多语言：自动跟随系统语言，新增日 / 韩 / 西 / 法 / 德。更新弹窗合并：检查更新 + 历史版本合二为一，使用底部 Tab 切换。主题背景：四套主题背景重新设计为多层渐变 + 浮动光斑呼吸动效。",

@@ -11,12 +11,12 @@ android {
         applicationId "com.bskai"
         minSdk 26
         targetSdk 34
-        versionCode 208
-        versionName "2.0.0-beta.8"
+        versionCode 209
+        versionName "2.0.0-beta.9"
 
         buildConfigField "String", "APP_NAME", '"AURA"'
-        buildConfigField "String", "APP_VERSION", '"2.0.0-beta.8"'
-        buildConfigField "int", "BUILD_NUMBER", "208"
+        buildConfigField "String", "APP_VERSION", '"2.0.0-beta.9"'
+        buildConfigField "int", "BUILD_NUMBER", "209"
     }
 
     signingConfigs {
@@ -86,4 +86,7 @@ dependencies {
     implementation 'org.json:json:20231013'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:okhttp-urlconnection:4.12.0'
+
+    implementation 'dev.rikka.shizuku:api:13.1.5'
+    implementation 'dev.rikka.shizuku:provider:13.1.5'
 }

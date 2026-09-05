@@ -5,9 +5,10 @@ import com.bskai.data.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 
 class AgentEngine(
-    context: Context,
+    @Suppress("UNUSED_PARAMETER") context: Context,
     private val settings: SettingsRepository
 ) {
 
@@ -16,34 +17,62 @@ class AgentEngine(
     private val _conversation = MutableStateFlow<List<ChatMsg>>(emptyList())
     val conversation: StateFlow<List<ChatMsg>> = _conversation.asStateFlow()
 
+    /**
+     * 用户发言入口。先入栈 user 消息，再启动一次 assistant 回复。
+     * 流式 chat：先把 assistant 占位空消息放入栈，每收到一段 delta 就替换最后一条的 content。
+     */
     suspend fun answer(userText: String): String {
         val text = userText.trim()
         if (text.isEmpty()) return "请再说一遍"
 
         val s = settings.settings.value
-        if (s.apiConfigured) {
-            append(ChatMsg("user", text))
-            val history = recentMessages(s.maxHistoryLength)
-            return try {
-                val reply = llm.chat(s, history)
-                val clean = reply.ifEmpty { "抱歉，我没有想好怎么回答。" }
-                append(ChatMsg("assistant", clean))
-                clean
-            } catch (_: Exception) {
-                val fallback = localReply(text)
-                append(ChatMsg("assistant", fallback))
-                fallback
-            }
-        }
         append(ChatMsg("user", text))
-        return localReply(text)
+
+        if (!s.apiConfigured) {
+            val fallback = localReply(text)
+            append(ChatMsg("assistant", fallback))
+            return fallback
+        }
+
+        // 占位 assistant，content="" 会随流式更新
+        val placeholderIndex = appendAndReturnIndex(ChatMsg("assistant", ""))
+        val sb = StringBuilder()
+
+        return try {
+            val history = recentMessages(s.maxHistoryLength)
+            llm.chatStream(s, history).collect { ev ->
+                when (ev) {
+                    is LlmClient.StreamEvent.Delta -> {
+                        sb.append(ev.text)
+                        updateLastAssistant(sb.toString())
+                    }
+                    is LlmClient.StreamEvent.Done -> {
+                        val final = ev.fullContent.ifEmpty { sb.toString() }
+                        val clean = final.ifEmpty { "抱歉，我没有想好怎么回答。" }
+                        updateLastAssistant(clean)
+                    }
+                    is LlmClient.StreamEvent.Error -> {
+                        if (sb.isEmpty()) {
+                            val fallback = localReply(text)
+                            updateLastAssistant(fallback)
+                        }
+                    }
+                    else -> Unit
+                }
+            }
+            sb.toString().ifEmpty { "抱歉，我没有想好怎么回答。" }
+        } catch (_: Exception) {
+            if (sb.isEmpty()) {
+                val fallback = localReply(text)
+                updateLastAssistant(fallback)
+                fallback
+            } else sb.toString()
+        }
     }
 
-    private fun announce(text: String) {
+    fun notifyAssistant(text: String) {
         append(ChatMsg("assistant", text))
     }
-
-    fun notifyAssistant(text: String) = announce(text)
 
     fun recentMessages(max: Int): List<ChatMsg> {
         val system = ChatMsg(
@@ -57,6 +86,24 @@ class AgentEngine(
     private fun append(msg: ChatMsg) {
         val max = settings.settings.value.maxHistoryLength
         _conversation.value = (_conversation.value + msg).takeLast(max.coerceAtLeast(10))
+    }
+
+    private fun appendAndReturnIndex(msg: ChatMsg): Int {
+        val max = settings.settings.value.maxHistoryLength
+        val list = (_conversation.value + msg).takeLast(max.coerceAtLeast(10))
+        _conversation.value = list
+        return list.size - 1
+    }
+
+    private fun updateLastAssistant(content: String) {
+        val list = _conversation.value.toMutableList()
+        for (i in list.indices.reversed()) {
+            if (list[i].role == "assistant") {
+                list[i] = list[i].copy(content = content)
+                _conversation.value = list
+                return
+            }
+        }
     }
 
     private fun localReply(text: String): String {

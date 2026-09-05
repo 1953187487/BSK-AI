@@ -296,7 +296,13 @@ private fun StandardLayout(
                     if (conversation.isEmpty()) {
                         item { EmptyHint(settings.apiConfigured, style) }
                     } else {
-                        items(conversation) { msg -> ChatBubble(msg, style) }
+                        items(conversation) { msg ->
+                            val isStreaming = msg.role == "assistant" && processing &&
+                                msg === conversation.lastOrNull { it.role == "assistant" } &&
+                                msg.content.isNotEmpty() &&
+                                conversation.last() === msg
+                            ChatBubble(msg, style, streaming = isStreaming)
+                        }
                     }
                 }
             }
@@ -819,7 +825,12 @@ private fun BigMicButton(
 }
 
 @Composable
-private fun ChatBubble(msg: ChatMsg, style: ThemeStyle, compact: Boolean = false) {
+private fun ChatBubble(
+    msg: ChatMsg,
+    style: ThemeStyle,
+    compact: Boolean = false,
+    streaming: Boolean = false
+) {
     val isUser = msg.role == "user"
     val glass = style == ThemeStyle.GLASS
     Row(
@@ -847,12 +858,39 @@ private fun ChatBubble(msg: ChatMsg, style: ThemeStyle, compact: Boolean = false
                 else MaterialTheme.colorScheme.onSurface,
                 fontSize = if (compact) 14.sp else 15.sp
             )
+            if (streaming && !isUser && msg.content.isNotEmpty()) {
+                StreamingCursor(
+                    modifier = Modifier.padding(end = 10.dp, bottom = if (compact) 10.dp else 12.dp),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
         if (isUser) {
             Spacer(Modifier.width(6.dp))
             BubbleAvatar(letter = "你", isUser = true, style = style)
         }
     }
+}
+
+@Composable
+private fun StreamingCursor(
+    modifier: Modifier = Modifier,
+    color: androidx.compose.ui.graphics.Color
+) {
+    val alpha by rememberInfiniteTransition(label = "cursor").animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(700, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+    androidx.compose.foundation.layout.Box(
+        modifier = modifier
+            .size(width = 2.dp, height = 14.dp)
+            .background(color.copy(alpha = alpha))
+    )
 }
 
 @Composable
