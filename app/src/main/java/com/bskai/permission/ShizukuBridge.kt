@@ -28,9 +28,14 @@ class ShizukuBridge(private val context: Context) {
                 State.GRANTED else State.NEED_PERMISSION
         }
 
+    private val binderDeathListener = Shizuku.OnBinderDeadListener {
+        _state.value = detect()
+    }
+
     init {
         try {
             Shizuku.addRequestPermissionResultListener(requestPermissionListener)
+            Shizuku.addBinderDeadListener(binderDeathListener)
         } catch (_: Throwable) {}
     }
 
@@ -39,12 +44,20 @@ class ShizukuBridge(private val context: Context) {
     fun isGranted(): Boolean = _state.value == State.GRANTED
 
     fun requestPermission(requestCode: Int = 1001) {
-        if (_state.value == State.NEED_PERMISSION) {
-            try {
-                Shizuku.requestPermission(requestCode)
-            } catch (e: Exception) {
-                Log.w(TAG, "requestPermission failed", e)
+        try {
+            if (!Shizuku.pingBinder()) {
+                _state.value = State.UNAVAILABLE
+                return
             }
+            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                _state.value = State.GRANTED
+                return
+            }
+            _state.value = State.NEED_PERMISSION
+            Shizuku.requestPermission(requestCode)
+        } catch (e: Exception) {
+            Log.w(TAG, "requestPermission failed", e)
+            _state.value = State.UNAVAILABLE
         }
     }
 
@@ -66,6 +79,7 @@ class ShizukuBridge(private val context: Context) {
 
     fun shutdown() {
         try { Shizuku.removeRequestPermissionResultListener(requestPermissionListener) } catch (_: Throwable) {}
+        try { Shizuku.removeBinderDeadListener(binderDeathListener) } catch (_: Throwable) {}
     }
 
     companion object { private const val TAG = "ShizukuBridge" }

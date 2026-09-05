@@ -46,6 +46,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -74,6 +75,7 @@ import androidx.compose.ui.unit.sp
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
 import com.bskai.agent.LlmClient
+import com.bskai.data.ChatMode
 import com.bskai.data.DefaultApiUrlPresets
 import com.bskai.data.DefaultModelPresets
 import com.bskai.data.ThemeStyle
@@ -134,29 +136,53 @@ fun SettingsScreen(
                 SectionDivider()
             }
             item {
-                SectionHeader("思考模式", Icons.Default.Tune)
-                Text("思考深度: ${settings.thinkingLevel}/3", fontWeight = FontWeight.Medium)
-                Spacer(Modifier.height(4.dp))
-                Slider(
-                    value = settings.thinkingLevel.toFloat(),
-                    onValueChange = { },
-                    onValueChangeFinished = {
-                        val next = if (settings.thinkingLevel >= 3) 1 else settings.thinkingLevel + 1
-                        app.settings.update { it.copy(thinkingLevel = next) }
-                    },
-                    valueRange = 1f..3f,
-                    steps = 1
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("简要", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("标准", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("深入", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SectionHeader("对话模式", Icons.Default.Tune)
+                SettingRowButton(
+                    "当前模式",
+                    if (settings.chatMode == ChatMode.DEV) "应用开发模式" else "思考模式 (深度 ${settings.thinkingLevel}/3)",
+                    Icons.Default.Tune,
+                    "切换"
+                ) {
+                    val next = if (settings.chatMode == ChatMode.THINK) ChatMode.DEV else ChatMode.THINK
+                    app.settings.update { it.copy(chatMode = next) }
+                }
+                if (settings.chatMode == ChatMode.THINK) {
+                    Text("思考深度: ${settings.thinkingLevel}/3", fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.height(4.dp))
+                    Slider(
+                        value = settings.thinkingLevel.toFloat(),
+                        onValueChange = { },
+                        onValueChangeFinished = {
+                            val next = if (settings.thinkingLevel >= 3) 1 else settings.thinkingLevel + 1
+                            app.settings.update { it.copy(thinkingLevel = next) }
+                        },
+                        valueRange = 1f..3f,
+                        steps = 1
+                    )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("简要", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("标准", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("深入", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    Text("应用开发模式：AI 辅助开发 Android 应用，支持构建 APK", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(8.dp))
+                    SettingRowButton(
+                        "开发依赖",
+                        if (settings.devDependenciesDownloaded) "已下载构建工具" else "需要下载构建依赖",
+                        Icons.Default.Code,
+                        if (settings.devDependenciesDownloaded) "已就绪" else "下载"
+                    ) {
+                        scope.launch {
+                            app.settings.update { it.copy(devDependenciesDownloaded = true) }
+                        }
+                    }
                 }
                 SectionDivider()
             }
             item {
                 SectionHeader("模型管理", Icons.Default.Tune)
-                SettingRowButton("本地 AI", if (settings.localModels.isEmpty()) "选择本地 AI 提供商" else "已下载 ${settings.localModels.size} 个本地模型", Icons.Default.CloudDownload, "配置") { showLocalModelDialog = true }
+                SettingRowButton("本地模型 AI", if (settings.localModels.isEmpty()) "选择本地 AI 提供商" else "已下载 ${settings.localModels.size} 个本地模型", Icons.Default.CloudDownload, "配置") { showLocalModelDialog = true }
                 SettingRowButton("外接模型（API）", if (settings.apiConfigured) "已配置 ${settings.apiModel}" else "未配置外接模型", Icons.Default.SwapHoriz, "配置") { showProviderDialog = true }
                 if (settings.customModelList.isNotEmpty()) {
                     Text("已保存 ${settings.customModelList.size} 个自定义模型", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -192,7 +218,7 @@ fun SettingsScreen(
     }
 
     if (showProviderDialog) ProviderConfigDialog(app, { showProviderDialog = false }, { showProviderDialog = false })
-    if (showLocalModelDialog) LocalAIRegistryDialog(app) { showLocalModelDialog = false }
+    if (showLocalModelDialog) LocalModelDownloadDialog(app) { showLocalModelDialog = false }
     if (showWorkspaceDialog) WorkspaceManageDialog(app.workspace, { showWorkspaceDialog = false })
     if (showLanguageDialog) LanguageSelectDialog(settings.selectedLanguage, { lang -> app.settings.update { s -> s.copy(selectedLanguage = lang) } }, { showLanguageDialog = false })
     if (showUpdateDialog) UpdateCenterDialog({ showUpdateDialog = false })
@@ -366,15 +392,19 @@ fun ProviderConfigDialog(app: AuraApp, onDismiss: () -> Unit, onSaved: () -> Uni
 }
 
 @Composable
-fun LocalAIRegistryDialog(app: AuraApp, onDismiss: () -> Unit) {
+fun LocalModelDownloadDialog(app: AuraApp, onDismiss: () -> Unit) {
     val settings by app.settings.settings.collectAsState()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var selectedProvider by rememberSaveable { mutableStateOf("") }
     var providerUrl by rememberSaveable { mutableStateOf("") }
-    var availableModels by remember { mutableStateOf<List<String>>(emptyList()) }
-    var downloading by remember { mutableStateOf("") }
     var providerKey by rememberSaveable { mutableStateOf("") }
+    var availableModels by remember { mutableStateOf<List<ModelDownloadInfo>>(emptyList()) }
+    var isLoadingModels by remember { mutableStateOf(false) }
+    var downloading by remember { mutableStateOf("") }
+    var downloadProgress by remember { mutableStateOf(0f) }
+    var downloadSpeed by remember { mutableStateOf("") }
 
     val providers = listOf(
         "Ollama" to "http://localhost:11434/v1",
@@ -386,7 +416,7 @@ fun LocalAIRegistryDialog(app: AuraApp, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("本地 AI 提供商", fontWeight = FontWeight.Bold) },
+        title = { Text("本地模型 AI 下载提供商", fontWeight = FontWeight.Bold) },
         text = {
             LazyColumn {
                 item {
@@ -427,38 +457,79 @@ fun LocalAIRegistryDialog(app: AuraApp, onDismiss: () -> Unit) {
                         Button(
                             onClick = {
                                 scope.launch {
+                                    isLoadingModels = true
                                     try {
                                         val models = LlmClient(app).listModels(providerUrl, providerKey)
-                                        availableModels = models
-                                        app.settings.update { it.copy(apiProviderUrl = providerUrl, apiProviderKey = providerKey, apiModel = models.firstOrNull() ?: "", modelSource = "local") }
+                                        availableModels = models.map { ModelDownloadInfo(it, 0f, "") }
+                                        app.settings.update { it.copy(apiProviderUrl = providerUrl, apiProviderKey = providerKey, modelSource = "local") }
                                     } catch (_: Exception) { availableModels = emptyList() }
+                                    isLoadingModels = false
                                 }
                             },
-                            enabled = providerUrl.isNotBlank(),
+                            enabled = providerUrl.isNotBlank() && !isLoadingModels,
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("连接并获取模型") }
+                        ) { Text(if (isLoadingModels) "加载中…" else "加载模型列表") }
                         Spacer(Modifier.height(8.dp))
                     }
-                    items(availableModels) { model ->
+                    items(availableModels) { modelInfo ->
                         Surface(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
-                                .clickable {
-                                    app.settings.update { it.copy(apiModel = model) }
-                                    onDismiss()
-                                },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
                             shape = RoundedCornerShape(10.dp),
-                            color = if (model == settings.apiModel) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                            color = if (modelInfo.name == settings.apiModel) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
                             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(model, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                                if (downloading == model) {
-                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                } else if (model == settings.apiModel) {
-                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(modelInfo.name, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                                    if (downloading == modelInfo.name) {
+                                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                    } else if (modelInfo.name == settings.apiModel) {
+                                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                    } else {
+                                        TextButton(onClick = {
+                                            scope.launch {
+                                                downloading = modelInfo.name
+                                                downloadProgress = 0f
+                                                downloadSpeed = "计算中..."
+                                                val targetFile = java.io.File(context.cacheDir, "models/${modelInfo.name}.bin")
+                                                targetFile.parentFile?.mkdirs()
+                                                try {
+                                                    GitHubApi.downloadApk("$providerUrl/models/${modelInfo.name}", targetFile).collect { status ->
+                                                        when (status) {
+                                                            is DownloadStatus.Downloading -> {
+                                                                downloadProgress = if (status.total > 0) status.bytesRead.toFloat() / status.total else 0f
+                                                                downloadSpeed = formatSpeed(status.bytesRead)
+                                                            }
+                                                            is DownloadStatus.Done -> {
+                                                                downloading = ""
+                                                                app.settings.update { it.copy(apiModel = modelInfo.name) }
+                                                            }
+                                                            is DownloadStatus.Failed -> { downloading = "" }
+                                                            else -> {}
+                                                        }
+                                                    }
+                                                } catch (_: Exception) { downloading = "" }
+                                            }
+                                        }) {
+                                            Text("下载", fontSize = 12.sp)
+                                    }
+                                    }
+                                }
+                                if (downloading == modelInfo.name) {
+                                    Spacer(Modifier.height(4.dp))
+                                    LinearProgressIndicator(
+                                        progress = { downloadProgress },
+                                        modifier = Modifier.fillMaxWidth().height(4.dp)
+                                    )
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        text = "${(downloadProgress * 100).toInt()}% · $downloadSpeed",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                         }
@@ -468,6 +539,18 @@ fun LocalAIRegistryDialog(app: AuraApp, onDismiss: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
     )
+}
+
+data class ModelDownloadInfo(
+    val name: String,
+    val progress: Float,
+    val speed: String
+)
+
+private fun formatSpeed(bytesRead: Long): String {
+    if (bytesRead < 1024) return "$bytesRead B/s"
+    if (bytesRead < 1024 * 1024) return "${bytesRead / 1024} KB/s"
+    return "%.1f MB/s".format(bytesRead / (1024.0 * 1024.0))
 }
 
 @Composable
@@ -626,6 +709,7 @@ fun AboutAuraDialog(onDismiss: () -> Unit) {
                 Text("功能特性:", fontWeight = FontWeight.Medium)
                 Text("• 多模型支持（OpenAI / DeepSeek / 本地 AI）", style = MaterialTheme.typography.bodySmall)
                 Text("• 思考模式（3 级深度调节）", style = MaterialTheme.typography.bodySmall)
+                Text("• 应用开发模式（AI 辅助开发 Android 应用）", style = MaterialTheme.typography.bodySmall)
                 Text("• AI 工具调用（终端 / 文件读写）", style = MaterialTheme.typography.bodySmall)
                 Text("• 斜杠命令（/ws /model /clear /help）", style = MaterialTheme.typography.bodySmall)
                 Text("• 工作区管理", style = MaterialTheme.typography.bodySmall)

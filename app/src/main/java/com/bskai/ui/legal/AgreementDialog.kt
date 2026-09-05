@@ -1,5 +1,9 @@
 package com.bskai.ui.legal
 
+import android.Manifest
+import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,22 +19,30 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -40,114 +52,450 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.bskai.BuildConfig
 import com.bskai.data.AgreementSection
+import com.bskai.data.Agreements
+import com.bskai.data.DefaultApiUrlPresets
+import com.bskai.data.Language
+import com.bskai.data.loadLanguages
 
-data class AgreementDecision(
-    val acceptedOpenSource: Boolean,
-    val acceptedPrivacy: Boolean
-)
-
+/**
+ * 4步引导协议对话框：
+ * 第1步：选择语言
+ * 第2步：配置 API 地址
+ * 第3步：授权权限（可跳过）
+ * 第4步：开源协议与用户须知
+ */
 @Composable
-fun AgreementDialog(
-    version: String,
-    openSource: AgreementSection,
-    privacy: AgreementSection,
-    requireBoth: Boolean = true,
-    onCancel: (() -> Unit)? = null,
-    onConfirm: (AgreementDecision) -> Unit
+fun FourStepAgreementDialog(
+    onComplete: () -> Unit
 ) {
-    var openSourceChecked by rememberSaveable { mutableStateOf(false) }
-    var privacyChecked by rememberSaveable { mutableStateOf(false) }
+    var step by rememberSaveable { mutableIntStateOf(0) }
+    var languageCode by rememberSaveable { mutableStateOf("zh") }
+    var apiUrl by rememberSaveable { mutableStateOf("") }
+    var apiKey by rememberSaveable { mutableStateOf("") }
+    var agreedOpenSource by rememberSaveable { mutableStateOf(false) }
+    var agreedPrivacy by rememberSaveable { mutableStateOf(false) }
 
-    val canConfirm = if (requireBoth) openSourceChecked && privacyChecked
-    else openSourceChecked || privacyChecked
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val languages = remember { loadLanguages(context) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f)
+        color = MaterialTheme.colorScheme.background
     ) {
-        Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 6.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .padding(20.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "AURA 用户协议",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "对应版本：$version",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(14.dp))
-                    Text(
-                        text = "请阅读并同意以下条款后继续使用 AURA。条款内容随版本更新而变更，每次更新到新版本时将重新弹出。",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(14.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp)
+        ) {
+            Spacer(Modifier.height(16.dp))
 
-                    AgreementCard(
-                        section = openSource,
-                        checked = openSourceChecked,
-                        onCheckedChange = { openSourceChecked = it }
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    AgreementCard(
-                        section = privacy.copy(body = privacy.body.replace("{VERSION}", version)),
-                        checked = privacyChecked,
-                        onCheckedChange = { privacyChecked = it }
-                    )
-                    Spacer(Modifier.height(18.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-                    Spacer(Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (onCancel != null) {
-                            TextButton(onClick = onCancel) { Text("取消") }
-                            Spacer(Modifier.width(8.dp))
-                        }
-                        Button(
-                            enabled = canConfirm,
-                            onClick = {
-                                onConfirm(
-                                    AgreementDecision(
-                                        acceptedOpenSource = openSourceChecked,
-                                        acceptedPrivacy = privacyChecked
-                                    )
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "AURA",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                // Step indicators
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    repeat(4) { i ->
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 2.dp)
+                                .size(8.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(
+                                    if (i <= step) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceVariant
                                 )
-                            }
-                        ) {
-                            Text("同意并继续")
-                        }
+                        )
                     }
                 }
             }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Content
+            Box(modifier = Modifier.weight(1f)) {
+                when (step) {
+                    0 -> LanguageStepContent(
+                        languages = languages,
+                        selected = languageCode,
+                        onSelect = { languageCode = it }
+                    )
+                    1 -> ApiConfigStepContent(
+                        apiUrl = apiUrl,
+                        apiKey = apiKey,
+                        onUrlChange = { apiUrl = it },
+                        onKeyChange = { apiKey = it }
+                    )
+                    2 -> PermissionStepContent()
+                    3 -> AgreementStepContent(
+                        agreedOpenSource = agreedOpenSource,
+                        agreedPrivacy = agreedPrivacy,
+                        onToggleOpenSource = { agreedOpenSource = it },
+                        onTogglePrivacy = { agreedPrivacy = it }
+                    )
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+
+            // Bottom buttons
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = {
+                        if (step == 0) {
+                            // First step, can't go back
+                        } else {
+                            step -= 1
+                        }
+                    },
+                    enabled = step > 0
+                ) {
+                    Text(if (step == 0) "退出" else "上一步")
+                }
+                Button(
+                    enabled = when (step) {
+                        0 -> languageCode.isNotBlank()
+                        1 -> true  // API config is optional
+                        2 -> true  // Permissions are optional
+                        3 -> agreedOpenSource && agreedPrivacy
+                        else -> true
+                    },
+                    onClick = {
+                        when (step) {
+                            0 -> step = 1
+                            1 -> step = 2
+                            2 -> step = 3
+                            3 -> {
+                                // Save all preferences and complete
+                                onComplete()
+                            }
+                        }
+                    }
+                ) {
+                    Text(
+                        when (step) {
+                            0 -> "下一步"
+                            1 -> "下一步"
+                            2 -> "跳过"
+                            3 -> "同意并开始使用"
+                            else -> "下一步"
+                        }
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun LanguageStepContent(
+    languages: List<Language>,
+    selected: String,
+    onSelect: (String) -> Unit
+) {
+    var search by rememberSaveable { mutableStateOf("") }
+
+    val filtered = remember(search, languages) {
+        if (search.isBlank()) languages
+        else languages.filter {
+            it.name.contains(search, true) || it.nativeName.contains(search, true)
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Text(
+            text = "选择界面语言",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = "选择您偏好的语言，稍后可在设置中更改",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = search,
+            onValueChange = { search = it },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            placeholder = { Text("搜索语言") },
+            shape = RoundedCornerShape(14.dp),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
+        )
+        Spacer(Modifier.height(10.dp))
+        val popular = listOf("zh", "en", "ja", "ko", "es", "fr", "de")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            popular.forEach { code ->
+                FilterChip(
+                    selected = selected == code,
+                    onClick = { onSelect(code) },
+                    label = { Text(code.uppercase()) }
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            items(languages, key = { "${it.code}-${it.name}" }) { lang ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (selected == lang.code) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                            else Color.Transparent
+                        )
+                        .clickable { onSelect(lang.code) }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(
+                                if (selected == lang.code) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selected == lang.code) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text(lang.nativeName.ifBlank { lang.name }, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        text = lang.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ApiConfigStepContent(
+    apiUrl: String,
+    apiKey: String,
+    onUrlChange: (String) -> Unit,
+    onKeyChange: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = "配置 AI 服务",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = "配置 AI 服务地址和密钥，稍后可在设置中更改。您可以跳过此步骤。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(16.dp))
+        OutlinedTextField(
+            value = apiUrl,
+            onValueChange = onUrlChange,
+            label = { Text("API 地址") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = apiKey,
+            onValueChange = onKeyChange,
+            label = { Text("API Key") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(12.dp))
+        Text("快速选择:", style = MaterialTheme.typography.labelMedium)
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            DefaultApiUrlPresets.forEach { preset ->
+                Surface(
+                    modifier = Modifier.clickable { onUrlChange(preset) },
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                ) {
+                    Text(
+                        preset.removePrefix("https://").removeSuffix("/v1"),
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PermissionStepContent() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = "授权权限",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = "应用需要以下权限以提供完整功能。您可以跳过此步骤，稍后在系统设置中授权。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(16.dp))
+
+        // Notification permission
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Security,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("通知权限", fontWeight = FontWeight.Medium)
+                    Text(
+                        "用于显示后台通知",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TextButton(onClick = {
+                    notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }) {
+                    Text("授权")
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Storage permission
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Security,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("存储权限", fontWeight = FontWeight.Medium)
+                    Text(
+                        "用于读写工作区文件",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TextButton(onClick = {
+                    notifLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }) {
+                    Text("授权")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AgreementStepContent(
+    agreedOpenSource: Boolean,
+    agreedPrivacy: Boolean,
+    onToggleOpenSource: (Boolean) -> Unit,
+    onTogglePrivacy: (Boolean) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = "开源协议与用户须知",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = "请阅读并同意以下条款后继续使用 AURA。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(14.dp))
+
+        AgreementCard(
+            section = Agreements.openSource,
+            checked = agreedOpenSource,
+            onCheckedChange = onToggleOpenSource
+        )
+        Spacer(Modifier.height(12.dp))
+        AgreementCard(
+            section = Agreements.privacy.copy(
+                body = Agreements.renderPrivacy(BuildConfig.APP_VERSION)
+            ),
+            checked = agreedPrivacy,
+            onCheckedChange = onTogglePrivacy
+        )
+        Spacer(Modifier.height(12.dp))
     }
 }
 
@@ -158,8 +506,8 @@ private fun AgreementCard(
     onCheckedChange: (Boolean) -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -172,15 +520,16 @@ private fun AgreementCard(
             Text(
                 text = section.body,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth()
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
                     .clickable { onCheckedChange(!checked) }
-                    .padding(vertical = 4.dp),
+                    .padding(vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(checked = checked, onCheckedChange = onCheckedChange)

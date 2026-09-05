@@ -44,7 +44,11 @@ class SettingsRepository(context: Context) {
             modelSource = prefs.getString(KEY_MODEL_SOURCE, "api") ?: "api",
             thinkingLevel = prefs.getInt(KEY_THINKING_LEVEL, 1),
             workspaceEnabled = prefs.getBoolean(KEY_WORKSPACE_ENABLED, false),
-            selectedLanguage = prefs.getString(KEY_LANGUAGE, "zh") ?: "zh"
+            selectedLanguage = prefs.getString(KEY_LANGUAGE, "zh") ?: "zh",
+            chatMode = ChatMode.fromKey(prefs.getString(KEY_CHAT_MODE, ChatMode.THINK.key)),
+            devDependenciesDownloaded = prefs.getBoolean(KEY_DEV_DEPS_DOWNLOADED, false),
+            lastFeedbackDismissTime = prefs.getLong(KEY_LAST_FEEDBACK_DISMISS, 0),
+            feedbackDismissedThisSession = prefs.getBoolean(KEY_FEEDBACK_SESSION, false)
         )
     }
 
@@ -99,6 +103,10 @@ class SettingsRepository(context: Context) {
             .putString(KEY_MODEL_SOURCE, s.modelSource)
             .putInt(KEY_THINKING_LEVEL, s.thinkingLevel)
             .putBoolean(KEY_WORKSPACE_ENABLED, s.workspaceEnabled)
+            .putString(KEY_CHAT_MODE, s.chatMode.key)
+            .putBoolean(KEY_DEV_DEPS_DOWNLOADED, s.devDependenciesDownloaded)
+            .putLong(KEY_LAST_FEEDBACK_DISMISS, s.lastFeedbackDismissTime)
+            .putBoolean(KEY_FEEDBACK_SESSION, s.feedbackDismissedThisSession)
             .apply()
     }
 
@@ -159,5 +167,9 @@ class SettingsRepository(context: Context) {
         private const val KEY_MODEL_SOURCE = "model_source"
         private const val KEY_THINKING_LEVEL = "thinking_level"
         private const val KEY_WORKSPACE_ENABLED = "workspace_enabled"
+        private const val KEY_CHAT_MODE = "chat_mode"
+        private const val KEY_DEV_DEPS_DOWNLOADED = "dev_deps_downloaded"
+        private const val KEY_LAST_FEEDBACK_DISMISS = "last_feedback_dismiss"
+        private const val KEY_FEEDBACK_SESSION = "feedback_session"
     }
 }

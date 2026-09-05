@@ -1,5 +1,18 @@
 # AURA 更新记录
 
+## v2.0.4
+- 修复 Shizuku 授权 bug：正确检测 binder 状态，添加死亡监听器，修复未授权就提示已授权的问题
+- 新增应用开发模式：AI 辅助开发 Android 应用，支持构建 APK
+- 消息队列功能：可添加多条消息到队列，一键发送全部
+- 长按消息支持复制和重发
+- 反馈弹窗：每次进入应用提示反馈邮箱，支持"一天后提醒"和"本次取消"
+- 4步引导协议：第1步选择语言 → 第2步配置API → 第3步授权权限（可跳过） → 第4步开源协议与用户须知
+- 本地模型 AI 下载提供商：点击提供商自动加载可下载模型列表，显示下载速度
+- ChatScreen 全面重写：优化 UI 交互，支持消息队列显示
+- SettingsScreen 全面重写：新增应用开发模式切换、开发依赖下载
+- minSdk 28，targetSdk 34
+- versionCode 304
+
 ## v2.0.3
 - 移除所有后台服务（VoiceService/BootReceiver/MediaButtonReceiver）
 - 彻底删除语音引擎（VoiceEngine/VoiceCoordinator/AudioController）

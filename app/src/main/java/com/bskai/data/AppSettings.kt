@@ -11,6 +11,15 @@ enum class ThemeStyle(val key: String, val label: String, val description: Strin
     }
 }
 
+enum class ChatMode(val key: String, val label: String, val description: String) {
+    THINK("think", "思考模式", "AI 逐步推理分析"),
+    DEV("dev", "应用开发模式", "AI 辅助开发 Android 应用");
+
+    companion object {
+        fun fromKey(k: String?): ChatMode = entries.firstOrNull { it.key == k } ?: THINK
+    }
+}
+
 data class LocalModelEntry(
     val id: String,
     val name: String,
@@ -37,7 +46,11 @@ data class AppSettings(
     val modelSource: String = "api",
     val thinkingLevel: Int = 1,
     val workspaceEnabled: Boolean = false,
-    val selectedLanguage: String = "zh"
+    val selectedLanguage: String = "zh",
+    val chatMode: ChatMode = ChatMode.THINK,
+    val devDependenciesDownloaded: Boolean = false,
+    val lastFeedbackDismissTime: Long = 0,
+    val feedbackDismissedThisSession: Boolean = false
 ) {
     val apiConfigured: Boolean
         get() = apiProviderUrl.isNotBlank() && apiProviderKey.isNotBlank() && apiModel.isNotBlank()

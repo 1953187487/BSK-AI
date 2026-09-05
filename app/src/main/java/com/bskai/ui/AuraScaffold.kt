@@ -23,8 +23,6 @@ import com.bskai.BuildConfig
 import com.bskai.data.Agreements
 import com.bskai.data.loadAnnouncements
 import com.bskai.ui.chat.ChatScreen
-import com.bskai.ui.legal.AgreementDecision
-import com.bskai.ui.legal.AgreementDialog
 import com.bskai.ui.settings.SettingsScreen
 import com.bskai.ui.terminal.TerminalScreen
 import kotlinx.coroutines.launch
@@ -77,8 +75,6 @@ fun AuraScaffold(app: AuraApp) {
     var showSettings by remember { mutableStateOf(false) }
     var showTerminal by remember { mutableStateOf(false) }
 
-    var pendingAgreementFor by remember { mutableStateOf<String?>(null) }
-
     LaunchedEffect(Unit) {
         com.bskai.MainActivity.navRequests.collect { target ->
             when (target) {
@@ -115,19 +111,5 @@ fun AuraScaffold(app: AuraApp) {
                 )
             }
         }
-    }
-
-    pendingAgreementFor?.let { version ->
-        AgreementDialog(
-            version = version,
-            openSource = Agreements.openSource,
-            privacy = Agreements.privacy.copy(body = Agreements.renderPrivacy(version)),
-            requireBoth = true,
-            onCancel = { pendingAgreementFor = null },
-            onConfirm = { _: AgreementDecision ->
-                app.settings.markSessionAgreement(version)
-                pendingAgreementFor = null
-            }
-        )
     }
 }

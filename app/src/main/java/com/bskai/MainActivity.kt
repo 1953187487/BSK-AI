@@ -14,8 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import com.bskai.ui.AuraScaffold
-import com.bskai.ui.legal.AgreementDecision
-import com.bskai.ui.legal.AgreementDialog
+import com.bskai.ui.legal.FourStepAgreementDialog
 import com.bskai.ui.theme.AuraTheme
 import com.bskai.data.Agreements
 
@@ -64,15 +63,8 @@ private fun AppRoot(app: AuraApp) {
     var showMain by rememberSaveable { mutableStateOf(initialAgreed && !needsResign) }
 
     if (showAgreement) {
-        AgreementDialog(
-            version = currentVersion,
-            openSource = Agreements.openSource,
-            privacy = Agreements.privacy.copy(body = Agreements.renderPrivacy(currentVersion)),
-            requireBoth = true,
-            onCancel = if (initialAgreed && needsResign) {
-                { activity?.finish() }
-            } else null,
-            onConfirm = { decision: AgreementDecision ->
+        FourStepAgreementDialog(
+            onComplete = {
                 app.settings.setAgreed()
                 app.settings.setAgreementVersion(currentVersion)
                 app.settings.markSessionAgreement(currentVersion)
