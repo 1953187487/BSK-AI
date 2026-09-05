@@ -1,5 +1,16 @@
 package com.bskai.data
 
+enum class ThemeStyle(val key: String, val label: String, val description: String) {
+    AURORA("aurora", "极光", "蓝紫渐变，呼吸感背景"),
+    NEON("neon", "霓虹", "赛博粉青，深底亮字"),
+    GLASS("glass", "玻璃", "磨砂半透，圆角厚边"),
+    VOICE("voice", "语音优先", "大按钮，单屏聚焦说话");
+
+    companion object {
+        fun fromKey(k: String?): ThemeStyle = entries.firstOrNull { it.key == k } ?: AURORA
+    }
+}
+
 data class AppSettings(
     val darkTheme: Boolean = true,
     val autoStartService: Boolean = false,
@@ -13,7 +24,8 @@ data class AppSettings(
     val apiProviderUrl: String = "",
     val apiProviderKey: String = "",
     val apiModel: String = "",
-    val apiConnected: Boolean = false
+    val apiConnected: Boolean = false,
+    val themeStyle: ThemeStyle = ThemeStyle.AURORA
 ) {
     val apiConfigured: Boolean
         get() = apiProviderUrl.isNotBlank() && apiProviderKey.isNotBlank() && apiModel.isNotBlank()

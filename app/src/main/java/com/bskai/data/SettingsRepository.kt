@@ -36,7 +36,8 @@ class SettingsRepository(context: Context) {
             apiProviderUrl = prefs.getString(KEY_API_URL, "") ?: "",
             apiProviderKey = prefs.getString(KEY_API_KEY, "") ?: "",
             apiModel = prefs.getString(KEY_API_MODEL, "") ?: "",
-            apiConnected = prefs.getBoolean(KEY_API_CONNECTED, false)
+            apiConnected = prefs.getBoolean(KEY_API_CONNECTED, false),
+            themeStyle = ThemeStyle.fromKey(prefs.getString(KEY_THEME_STYLE, ThemeStyle.AURORA.key))
         )
     }
 
@@ -55,6 +56,7 @@ class SettingsRepository(context: Context) {
             .putString(KEY_API_KEY, s.apiProviderKey)
             .putString(KEY_API_MODEL, s.apiModel)
             .putBoolean(KEY_API_CONNECTED, s.apiConnected)
+            .putString(KEY_THEME_STYLE, s.themeStyle.key)
             .apply()
     }
 
@@ -94,5 +96,6 @@ class SettingsRepository(context: Context) {
         private const val KEY_AGREED = "agreements_accepted"
         private const val KEY_LAST_VERSION = "last_version"
         private const val KEY_LANGUAGE = "selected_language"
+        private const val KEY_THEME_STYLE = "theme_style"
     }
 }

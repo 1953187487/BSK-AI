@@ -2,15 +2,13 @@ package com.bskai.agent
 
 import android.content.Context
 import com.bskai.data.SettingsRepository
-import com.bskai.intent.SkillEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class AgentEngine(
     context: Context,
-    private val settings: SettingsRepository,
-    private val skillEngine: SkillEngine
+    private val settings: SettingsRepository
 ) {
 
     private val llm = LlmClient(context)
@@ -21,12 +19,6 @@ class AgentEngine(
     suspend fun answer(userText: String): String {
         val text = userText.trim()
         if (text.isEmpty()) return "请再说一遍"
-
-        skillEngine.tryExecute(text)?.let { reply ->
-            append(ChatMsg("user", text))
-            append(ChatMsg("assistant", reply))
-            return reply
-        }
 
         val s = settings.settings.value
         if (s.apiConfigured) {
@@ -43,6 +35,7 @@ class AgentEngine(
                 fallback
             }
         }
+        append(ChatMsg("user", text))
         return localReply(text)
     }
 
@@ -55,7 +48,7 @@ class AgentEngine(
     fun recentMessages(max: Int): List<ChatMsg> {
         val system = ChatMsg(
             "system",
-            "你是 AURA，一位手机语音助手。请用简体中文简洁回答，语气友好。涉及控制手机的操作请先说明会怎么做。"
+            "你是 AURA，一位手机语音助手。请用简体中文简洁回答，语气友好。"
         )
         val history = _conversation.value.takeLast(max.coerceAtLeast(2))
         return listOf(system) + history
@@ -67,16 +60,20 @@ class AgentEngine(
     }
 
     private fun localReply(text: String): String {
-        return when {
+        val s = settings.settings.value
+        val tail = if (s.apiConfigured) "" else "\n\n提示：当前未配置 AI 服务，请到设置中填入 API。\n您仍可以按住说话，告诉我您要做什么。"
+
+        val base = when {
             text.contains("你好") || text.contains("您好") || text.contains("hi") ||
                 text.contains("hello") || text.contains("嗨") ->
-                "你好呀，我是 AURA。按住说话就可以跟我聊天，也可以让我调音量、报时间、打开应用或系统设置。"
+                "你好呀，我是 AURA。按住说话就可以跟我聊天。"
             text.contains("你是谁") || text.contains("介绍你自己") ->
-                "我是 AURA，一个本地语音助手。可以听你说话，帮你完成音量调节、静音、报时间、打开应用和设置等操作。连接 AI 服务后还能陪你聊天和回答各种问题。"
+                "我是 AURA，本地语音助手。可以听你说话，连接 AI 服务后还能陪你聊天和回答各种问题。"
             text.contains("你能做什么") || text.contains("你会什么") || text.contains("有什么功能") ->
-                "我可以帮你：调节音量和静音，播放或暂停音乐，报时间和日期，查询设备信息，打开常见应用和系统设置。在设置里配置 AI 服务后，还能与你自由对话。"
+                "在设置中配置 AI 服务后，我可以陪你自由对话，回答问题。"
             text.contains("谢谢") -> "不客气，随时找我。"
-            else -> "抱歉，我还没有完全听明白。可以试试让我调节音量、报时间、打开应用，或者在设置里连接 AI 服务获得更强的对话能力。"
+            else -> "抱歉，我还没有完全听明白。在设置里配置 AI 服务后我能更好地回答您。"
         }
+        return base + tail
     }
 }

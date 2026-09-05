@@ -25,7 +25,10 @@ class MainActivity : ComponentActivity() {
         val app = AuraApp.of(this)
         setContent {
             val settings by app.settings.settings.collectAsState()
-            AuraTheme(darkTheme = settings.darkTheme) {
+            AuraTheme(
+                darkTheme = settings.darkTheme,
+                themeStyle = settings.themeStyle
+            ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     AppRoot(app = app)
                 }

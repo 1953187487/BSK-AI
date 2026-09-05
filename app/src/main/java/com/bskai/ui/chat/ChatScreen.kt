@@ -3,7 +3,16 @@ package com.bskai.ui.chat
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +34,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.History
@@ -33,9 +41,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -52,22 +59,32 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
 import com.bskai.agent.ChatMsg
-import com.bskai.intent.SkillEngine
+import com.bskai.data.DefaultModelPresets
+import com.bskai.data.ThemeStyle
+import com.bskai.update.GitHubApi
 import com.bskai.update.RemoteRelease
 import com.bskai.update.UpdateCheckResult
-import com.bskai.update.GitHubApi
+import com.bskai.ui.theme.AuroraGradient
+import com.bskai.ui.theme.GlassTint
+import com.bskai.ui.theme.NeonGlow
 import com.bskai.util.Permissions
 import kotlinx.coroutines.launch
 
@@ -75,7 +92,8 @@ import kotlinx.coroutines.launch
 fun ChatScreen(
     app: AuraApp,
     onShowUpdate: (UpdateCheckResult) -> Unit,
-    onShowHistory: (List<RemoteRelease>) -> Unit
+    onShowHistory: (List<RemoteRelease>) -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val conversation by app.agent.conversation.collectAsState()
     val listening by app.voice.isListening.collectAsState()
@@ -83,18 +101,20 @@ fun ChatScreen(
     val settings by app.settings.settings.collectAsState()
     val context = LocalContext.current
     val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
 
     var input by remember { mutableStateOf("") }
     var showModelMenu by remember { mutableStateOf(false) }
     var showTopMenu by remember { mutableStateOf(false) }
     var checkingUpdate by remember { mutableStateOf(false) }
+    var voiceActive by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
             app.coordinator.listenNow()
+            voiceActive = true
         }
     }
 
@@ -104,132 +124,335 @@ fun ChatScreen(
         }
     }
 
-    fun submit() {
+    fun submitText() {
         if (input.isBlank()) return
         app.coordinator.submit(input)
         input = ""
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        TopBar(
+    val onCheckUpdate: () -> Unit = onCheckUpdate@{
+        if (checkingUpdate) return@onCheckUpdate
+        checkingUpdate = true
+        scope.launch {
+            val releases = GitHubApi.listReleases()
+            checkingUpdate = false
+            val currentCode = BuildConfig.BUILD_NUMBER
+            val parsed = releases
+                .filter { it.versionCode > 0 }
+                .sortedByDescending { it.versionCode }
+            val latest = parsed.firstOrNull()
+            val hasUpdate = latest != null && latest.versionCode > currentCode
+            onShowUpdate(
+                UpdateCheckResult(
+                    releases = parsed,
+                    latestRelease = latest,
+                    hasUpdate = hasUpdate
+                )
+            )
+        }
+    }
+    val triggerHistory: () -> Unit = {
+        scope.launch {
+            val releases = GitHubApi.listReleases()
+            onShowHistory(
+                releases
+                    .filter { it.versionCode > 0 }
+                    .sortedByDescending { it.versionCode }
+            )
+        }
+    }
+
+    val style = settings.themeStyle
+    val hasRecordAudio = Permissions.hasRecordAudio(context)
+
+    when (style) {
+        ThemeStyle.VOICE -> VoiceLayout(
             app = app,
-            showModelMenu = showModelMenu,
-            onShowModelMenu = { showModelMenu = it },
-            showTopMenu = showTopMenu,
-            onShowTopMenu = { showTopMenu = it },
-            onCheckUpdate = {
-                if (checkingUpdate) return@TopBar
-                checkingUpdate = true
-                coroutineScope.launch {
-                    val releases = GitHubApi.listReleases()
-                    checkingUpdate = false
-                    val currentCode = BuildConfig.BUILD_NUMBER
-                    val parsed = releases
-                        .filter { it.versionCode > 0 }
-                        .sortedByDescending { it.versionCode }
-                    val latest = parsed.firstOrNull()
-                    val hasUpdate = latest != null && latest.versionCode > currentCode
-                    onShowUpdate(
-                        UpdateCheckResult(
-                            releases = parsed,
-                            latestRelease = latest,
-                            hasUpdate = hasUpdate
-                        )
-                    )
-                }
-            },
-            onShowHistory = {
-                coroutineScope.launch {
-                    val releases = GitHubApi.listReleases()
-                    onShowHistory(
-                        releases
-                            .filter { it.versionCode > 0 }
-                            .sortedByDescending { it.versionCode }
-                    )
-                }
-            }
-        )
-
-        if (!Permissions.hasRecordAudio(context)) {
-            PermissionHint(text = "未授权录音权限，语音功能不可用") {
-                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            }
-        }
-
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(vertical = 12.dp)
-            ) {
-                if (conversation.isEmpty()) {
-                    item {
-                        EmptyHint(settings.apiConfigured)
-                    }
-                } else {
-                    items(conversation) { msg ->
-                        ChatBubble(msg)
-                    }
-                }
-            }
-        }
-
-        SkillChipsRow(
-            engine = app.skills,
-            onSelect = { sample ->
-                if (input.isBlank()) input = sample else input = "$input，$sample"
-            }
-        )
-
-        InputBar(
-            text = input,
-            onTextChange = { input = it },
-            onSubmit = { submit() },
-            onVoicePress = {
-                if (Permissions.hasRecordAudio(context)) {
+            conversation = conversation,
+            listening = listening,
+            processing = processing,
+            listState = listState,
+            hasRecordAudio = hasRecordAudio,
+            onPermissionRequest = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+            onMicPress = {
+                if (hasRecordAudio) {
                     app.coordinator.listenNow()
+                    voiceActive = true
                 } else {
                     permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                 }
             },
-            onVoiceRelease = { app.coordinator.stopListening() },
+            onMicRelease = {
+                app.coordinator.stopListening()
+                voiceActive = false
+            },
+            voiceActive = voiceActive,
+            onOpenTopMenu = {
+                showTopMenu = true
+            },
+            onCheckUpdate = onCheckUpdate,
+            onShowHistory = triggerHistory,
+            onOpenSettings = onOpenSettings,
+            showTopMenu = showTopMenu,
+            onDismissTopMenu = { showTopMenu = false }
+        )
+        else -> StandardLayout(
+            app = app,
+            conversation = conversation,
             listening = listening,
             processing = processing,
-            voiceEnabled = Permissions.hasRecordAudio(context)
+            listState = listState,
+            input = input,
+            onInputChange = { input = it },
+            onSubmitText = { submitText() },
+            onMicPress = {
+                if (hasRecordAudio) {
+                    app.coordinator.listenNow()
+                    voiceActive = true
+                } else {
+                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                }
+            },
+            onMicRelease = {
+                app.coordinator.stopListening()
+                voiceActive = false
+            },
+            voiceActive = voiceActive,
+            hasRecordAudio = hasRecordAudio,
+            onPermissionRequest = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+            showModelMenu = showModelMenu,
+            onShowModelMenu = { showModelMenu = it },
+            showTopMenu = showTopMenu,
+            onShowTopMenu = { showTopMenu = it },
+            onCheckUpdate = onCheckUpdate,
+            onShowHistory = triggerHistory,
+            onOpenSettings = onOpenSettings
         )
     }
 }
 
+// ───── Standard layout (AURORA / NEON / GLASS) ─────
+
 @Composable
-private fun TopBar(
+private fun StandardLayout(
+    app: AuraApp,
+    conversation: List<ChatMsg>,
+    listening: Boolean,
+    processing: Boolean,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    input: String,
+    onInputChange: (String) -> Unit,
+    onSubmitText: () -> Unit,
+    onMicPress: () -> Unit,
+    onMicRelease: () -> Unit,
+    voiceActive: Boolean,
+    hasRecordAudio: Boolean,
+    onPermissionRequest: () -> Unit,
+    showModelMenu: Boolean,
+    onShowModelMenu: (Boolean) -> Unit,
+    showTopMenu: Boolean,
+    onShowTopMenu: (Boolean) -> Unit,
+    onCheckUpdate: () -> Unit,
+    onShowHistory: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    val settings by app.settings.settings.collectAsState()
+    val style = settings.themeStyle
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        ThemeBackground(style = style)
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            TopHeader(
+                app = app,
+                showModelMenu = showModelMenu,
+                onShowModelMenu = onShowModelMenu,
+                showTopMenu = showTopMenu,
+                onShowTopMenu = onShowTopMenu,
+                onCheckUpdate = onCheckUpdate,
+                onShowHistory = onShowHistory,
+                onOpenSettings = onOpenSettings
+            )
+
+            if (!hasRecordAudio) {
+                PermissionHint(text = "未授权录音权限，语音功能不可用") {
+                    onPermissionRequest()
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp)
+                ) {
+                    if (conversation.isEmpty()) {
+                        item { EmptyHint(settings.apiConfigured, style) }
+                    } else {
+                        items(conversation) { msg -> ChatBubble(msg, style) }
+                    }
+                }
+            }
+
+            ModelPickerBar(
+                app = app,
+                showMenu = showModelMenu,
+                onShowMenu = onShowModelMenu
+            )
+
+            InputBar(
+                style = style,
+                text = input,
+                onTextChange = onInputChange,
+                onSubmit = onSubmitText,
+                onMicPress = onMicPress,
+                onMicRelease = onMicRelease,
+                active = voiceActive || listening || processing,
+                micEnabled = hasRecordAudio
+            )
+        }
+    }
+}
+
+// ───── Voice layout (single big mic button) ─────
+
+@Composable
+private fun VoiceLayout(
+    app: AuraApp,
+    conversation: List<ChatMsg>,
+    listening: Boolean,
+    processing: Boolean,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    hasRecordAudio: Boolean,
+    onPermissionRequest: () -> Unit,
+    onMicPress: () -> Unit,
+    onMicRelease: () -> Unit,
+    voiceActive: Boolean,
+    onOpenTopMenu: () -> Unit,
+    onCheckUpdate: () -> Unit,
+    onShowHistory: () -> Unit,
+    onOpenSettings: () -> Unit,
+    showTopMenu: Boolean,
+    onDismissTopMenu: () -> Unit
+) {
+    val settings by app.settings.settings.collectAsState()
+    val style = settings.themeStyle
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        ThemeBackground(style = style)
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Slim header: just menu
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(Modifier.weight(1f))
+                ModelBadge(settings.apiModel.ifBlank { "未选择模型" }, settings.apiConfigured)
+                Spacer(Modifier.weight(1f))
+                Box {
+                    IconButton(onClick = onOpenTopMenu) {
+                        Icon(Icons.Default.MoreVert, contentDescription = null)
+                    }
+                    DropdownMenu(
+                        expanded = showTopMenu,
+                        onDismissRequest = onDismissTopMenu
+                    ) {
+                        DropdownMenuItem(
+                            leadingIcon = { Icon(Icons.Default.SystemUpdateAlt, contentDescription = null) },
+                            text = { Text("检查更新") },
+                            onClick = { onDismissTopMenu(); onCheckUpdate() }
+                        )
+                        DropdownMenuItem(
+                            leadingIcon = { Icon(Icons.Default.History, contentDescription = null) },
+                            text = { Text("历史版本") },
+                            onClick = { onDismissTopMenu(); onShowHistory() }
+                        )
+                        DropdownMenuItem(
+                            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                            text = { Text("设置") },
+                            onClick = { onDismissTopMenu(); onOpenSettings() }
+                        )
+                    }
+                }
+            }
+
+            if (!hasRecordAudio) {
+                PermissionHint(text = "未授权录音权限，语音功能不可用") {
+                    onPermissionRequest()
+                }
+            }
+
+            // Compact message history (last 3)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                if (conversation.isEmpty()) {
+                    item {
+                        Text(
+                            text = "按住下方按钮说话",
+                            modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            fontSize = 18.sp
+                        )
+                    }
+                } else {
+                    items(conversation.takeLast(3)) { msg -> ChatBubble(msg, style, compact = true) }
+                }
+            }
+
+            // Big mic button
+            BigMicButton(
+                active = voiceActive || listening || processing,
+                enabled = hasRecordAudio,
+                onPress = onMicPress,
+                onRelease = onMicRelease
+            )
+            Spacer(Modifier.height(24.dp).navigationBarsPadding())
+        }
+    }
+}
+
+// ───── Shared components ─────
+
+@Composable
+private fun TopHeader(
     app: AuraApp,
     showModelMenu: Boolean,
     onShowModelMenu: (Boolean) -> Unit,
     showTopMenu: Boolean,
     onShowTopMenu: (Boolean) -> Unit,
     onCheckUpdate: () -> Unit,
-    onShowHistory: () -> Unit
+    onShowHistory: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val settings by app.settings.settings.collectAsState()
     val currentModel = settings.apiModel.ifBlank { "未选择模型" }
     val configured = settings.apiConfigured
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.weight(1f)) {
+        Box {
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(MaterialTheme.shapes.small)
                     .background(
-                        if (configured) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surfaceVariant
+                        if (configured) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                     )
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                    .clickable { onShowModelMenu(true) }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -241,25 +464,20 @@ private fun TopBar(
                 )
                 Text(
                     text = currentModel,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                IconButton(
-                    onClick = { onShowModelMenu(true) },
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+                Icon(
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
             }
             DropdownMenu(
                 expanded = showModelMenu,
                 onDismissRequest = { onShowModelMenu(false) }
             ) {
-                com.bskai.data.DefaultModelPresets.forEach { model ->
+                DefaultModelPresets.forEach { model ->
                     DropdownMenuItem(
                         text = {
                             Text(
@@ -274,15 +492,15 @@ private fun TopBar(
                     )
                 }
                 DropdownMenuItem(
-                    text = { Text("自定义…", color = MaterialTheme.colorScheme.primary) },
+                    text = { Text("去设置自定义…", color = MaterialTheme.colorScheme.primary) },
                     onClick = {
                         onShowModelMenu(false)
-                        // 由设置页配置
+                        onOpenSettings()
                     }
                 )
             }
         }
-
+        Spacer(Modifier.weight(1f))
         Box {
             IconButton(onClick = { onShowTopMenu(true) }) {
                 Icon(Icons.Default.MoreVert, contentDescription = null)
@@ -294,22 +512,20 @@ private fun TopBar(
                 DropdownMenuItem(
                     leadingIcon = { Icon(Icons.Default.SystemUpdateAlt, contentDescription = null) },
                     text = { Text("检查更新") },
-                    onClick = {
-                        onShowTopMenu(false)
-                        onCheckUpdate()
-                    }
+                    onClick = { onShowTopMenu(false); onCheckUpdate() }
                 )
                 DropdownMenuItem(
                     leadingIcon = { Icon(Icons.Default.History, contentDescription = null) },
                     text = { Text("历史版本") },
-                    onClick = {
-                        onShowTopMenu(false)
-                        onShowHistory()
-                    }
+                    onClick = { onShowTopMenu(false); onShowHistory() }
                 )
                 DropdownMenuItem(
-                    leadingIcon = { Icon(Icons.Default.Star, contentDescription = null) },
-                    text = { Text("当前版本：${BuildConfig.APP_VERSION}") },
+                    leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                    text = { Text("设置") },
+                    onClick = { onShowTopMenu(false); onOpenSettings() }
+                )
+                DropdownMenuItem(
+                    text = { Text("当前：${BuildConfig.APP_VERSION}") },
                     enabled = false,
                     onClick = {}
                 )
@@ -319,31 +535,37 @@ private fun TopBar(
 }
 
 @Composable
-private fun SkillChipsRow(
-    engine: SkillEngine,
-    onSelect: (String) -> Unit
+private fun ModelPickerBar(
+    app: AuraApp,
+    showMenu: Boolean,
+    onShowMenu: (Boolean) -> Unit
 ) {
-    val skills = remember { engine.skillsList() }
+    val settings by app.settings.settings.collectAsState()
+    val currentModel = settings.apiModel.ifBlank { "未选择模型" }
+    val configured = settings.apiConfigured
+
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(skills) { skill ->
+        items(DefaultModelPresets) { model ->
+            val selected = model == settings.apiModel
             Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.pointerInput(skill.id) {
-                    awaitPointerEventScope {
-                        awaitFirstDown(requireUnconsumed = false)
-                        onSelect(skill.description)
-                    }
+                shape = MaterialTheme.shapes.small,
+                color = if (selected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.clickable {
+                    app.settings.update { it.copy(apiModel = model) }
                 }
             ) {
                 Text(
-                    text = skill.label,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelMedium
+                    text = model,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                 )
             }
         }
@@ -351,25 +573,40 @@ private fun SkillChipsRow(
 }
 
 @Composable
+private fun ModelBadge(model: String, configured: Boolean) {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = if (configured) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+    ) {
+        Text(
+            text = model,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelMedium
+        )
+    }
+}
+
+@Composable
 private fun InputBar(
+    style: ThemeStyle,
     text: String,
     onTextChange: (String) -> Unit,
     onSubmit: () -> Unit,
-    onVoicePress: () -> Unit,
-    onVoiceRelease: () -> Unit,
-    listening: Boolean,
-    processing: Boolean,
-    voiceEnabled: Boolean
+    onMicPress: () -> Unit,
+    onMicRelease: () -> Unit,
+    active: Boolean,
+    micEnabled: Boolean
 ) {
-    val active = listening || processing
     Surface(
-        color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth().imePadding().navigationBarsPadding()
+        color = MaterialTheme.colorScheme.surface.copy(alpha = if (style == ThemeStyle.GLASS) 0.7f else 1f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .imePadding()
+            .navigationBarsPadding()
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedTextField(
@@ -377,18 +614,18 @@ private fun InputBar(
                 onValueChange = onTextChange,
                 modifier = Modifier.weight(1f),
                 placeholder = { Text("说点什么，或点右侧说话…") },
-                shape = RoundedCornerShape(22.dp),
+                shape = MaterialTheme.shapes.large,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 maxLines = 4,
-                enabled = !processing
+                enabled = !active
             )
             Spacer(Modifier.width(8.dp))
             if (text.isNotBlank()) {
                 IconButton(
                     onClick = onSubmit,
                     modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
+                        .size(48.dp)
+                        .clip(MaterialTheme.shapes.large)
                         .background(MaterialTheme.colorScheme.primary)
                 ) {
                     Icon(
@@ -400,22 +637,22 @@ private fun InputBar(
             } else {
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(48.dp)
                         .clip(CircleShape)
                         .background(
                             if (active) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.primaryContainer
                         )
-                        .pointerInput(voiceEnabled) {
-                            if (!voiceEnabled) return@pointerInput
+                        .pointerInput(micEnabled) {
+                            if (!micEnabled) return@pointerInput
                             awaitPointerEventScope {
                                 awaitFirstDown(requireUnconsumed = false)
-                                onVoicePress()
+                                onMicPress()
                                 while (true) {
                                     val event = awaitPointerEvent()
                                     if (event.changes.all { !it.pressed }) break
                                 }
-                                onVoiceRelease()
+                                onMicRelease()
                             }
                         },
                     contentAlignment = Alignment.Center
@@ -433,44 +670,125 @@ private fun InputBar(
 }
 
 @Composable
-private fun ChatBubble(msg: ChatMsg) {
+private fun BigMicButton(
+    active: Boolean,
+    enabled: Boolean,
+    onPress: () -> Unit,
+    onRelease: () -> Unit
+) {
+    val transition = rememberInfiniteTransition(label = "mic-pulse")
+    val pulse by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (active) 1.18f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Outer ring (visible when active)
+        if (active) {
+            Box(
+                modifier = Modifier
+                    .size((160 * pulse).dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(140.dp)
+                .clip(CircleShape)
+                .background(
+                    if (!enabled) MaterialTheme.colorScheme.surfaceVariant
+                    else if (active) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.primaryContainer
+                )
+                .border(
+                    width = 3.dp,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = if (active) 0.8f else 0.3f),
+                    shape = CircleShape
+                )
+                .pointerInput(enabled) {
+                    if (!enabled) return@pointerInput
+                    awaitPointerEventScope {
+                        awaitFirstDown(requireUnconsumed = false)
+                        onPress()
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            if (event.changes.all { !it.pressed }) break
+                        }
+                        onRelease()
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = if (active) Icons.Default.MicOff else Icons.Default.Mic,
+                    contentDescription = "按住说话",
+                    modifier = Modifier.size(64.dp),
+                    tint = if (active) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = if (!enabled) "未授权"
+                    else if (active) "聆听中…松开结束"
+                    else "按住 说话",
+                    color = if (active) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatBubble(msg: ChatMsg, style: ThemeStyle, compact: Boolean = false) {
     val isUser = msg.role == "user"
+    val glass = style == ThemeStyle.GLASS
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Top
     ) {
         if (!isUser) {
-            BubbleAvatar(letter = "A", isUser = false)
+            BubbleAvatar(letter = "A", isUser = false, style = style)
             Spacer(Modifier.width(6.dp))
         }
         Surface(
-            shape = RoundedCornerShape(
-                topStart = 16.dp,
-                topEnd = 16.dp,
-                bottomStart = if (isUser) 16.dp else 4.dp,
-                bottomEnd = if (isUser) 4.dp else 16.dp
-            ),
-            color = if (isUser) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.surfaceVariant,
+            shape = MaterialTheme.shapes.medium,
+            color = when {
+                isUser -> MaterialTheme.colorScheme.primary
+                glass -> MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                else -> MaterialTheme.colorScheme.surfaceVariant
+            },
             modifier = Modifier.fillMaxWidth(0.78f)
         ) {
             Text(
                 text = msg.content,
-                modifier = Modifier.padding(12.dp),
+                modifier = Modifier.padding(if (compact) 10.dp else 12.dp),
                 color = if (isUser) MaterialTheme.colorScheme.onPrimary
-                else MaterialTheme.colorScheme.onSurface
+                else MaterialTheme.colorScheme.onSurface,
+                fontSize = if (compact) 14.sp else 15.sp
             )
         }
         if (isUser) {
             Spacer(Modifier.width(6.dp))
-            BubbleAvatar(letter = "你", isUser = true)
+            BubbleAvatar(letter = "你", isUser = true, style = style)
         }
     }
 }
 
 @Composable
-private fun BubbleAvatar(letter: String, isUser: Boolean) {
+private fun BubbleAvatar(letter: String, isUser: Boolean, style: ThemeStyle) {
     Box(
         modifier = Modifier
             .size(32.dp)
@@ -490,16 +808,16 @@ private fun BubbleAvatar(letter: String, isUser: Boolean) {
 }
 
 @Composable
-private fun EmptyHint(apiConfigured: Boolean) {
+private fun EmptyHint(apiConfigured: Boolean, style: ThemeStyle) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 64.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
             Icons.Default.GraphicEq,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(48.dp)
+            modifier = Modifier.size(56.dp)
         )
         Spacer(Modifier.height(12.dp))
         Text(
@@ -509,12 +827,12 @@ private fun EmptyHint(apiConfigured: Boolean) {
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "按下方技能快速开始，或直接输入",
+            text = "打字或按住右侧麦克风说话",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall
         )
-        Spacer(Modifier.height(12.dp))
         if (!apiConfigured) {
+            Spacer(Modifier.height(12.dp))
             Text(
                 text = "尚未配置 AI 服务，前往设置添加 API 可获得更强的对话能力",
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
@@ -528,11 +846,9 @@ private fun EmptyHint(apiConfigured: Boolean) {
 @Composable
 private fun PermissionHint(text: String, action: () -> Unit) {
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -549,4 +865,125 @@ private fun PermissionHint(text: String, action: () -> Unit) {
 }
 
 @Composable
-private fun rememberCoroutineScope() = androidx.compose.runtime.rememberCoroutineScope()
+private fun ThemeBackground(style: ThemeStyle) {
+    when (style) {
+        ThemeStyle.AURORA -> {
+            val transition = rememberInfiniteTransition(label = "aurora")
+            val shift by transition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(8000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "shift"
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .drawBehind {
+                        val colors = AuroraGradient
+                        val c0 = colors[0].copy(alpha = 0.18f)
+                        val c1 = colors[1].copy(alpha = 0.10f)
+                        val c2 = colors[2].copy(alpha = 0.10f)
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                listOf(c0, Color.Transparent),
+                                center = Offset(size.width * (0.2f + 0.4f * shift), size.height * 0.15f),
+                                radius = size.width * 0.7f
+                            )
+                        )
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                listOf(c1, Color.Transparent),
+                                center = Offset(size.width * (0.8f - 0.3f * shift), size.height * 0.55f),
+                                radius = size.width * 0.6f
+                            )
+                        )
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                listOf(c2, Color.Transparent),
+                                center = Offset(size.width * (0.5f + 0.4f * shift), size.height * 0.95f),
+                                radius = size.width * 0.7f
+                            )
+                        )
+                    }
+            )
+        }
+        ThemeStyle.NEON -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0xFF060014),
+                                Color(0xFF1A0040),
+                                Color(0xFF060014)
+                            )
+                        )
+                    )
+                    .drawBehind {
+                        val colors = NeonGlow
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                listOf(colors[0].copy(alpha = 0.20f), Color.Transparent),
+                                center = Offset(size.width * 0.25f, size.height * 0.2f),
+                                radius = size.width * 0.6f
+                            )
+                        )
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                listOf(colors[1].copy(alpha = 0.18f), Color.Transparent),
+                                center = Offset(size.width * 0.8f, size.height * 0.8f),
+                                radius = size.width * 0.7f
+                            )
+                        )
+                    }
+            )
+        }
+        ThemeStyle.GLASS -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0xFF1F1B3A),
+                                Color(0xFF2B2350),
+                                Color(0xFF14122A)
+                            )
+                        )
+                    )
+                    .drawBehind {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                listOf(Color(0xFFB8B0FF).copy(alpha = 0.18f), Color.Transparent),
+                                center = Offset(size.width * 0.2f, size.height * 0.1f),
+                                radius = size.width * 0.5f
+                            )
+                        )
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                listOf(Color(0xFF80E1FF).copy(alpha = 0.15f), Color.Transparent),
+                                center = Offset(size.width * 0.85f, size.height * 0.7f),
+                                radius = size.width * 0.55f
+                            )
+                        )
+                    }
+            )
+        }
+        ThemeStyle.VOICE -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.radialGradient(
+                            listOf(Color(0xFF1F0A0A), Color(0xFF0A0A12)),
+                            radius = Float.POSITIVE_INFINITY
+                        )
+                    )
+            )
+        }
+    }
+}
