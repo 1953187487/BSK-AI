@@ -11,6 +11,15 @@ enum class ThemeStyle(val key: String, val label: String, val description: Strin
     }
 }
 
+data class LocalModelEntry(
+    val id: String,
+    val name: String,
+    val path: String,
+    val sizeBytes: Long,
+    val source: String,
+    val downloadedAt: Long = System.currentTimeMillis()
+)
+
 data class AppSettings(
     val darkTheme: Boolean = true,
     val autoStartService: Boolean = false,
@@ -27,7 +36,9 @@ data class AppSettings(
     val apiConnected: Boolean = false,
     val themeStyle: ThemeStyle = ThemeStyle.AURORA,
     val customModelList: List<String> = emptyList(),
-    val agentToolsEnabled: Boolean = false
+    val agentToolsEnabled: Boolean = false,
+    val localModels: List<LocalModelEntry> = emptyList(),
+    val modelSource: String = "api"
 ) {
     val apiConfigured: Boolean
         get() = apiProviderUrl.isNotBlank() && apiProviderKey.isNotBlank() && apiModel.isNotBlank()

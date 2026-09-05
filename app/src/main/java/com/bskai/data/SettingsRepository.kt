@@ -23,6 +23,8 @@ class SettingsRepository(context: Context) {
     }
 
     private fun load(): AppSettings {
+        val localModelsJson = prefs.getString(KEY_LOCAL_MODELS, "[]") ?: "[]"
+        val localModels = parseLocalModels(localModelsJson)
         return AppSettings(
             darkTheme = prefs.getBoolean(KEY_DARK_THEME, true),
             autoStartService = prefs.getBoolean(KEY_AUTO_START, false),
@@ -42,11 +44,45 @@ class SettingsRepository(context: Context) {
                 ?.split('\n')
                 ?.filter { it.isNotBlank() }
                 ?: emptyList(),
-            agentToolsEnabled = prefs.getBoolean(KEY_AGENT_TOOLS_ENABLED, false)
+            agentToolsEnabled = prefs.getBoolean(KEY_AGENT_TOOLS_ENABLED, false),
+            localModels = localModels,
+            modelSource = prefs.getString(KEY_MODEL_SOURCE, "api") ?: "api"
         )
     }
 
+    private fun parseLocalModels(json: String): List<LocalModelEntry> {
+        if (json == "[]") return emptyList()
+        return try {
+            val arr = org.json.JSONArray(json)
+            (0 until arr.length()).map { i ->
+                val o = arr.getJSONObject(i)
+                LocalModelEntry(
+                    id = o.optString("id"),
+                    name = o.optString("name"),
+                    path = o.optString("path"),
+                    sizeBytes = o.optLong("sizeBytes"),
+                    source = o.optString("source"),
+                    downloadedAt = o.optLong("downloadedAt")
+                )
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
     private fun persist(s: AppSettings) {
+        val localModelsJson = org.json.JSONArray().apply {
+            s.localModels.forEach { m ->
+                put(org.json.JSONObject().apply {
+                    put("id", m.id)
+                    put("name", m.name)
+                    put("path", m.path)
+                    put("sizeBytes", m.sizeBytes)
+                    put("source", m.source)
+                    put("downloadedAt", m.downloadedAt)
+                })
+            }
+        }.toString()
         prefs.edit()
             .putBoolean(KEY_DARK_THEME, s.darkTheme)
             .putBoolean(KEY_AUTO_START, s.autoStartService)
@@ -64,6 +100,8 @@ class SettingsRepository(context: Context) {
             .putString(KEY_THEME_STYLE, s.themeStyle.key)
             .putString(KEY_CUSTOM_MODELS, s.customModelList.joinToString("\n"))
             .putBoolean(KEY_AGENT_TOOLS_ENABLED, s.agentToolsEnabled)
+            .putString(KEY_LOCAL_MODELS, localModelsJson)
+            .putString(KEY_MODEL_SOURCE, s.modelSource)
             .apply()
     }
 
@@ -125,5 +163,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_AGREEMENT_VERSION = "agreement_version"
         private const val KEY_AGREEMENT_SESSION = "agreement_session"
         private const val KEY_AGENT_TOOLS_ENABLED = "agent_tools_enabled"
+        private const val KEY_LOCAL_MODELS = "local_models"
+        private const val KEY_MODEL_SOURCE = "model_source"
     }
 }

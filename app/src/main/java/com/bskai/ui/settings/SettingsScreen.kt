@@ -93,6 +93,7 @@ import com.bskai.BuildConfig
 import com.bskai.agent.LlmClient
 import com.bskai.data.DefaultApiUrlPresets
 import com.bskai.data.DefaultModelPresets
+import com.bskai.data.LocalModelEntry
 import com.bskai.data.ThemeStyle
 import com.bskai.data.languageList
 import com.bskai.permission.ShizukuBridge
@@ -102,7 +103,10 @@ import com.bskai.update.RemoteRelease
 import com.bskai.update.UpdateInstaller
 import com.bskai.util.Permissions
 import com.bskai.workspace.WorkspaceEntry
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 @Composable
 fun SettingsScreen(
@@ -121,6 +125,7 @@ fun SettingsScreen(
     val shizukuState by app.shizuku.state.collectAsState()
 
     var showProviderDialog by rememberSaveable { mutableStateOf(false) }
+    var showLocalModelDialog by rememberSaveable { mutableStateOf(false) }
     var showWorkspaceDialog by rememberSaveable { mutableStateOf(false) }
     var showLanguageDialog by rememberSaveable { mutableStateOf(false) }
     var showAboutDialog by rememberSaveable { mutableStateOf(false) }
@@ -158,24 +163,9 @@ fun SettingsScreen(
                 SectionDivider()
             }
             item {
-                SectionHeader("自定义服务商", Icons.Default.Tune)
-                if (settings.apiConfigured) {
-                    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(settings.apiModel, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(settings.apiProviderUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                            TextButton(onClick = { showProviderDialog = true }) { Text("编辑") }
-                        }
-                    }
-                } else {
-                    OutlinedButton(onClick = { showProviderDialog = true }, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                        Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("配置 AI 服务商")
-                    }
-                }
+                SectionHeader("模型管理", Icons.Default.Tune)
+                SettingRowButton("本地模型", if (settings.localModels.isEmpty()) "未下载本地模型" else "已下载 ${settings.localModels.size} 个本地模型", Icons.Default.CloudDownload, "下载") { showLocalModelDialog = true }
+                SettingRowButton("外接模型（API）", if (settings.apiConfigured) "已配置 ${settings.apiModel}" else "未配置外接模型", Icons.Default.SwapHoriz, "配置") { showProviderDialog = true }
                 if (settings.customModelList.isNotEmpty()) {
                     Text("已保存 ${settings.customModelList.size} 个自定义模型", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -204,6 +194,7 @@ fun SettingsScreen(
                 SectionHeader("更新", Icons.Default.SystemUpdateAlt)
                 SettingRowButton("检查更新", "当前 ${BuildConfig.APP_VERSION} (${BuildConfig.BUILD_NUMBER})", Icons.Default.SystemUpdateAlt, "检查") { showUpdateDialog = true }
                 SettingRowButton("历史版本", "浏览与下载历史版本", Icons.Default.History, "查看") { showUpdateDialog = true }
+                ApkCleanerCard(context)
                 SectionDivider()
             }
             item {
@@ -215,6 +206,7 @@ fun SettingsScreen(
     }
 
     if (showProviderDialog) ProviderConfigDialog(app, { showProviderDialog = false }, { showProviderDialog = false })
+    if (showLocalModelDialog) LocalModelDownloadDialog(app) { showLocalModelDialog = false }
     if (showWorkspaceDialog) WorkspaceManageDialog(app.workspace, { showWorkspaceDialog = false })
     if (showLanguageDialog) LanguageSelectDialog(settings.ttsLanguage, { lang -> app.settings.update { s -> s.copy(ttsLanguage = lang) }; app.voice.applyTtsSettings(settings.copy(ttsLanguage = lang)) }, { showLanguageDialog = false })
     if (showUpdateDialog) UpdateCenterDialog({ showUpdateDialog = false })
@@ -603,6 +595,256 @@ private fun UpdateCenterDialog(onDismiss: () -> Unit) {
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
+    )
+}
+
+@Composable
+private fun ApkCleanerCard(context: Context) {
+    val currentVersion = remember { BuildConfig.APP_VERSION }
+    val downloadDir = remember { context.cacheDir }
+    var apkFiles by remember { mutableStateOf<List<File>>(emptyList()) }
+    var scanning by remember { mutableStateOf(true) }
+    var cleaned by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val apks = downloadDir.listFiles { file ->
+            file.extension.equals("apk", ignoreCase = true) && !file.name.contains(currentVersion, ignoreCase = true)
+        }?.toList() ?: emptyList()
+        apkFiles = apks
+        scanning = false
+        if (apks.isNotEmpty()) {
+            apks.forEach { apk -> runCatching { apk.delete() } }
+            apkFiles = emptyList()
+            cleaned = true
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (cleaned || apkFiles.isEmpty()) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+        )
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                if (cleaned) Icons.Default.CheckCircle else Icons.Default.Delete,
+                contentDescription = null,
+                tint = if (cleaned) MaterialTheme.colorScheme.primary else if (apkFiles.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("清除已安装的安装包", fontWeight = FontWeight.Medium)
+                if (scanning) {
+                    Text("扫描中…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else if (cleaned) {
+                    Text("已清理旧版本安装包", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                } else {
+                    Text("未发现旧版本安装包", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LocalModelDownloadDialog(app: AuraApp, onDismiss: () -> Unit) {
+    val settings by app.settings.settings.collectAsState()
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var downloadUrl by rememberSaveable { mutableStateOf("") }
+    var modelName by rememberSaveable { mutableStateOf("") }
+    var downloading by remember { mutableStateOf(false) }
+    var downloadProgress by remember { mutableStateOf(0f) }
+    var downloadError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val presetSources = remember {
+        listOf(
+            Triple("HuggingFace", "https://huggingface.co", "全球模型仓库，支持 GGUF/GGML 格式"),
+            Triple("ModelScope", "https://modelscope.cn", "国内模型仓库，支持 Qwen/DeepSeek 等"),
+            Triple("Ollama Library", "https://ollama.com/library", "Ollama 官方模型库"),
+            Triple("本地文件", "", "从设备存储导入 GGUF 文件")
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("本地模型", fontWeight = FontWeight.SemiBold) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
+                TabRow(selectedTabIndex = tab) {
+                    Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("已下载") })
+                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("下载模型") })
+                }
+                Spacer(Modifier.height(12.dp))
+                if (tab == 0) {
+                    if (settings.localModels.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                            Text("暂无本地模型\n请前往「下载模型」页下载", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        LazyColumn {
+                            items(settings.localModels) { model ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (model.id == settings.apiModel && settings.modelSource == "local")
+                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                    )
+                                ) {
+                                    Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Code, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                        Spacer(Modifier.width(10.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(model.name, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text("${model.source} · ${model.sizeBytes / 1024 / 1024}MB", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                        if (model.id == settings.apiModel && settings.modelSource == "local") {
+                                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        } else {
+                                            TextButton(onClick = {
+                                                app.settings.update { it.copy(apiModel = model.id, modelSource = "local") }
+                                            }) { Text("使用") }
+                                        }
+                                        IconButton(onClick = {
+                                            val file = File(model.path)
+                                            if (file.exists()) file.delete()
+                                            app.settings.update { s ->
+                                                s.copy(localModels = s.localModels.filter { it.id != model.id })
+                                            }
+                                        }) { Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    LazyColumn {
+                        item {
+                            Text("选择下载源", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 8.dp))
+                            presetSources.forEach { (name, url, desc) ->
+                                OutlinedButton(
+                                    onClick = {
+                                        if (url.isNotEmpty()) {
+                                            downloadUrl = url
+                                        } else {
+                                            scope.launch {
+                                                val intent = android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
+                                                    addCategory(android.content.Intent.CATEGORY_OPENABLE)
+                                                    type = "*/*"
+                                                }
+                                                (context as? android.app.Activity)?.startActivityForResult(intent, 1002)
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(name, fontWeight = FontWeight.Medium)
+                                        Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            HorizontalDivider()
+                            Spacer(Modifier.height(12.dp))
+                        }
+                        item {
+                            Text("自定义下载链接", style = MaterialTheme.typography.labelMedium)
+                            OutlinedTextField(
+                                value = downloadUrl,
+                                onValueChange = { downloadUrl = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                placeholder = { Text("https://huggingface.co/.../model.gguf") }
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = modelName,
+                                onValueChange = { modelName = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                placeholder = { Text("模型名称（可选）") }
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            if (downloading) {
+                                LinearProgressIndicator(progress = { downloadProgress }, modifier = Modifier.fillMaxWidth())
+                                Text("下载中... ${(downloadProgress * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                            }
+                            downloadError?.let {
+                                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                            }
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        downloading = true
+                                        downloadError = null
+                                        downloadProgress = 0f
+                                        try {
+                                            val name = modelName.ifBlank { downloadUrl.substringAfterLast('/').substringBefore('?') }
+                                            val targetDir = File(context.filesDir, "models").also { it.mkdirs() }
+                                            val targetFile = File(targetDir, name)
+                                            withContext(Dispatchers.IO) {
+                                                val client = okhttp3.OkHttpClient.Builder().readTimeout(5, java.util.concurrent.TimeUnit.MINUTES).build()
+                                                val request = okhttp3.Request.Builder().url(downloadUrl).build()
+                                                val response = client.newCall(request).execute()
+                                                if (!response.isSuccessful) {
+                                                    downloadError = "下载失败: HTTP ${response.code}"
+                                                    downloading = false
+                                                    return@withContext
+                                                }
+                                                val body = response.body ?: run {
+                                                    downloadError = "空响应"
+                                                    downloading = false
+                                                    return@withContext
+                                                }
+                                                val total = body.contentLength()
+                                                body.byteStream().use { input ->
+                                                    targetFile.outputStream().use { output ->
+                                                        val buf = ByteArray(8192)
+                                                        var read: Int
+                                                        var sum = 0L
+                                                        while (input.read(buf).also { read = it } != -1) {
+                                                            output.write(buf, 0, read)
+                                                            sum += read
+                                                            if (total > 0) downloadProgress = sum.toFloat() / total
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            val entry = LocalModelEntry(
+                                                id = "local_${System.currentTimeMillis()}",
+                                                name = name,
+                                                path = targetFile.absolutePath,
+                                                sizeBytes = targetFile.length(),
+                                                source = "自定义下载"
+                                            )
+                                            app.settings.update { s -> s.copy(localModels = s.localModels + entry) }
+                                            downloading = false
+                                            downloadUrl = ""
+                                            modelName = ""
+                                        } catch (e: Exception) {
+                                            downloadError = "下载失败: ${e.message}"
+                                            downloading = false
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !downloading && downloadUrl.isNotBlank()
+                            ) {
+                                Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("开始下载")
                             }
                         }
                     }

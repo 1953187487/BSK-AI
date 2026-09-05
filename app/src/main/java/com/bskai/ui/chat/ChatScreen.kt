@@ -40,14 +40,17 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -427,6 +430,23 @@ private fun TopHeader(
                 expanded = showModelMenu,
                 onDismissRequest = { onShowModelMenu(false) }
             ) {
+                DropdownMenuItem(
+                    text = { Text("本地模型", fontWeight = FontWeight.SemiBold) },
+                    leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    onClick = {
+                        onShowModelMenu(false)
+                        onOpenSettings()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("外接模型 (API)", fontWeight = FontWeight.SemiBold) },
+                    leadingIcon = { Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    onClick = {
+                        onShowModelMenu(false)
+                        onOpenSettings()
+                    }
+                )
+                HorizontalDivider()
                 val customModels = settings.customModelList
                 val allModels = (DefaultModelPresets + customModels).distinct()
                 allModels.forEach { model ->
@@ -443,8 +463,25 @@ private fun TopHeader(
                         }
                     )
                 }
+                if (settings.localModels.isNotEmpty()) {
+                    HorizontalDivider()
+                    settings.localModels.forEach { local ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = if (local.id == settings.apiModel) "${local.name} (当前)" else local.name,
+                                    fontWeight = if (local.id == settings.apiModel) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                            },
+                            onClick = {
+                                app.settings.update { it.copy(apiModel = local.id, modelSource = "local") }
+                                onShowModelMenu(false)
+                            }
+                        )
+                    }
+                }
                 DropdownMenuItem(
-                    text = { Text("去设置自定义…", color = MaterialTheme.colorScheme.primary) },
+                    text = { Text("去设置管理模型…", color = MaterialTheme.colorScheme.primary) },
                     onClick = {
                         onShowModelMenu(false)
                         onOpenSettings()
