@@ -33,15 +33,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material3.DropdownMenu
@@ -438,6 +442,7 @@ private fun TopHeader(
     val settings by app.settings.settings.collectAsState()
     val currentModel = settings.apiModel.ifBlank { "未选择模型" }
     val configured = settings.apiConfigured
+    var showThemeMenu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -509,6 +514,51 @@ private fun TopHeader(
                 expanded = showTopMenu,
                 onDismissRequest = { onShowTopMenu(false) }
             ) {
+                // 切换主题
+                Box {
+                    DropdownMenuItem(
+                        leadingIcon = { Icon(Icons.Default.Palette, contentDescription = null) },
+                        text = {
+                            Text(
+                                text = "主题：${settings.themeStyle.label}",
+                                fontWeight = FontWeight.Medium
+                            )
+                        },
+                        trailingIcon = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
+                        onClick = { showThemeMenu = true }
+                    )
+                    DropdownMenu(
+                        expanded = showThemeMenu,
+                        onDismissRequest = { showThemeMenu = false }
+                    ) {
+                        com.bskai.data.ThemeStyle.entries.forEach { style ->
+                            DropdownMenuItem(
+                                leadingIcon = {
+                                    if (settings.themeStyle == style) {
+                                        Icon(Icons.Default.CheckCircle, contentDescription = null)
+                                    } else {
+                                        Spacer(Modifier.size(24.dp))
+                                    }
+                                },
+                                text = {
+                                    Column {
+                                        Text(text = style.label, fontWeight = FontWeight.Medium)
+                                        Text(
+                                            text = style.description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    app.settings.update { it.copy(themeStyle = style) }
+                                    showThemeMenu = false
+                                    onShowTopMenu(false)
+                                }
+                            )
+                        }
+                    }
+                }
                 DropdownMenuItem(
                     leadingIcon = { Icon(Icons.Default.SystemUpdateAlt, contentDescription = null) },
                     text = { Text("检查更新") },
@@ -616,54 +666,74 @@ private fun InputBar(
                 placeholder = { Text("说点什么，或点右侧说话…") },
                 shape = MaterialTheme.shapes.large,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = {
+                    if (text.isNotBlank()) onSubmit()
+                }),
                 maxLines = 4,
                 enabled = !active
             )
-            Spacer(Modifier.width(8.dp))
-            if (text.isNotBlank()) {
-                IconButton(
-                    onClick = onSubmit,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(MaterialTheme.shapes.large)
-                        .background(MaterialTheme.colorScheme.primary)
-                ) {
-                    Icon(
-                        Icons.Default.Send,
-                        contentDescription = "发送",
-                        tint = MaterialTheme.colorScheme.onPrimary
+            Spacer(Modifier.width(6.dp))
+            // 麦克风：始终在发送按钮左边
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (active) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.primaryContainer
                     )
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (active) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.primaryContainer
-                        )
-                        .pointerInput(micEnabled) {
-                            if (!micEnabled) return@pointerInput
-                            awaitPointerEventScope {
-                                awaitFirstDown(requireUnconsumed = false)
-                                onMicPress()
-                                while (true) {
-                                    val event = awaitPointerEvent()
-                                    if (event.changes.all { !it.pressed }) break
+                    .then(
+                        if (!active && text.isBlank() && micEnabled)
+                            Modifier.pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    awaitFirstDown(requireUnconsumed = false)
+                                    onMicPress()
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        if (event.changes.all { !it.pressed }) break
+                                    }
+                                    onMicRelease()
                                 }
-                                onMicRelease()
                             }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (active) Icons.Default.MicOff else Icons.Default.Mic,
-                        contentDescription = "按住说话",
-                        tint = if (active) MaterialTheme.colorScheme.onPrimary
-                        else MaterialTheme.colorScheme.primary
+                        else if (!active && micEnabled)
+                            Modifier.clickable {
+                                if (micEnabled) onMicPress()
+                            }
+                        else Modifier
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (active) Icons.Default.MicOff else Icons.Default.Mic,
+                    contentDescription = "语音输入",
+                    tint = if (active) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.primary
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            // 发送按钮：始终在右侧
+            val canSend = text.isNotBlank() && !active
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (canSend) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
                     )
-                }
+                    .then(
+                        if (canSend)
+                            Modifier.clickable { onSubmit() }
+                        else Modifier
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = "发送",
+                    tint = if (canSend) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                )
             }
         }
     }
