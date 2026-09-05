@@ -14,8 +14,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import com.bskai.ui.AuraScaffold
-import com.bskai.ui.welcome.WelcomeScreen
+import com.bskai.ui.legal.AgreementDecision
+import com.bskai.ui.legal.AgreementDialog
 import com.bskai.ui.theme.AuraTheme
+import com.bskai.data.Agreements
 
 class MainActivity : ComponentActivity() {
 
@@ -51,12 +53,35 @@ class MainActivity : ComponentActivity() {
 
 @androidx.compose.runtime.Composable
 private fun AppRoot(app: AuraApp) {
-    var agreed by rememberSaveable { mutableStateOf(app.settings.hasAgreed()) }
-    if (!agreed) {
-        WelcomeScreen(app = app) {
-            agreed = true
-        }
-    } else {
+    val activity = androidx.compose.ui.platform.LocalContext.current as? MainActivity
+    var initialAgreed by rememberSaveable { mutableStateOf(app.settings.hasAgreed()) }
+    var versionSigned by rememberSaveable { mutableStateOf(app.settings.agreementVersion()) }
+
+    val currentVersion = com.bskai.BuildConfig.APP_VERSION
+    val needsResign = initialAgreed && versionSigned != currentVersion
+
+    var showAgreement by rememberSaveable { mutableStateOf(!initialAgreed || needsResign) }
+    var showMain by rememberSaveable { mutableStateOf(initialAgreed && !needsResign) }
+
+    if (showAgreement) {
+        AgreementDialog(
+            version = currentVersion,
+            openSource = Agreements.openSource,
+            privacy = Agreements.privacy.copy(body = Agreements.renderPrivacy(currentVersion)),
+            requireBoth = true,
+            onCancel = if (initialAgreed && needsResign) {
+                { activity?.finish() }
+            } else null,
+            onConfirm = { decision: AgreementDecision ->
+                app.settings.setAgreed()
+                app.settings.setAgreementVersion(currentVersion)
+                app.settings.markSessionAgreement(currentVersion)
+                showAgreement = false
+                showMain = true
+            }
+        )
+    }
+    if (showMain) {
         AuraScaffold(app = app)
     }
 }

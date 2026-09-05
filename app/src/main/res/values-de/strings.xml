@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AURA</string>
+    <string name="app_tagline">Dein intelligenter Sprachassistent</string>
+    <string name="nav_home">Start</string>
+    <string name="nav_voice">Sprache</string>
+    <string name="nav_skills">Fähigkeiten</string>
+    <string name="nav_settings">Einstellungen</string>
+    <string name="btn_listen">Zum Sprechen halten</string>
+    <string name="btn_voice">Spracheingabe</string>
+    <string name="status_listening">Höre zu…</string>
+    <string name="status_processing">Verarbeite…</string>
+    <string name="status_error">Erkennung fehlgeschlagen, bitte erneut versuchen</string>
+    <string name="permission_required">Berechtigung für diese Funktion erforderlich</string>
+    <string name="perm_audio">Mikrofonberechtigung</string>
+    <string name="perm_storage">Speicherberechtigung</string>
+    <string name="perm_notification">Benachrichtigungsberechtigung</string>
+    <string name="service_running">AURA hört im Hintergrund</string>
+    <string name="service_channel_name">Sprachdienst</string>
+    <string name="wake_word">Hey AURA</string>
+    <string name="version">Version %s</string>
+    <string name="check_update">Update prüfen</string>
+    <string name="auto_update">Auto-Update</string>
+</resources>

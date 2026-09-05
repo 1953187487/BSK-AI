@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AURA</string>
+    <string name="app_tagline">당신의 스마트 음성 어시스턴트</string>
+    <string name="nav_home">홈</string>
+    <string name="nav_voice">음성</string>
+    <string name="nav_skills">스킬</string>
+    <string name="nav_settings">설정</string>
+    <string name="btn_listen">누르고 말하기</string>
+    <string name="btn_voice">음성 입력</string>
+    <string name="status_listening">듣고 있어요…</string>
+    <string name="status_processing">처리 중…</string>
+    <string name="status_error">인식 실패, 다시 시도해 주세요</string>
+    <string name="permission_required">이 기능을 사용하려면 권한이 필요합니다</string>
+    <string name="perm_audio">마이크 권한</string>
+    <string name="perm_storage">저장소 권한</string>
+    <string name="perm_notification">알림 권한</string>
+    <string name="service_running">AURA 백그라운드 청취 중</string>
+    <string name="service_channel_name">음성 서비스</string>
+    <string name="wake_word">헤이 AURA</string>
+    <string name="version">버전 %s</string>
+    <string name="check_update">업데이트 확인</string>
+    <string name="auto_update">자동 업데이트</string>
+</resources>

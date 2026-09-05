@@ -20,13 +20,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
+import com.bskai.data.Agreements
 import com.bskai.data.loadAnnouncements
 import com.bskai.ui.chat.ChatScreen
+import com.bskai.ui.legal.AgreementDecision
+import com.bskai.ui.legal.AgreementDialog
 import com.bskai.ui.settings.SettingsScreen
-import com.bskai.ui.update.HistoryDialog
-import com.bskai.ui.update.UpdateDialog
-import com.bskai.update.GitHubApi
-import com.bskai.update.RemoteRelease
+import com.bskai.ui.update.CombinedUpdateDialog
 import com.bskai.update.UpdateCheckResult
 import kotlinx.coroutines.launch
 
@@ -76,12 +76,10 @@ fun AuraScaffold(app: AuraApp) {
     }
 
     var updateResult by remember { mutableStateOf<UpdateCheckResult?>(null) }
-    var historyReleases by remember { mutableStateOf<List<RemoteRelease>?>(null) }
-    var historyLoading by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
 
-    // 监听外部 nav_target：仅支持 "settings"
+    var pendingAgreementFor by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(Unit) {
         com.bskai.MainActivity.navRequests.collect { target ->
             if (target == "settings") showSettings = true
@@ -95,17 +93,7 @@ fun AuraScaffold(app: AuraApp) {
             ChatScreen(
                 app = app,
                 onShowUpdate = { updateResult = it },
-                onShowHistory = {
-                    historyReleases = emptyList()
-                    historyLoading = true
-                    scope.launch {
-                        val r = GitHubApi.listReleases()
-                            .filter { it.versionCode > 0 }
-                            .sortedByDescending { it.versionCode }
-                        historyReleases = r
-                        historyLoading = false
-                    }
-                },
+                onShowHistory = { /* absorbed by CombinedUpdateDialog */ },
                 onOpenSettings = { showSettings = true }
             )
 
@@ -115,14 +103,31 @@ fun AuraScaffold(app: AuraApp) {
         }
     }
 
-    updateResult?.let {
-        UpdateDialog(result = it, onDismiss = { updateResult = null })
+    updateResult?.let { result ->
+        CombinedUpdateDialog(
+            result = result,
+            currentVersionSigned = app.settings.agreementVersion() ?: "未签",
+            onAgreementNeeded = { releaseVersion ->
+                !app.settings.sessionAgreementAck(releaseVersion)
+            },
+            onAgreementRequested = { releaseVersion ->
+                pendingAgreementFor = releaseVersion
+            },
+            onDismiss = { updateResult = null }
+        )
     }
-    historyReleases?.let {
-        HistoryDialog(
-            releases = it,
-            loading = historyLoading && it.isEmpty(),
-            onDismiss = { historyReleases = null }
+
+    pendingAgreementFor?.let { version ->
+        AgreementDialog(
+            version = version,
+            openSource = Agreements.openSource,
+            privacy = Agreements.privacy.copy(body = Agreements.renderPrivacy(version)),
+            requireBoth = true,
+            onCancel = { pendingAgreementFor = null },
+            onConfirm = { _: AgreementDecision ->
+                app.settings.markSessionAgreement(version)
+                pendingAgreementFor = null
+            }
         )
     }
 }

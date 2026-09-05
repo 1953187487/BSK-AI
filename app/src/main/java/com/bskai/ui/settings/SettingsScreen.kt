@@ -58,7 +58,6 @@ import com.bskai.data.DefaultApiUrlPresets
 import com.bskai.data.DefaultModelPresets
 import com.bskai.data.ThemeStyle
 import com.bskai.update.GitHubApi
-import com.bskai.update.RemoteRelease
 import com.bskai.ui.theme.AuroraGradient
 import com.bskai.ui.theme.GlassTint
 import com.bskai.ui.theme.NeonGlow
@@ -73,8 +72,6 @@ fun SettingsScreen(
     val settings by app.settings.settings.collectAsState()
     var showApiDialog by rememberSaveable { mutableStateOf(false) }
     var checking by remember { mutableStateOf(false) }
-    var historyReleases by remember { mutableStateOf<List<RemoteRelease>?>(null) }
-    var historyLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -249,23 +246,6 @@ fun SettingsScreen(
                         Text(if (checking) "检查中…" else "检查")
                     }
                 }
-                SettingRow(title = "历史版本", description = "查看所有已发布的 AURA 版本") {
-                    OutlinedButton(onClick = {
-                        historyReleases = emptyList()
-                        historyLoading = true
-                        scope.launch {
-                            val r = GitHubApi.listReleases()
-                                .filter { it.versionCode > 0 }
-                                .sortedByDescending { it.versionCode }
-                            historyReleases = r
-                            historyLoading = false
-                        }
-                    }) {
-                        Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("查看")
-                    }
-                }
                 SettingRow(
                     title = "关于 AURA",
                     description = "${BuildConfig.APP_NAME} ${BuildConfig.APP_VERSION} · Kotlin + Jetpack Compose"
@@ -296,13 +276,6 @@ fun SettingsScreen(
         )
     }
 
-    historyReleases?.let { list ->
-        com.bskai.ui.update.HistoryDialog(
-            releases = list,
-            loading = historyLoading && list.isEmpty(),
-            onDismiss = { historyReleases = null }
-        )
-    }
 }
 
 @Composable

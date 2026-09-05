@@ -11,12 +11,12 @@ android {
         applicationId "com.bskai"
         minSdk 26
         targetSdk 34
-        versionCode 207
-        versionName "2.0.0-beta.7"
+        versionCode 208
+        versionName "2.0.0-beta.8"
 
         buildConfigField "String", "APP_NAME", '"AURA"'
-        buildConfigField "String", "APP_VERSION", '"2.0.0-beta.7"'
-        buildConfigField "int", "BUILD_NUMBER", "207"
+        buildConfigField "String", "APP_VERSION", '"2.0.0-beta.8"'
+        buildConfigField "int", "BUILD_NUMBER", "208"
     }
 
     signingConfigs {

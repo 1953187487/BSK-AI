@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AURA</string>
+    <string name="app_tagline">あなたのスマート音声アシスタント</string>
+    <string name="nav_home">ホーム</string>
+    <string name="nav_voice">音声</string>
+    <string name="nav_skills">スキル</string>
+    <string name="nav_settings">設定</string>
+    <string name="btn_listen">押しながら話す</string>
+    <string name="btn_voice">音声入力</string>
+    <string name="status_listening">聴いています…</string>
+    <string name="status_processing">処理中…</string>
+    <string name="status_error">認識に失敗しました、再試行してください</string>
+    <string name="permission_required">この機能には権限が必要です</string>
+    <string name="perm_audio">マイク権限</string>
+    <string name="perm_storage">ストレージ権限</string>
+    <string name="perm_notification">通知権限</string>
+    <string name="service_running">AURA バックグラウンド監視中</string>
+    <string name="service_channel_name">音声サービス</string>
+    <string name="wake_word">ねえAURA</string>
+    <string name="version">バージョン %s</string>
+    <string name="check_update">更新を確認</string>
+    <string name="auto_update">自動更新</string>
+</resources>

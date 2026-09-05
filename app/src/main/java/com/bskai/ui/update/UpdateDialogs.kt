@@ -6,11 +6,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
@@ -25,12 +29,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -52,20 +59,41 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 @Composable
-fun UpdateDialog(
+fun CombinedUpdateDialog(
     result: UpdateCheckResult,
+    currentVersionSigned: String,
+    onAgreementNeeded: (String) -> Boolean,
+    onAgreementRequested: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val target = result.latestRelease
 
+    var tab by remember { mutableIntStateOf(0) }
+
     var status by remember { mutableStateOf<DownloadStatus>(DownloadStatus.Idle) }
     var downloadJob by remember { mutableStateOf<Job?>(null) }
 
     DisposableEffect(Unit) {
-        onDispose {
-            downloadJob?.cancel()
+        onDispose { downloadJob?.cancel() }
+    }
+
+    fun startDownload(release: RemoteRelease) {
+        if (release.apkUrl.isBlank()) return
+        if (onAgreementNeeded(release.versionName)) {
+            onAgreementRequested(release.versionName)
+            return
+        }
+        downloadJob?.cancel()
+        val cacheFile = File(context.cacheDir, "update/${release.versionName}.apk")
+        downloadJob = scope.launch {
+            status = DownloadStatus.Downloading(0, release.sizeBytes)
+            GitHubApi.downloadApk(release.apkUrl, cacheFile).collectLatest { st ->
+                status = st
+                if (st is DownloadStatus.Failed) downloadJob = null
+                if (st is DownloadStatus.Done) downloadJob = null
+            }
         }
     }
 
@@ -75,188 +103,214 @@ fun UpdateDialog(
         },
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val (icon, color) = when {
-                    status is DownloadStatus.Done -> Icons.Default.InstallMobile to MaterialTheme.colorScheme.primary
-                    status is DownloadStatus.Failed -> Icons.Default.Update to MaterialTheme.colorScheme.error
-                    result.hasUpdate -> Icons.Default.Update to MaterialTheme.colorScheme.primary
-                    else -> Icons.Default.CheckCircle to MaterialTheme.colorScheme.secondary
-                }
-                Icon(icon, contentDescription = null, tint = color)
+                Icon(Icons.Default.Update, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    text = when (status) {
-                        is DownloadStatus.Done -> "下载完成"
-                        is DownloadStatus.Failed -> "下载失败"
-                        else -> if (result.hasUpdate) "发现新版本" else "已是最新"
-                    },
-                    fontWeight = FontWeight.SemiBold
-                )
+                Column {
+                    Text("更新中心", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = "当前：${BuildConfig.APP_VERSION} · 协议：$currentVersionSigned",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         },
         text = {
             Column {
-                Text(
-                    text = "当前版本：${BuildConfig.APP_VERSION} (${BuildConfig.BUILD_NUMBER})",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(8.dp))
-                if (target != null) {
-                    Text(
-                        text = "${target.name} · ${target.versionName}",
-                        fontWeight = FontWeight.Medium
+                TabRow(
+                    selectedTabIndex = tab,
+                    containerColor = MaterialTheme.colorScheme.surface
+                ) {
+                    Tab(
+                        selected = tab == 0,
+                        onClick = { tab = 0 },
+                        text = {
+                            val label = if (result.hasUpdate) "最新 (有更新)" else "最新"
+                            Text(label, fontWeight = if (result.hasUpdate) FontWeight.SemiBold else FontWeight.Normal)
+                        },
+                        icon = { Icon(Icons.Default.Update, contentDescription = null) }
                     )
+                    Tab(
+                        selected = tab == 1,
+                        onClick = { tab = 1 },
+                        text = { Text("历史版本 (${result.releases.size})") },
+                        icon = { Icon(Icons.Default.History, contentDescription = null) }
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                if (tab == 0) LatestTab(
+                    target = target,
+                    result = result,
+                    status = status,
+                    onDownload = { target?.let { startDownload(it) } },
+                    onCancel = {
+                        downloadJob?.cancel()
+                        status = DownloadStatus.Idle
+                    }
+                ) else HistoryTab(releases = result.releases)
+            }
+        },
+        confirmButton = {
+            if (tab == 0 && status is DownloadStatus.Done) {
+                Button(onClick = {
+                    UpdateInstaller.install(context, File((status as DownloadStatus.Done).localPath))
+                }) {
+                    Icon(Icons.Default.InstallMobile, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("立即安装")
+                }
+            } else {
+                TextButton(onClick = onDismiss) {
+                    Text(if (status is DownloadStatus.Downloading) "隐藏" else "关闭")
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun LatestTab(
+    target: RemoteRelease?,
+    result: UpdateCheckResult,
+    status: DownloadStatus,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        if (target == null) {
+            Text("暂未获取到版本信息", style = MaterialTheme.typography.bodyMedium)
+            return
+        }
+        Text(
+            text = "${target.name} · ${target.versionName}",
+            fontWeight = FontWeight.Medium
+        )
+        Text(
+            text = "发布：${target.publishedAtLabel()} · ${formatSize(target.sizeBytes)}" +
+                if (target.isPrerelease) " · 测试版" else "",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(8.dp))
+        if (result.hasUpdate) {
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "检测到新版本，点击下方按钮下载并安装。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+        } else {
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(10.dp)
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("已是最新版本", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        if (target.body.isNotBlank()) {
+            Spacer(Modifier.height(10.dp))
+            Text(target.body, style = MaterialTheme.typography.bodySmall)
+        }
+        Spacer(Modifier.height(12.dp))
+        when (val s = status) {
+            is DownloadStatus.Downloading -> {
+                LinearProgressIndicator(
+                    progress = { s.percent.coerceIn(0, 100) / 100f },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+                ) {
+                    Text("${s.percent}%", style = MaterialTheme.typography.bodySmall)
                     Text(
-                        text = "发布：${target.publishedAtLabel()} · ${formatSize(target.sizeBytes)}" +
-                            if (target.isPrerelease) " · 测试版" else "",
+                        "${formatSize(s.bytesRead)} / ${formatSize(s.total)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    if (target.body.isNotBlank()) {
-                        Spacer(Modifier.height(6.dp))
-                        Text(target.body, style = MaterialTheme.typography.bodySmall)
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    when (val s = status) {
-                        is DownloadStatus.Downloading -> {
-                            LinearProgressIndicator(
-                                progress = { (s.percent.coerceIn(0, 100)) / 100f },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = "${s.percent}% · ${formatSize(s.bytesRead)} / ${formatSize(s.total)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        is DownloadStatus.Failed -> {
-                            Text(
-                                text = "错误：${s.message}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                        is DownloadStatus.Done -> {
-                            Text(
-                                text = "已下载到本地：${s.localPath}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        else -> {}
-                    }
                 }
+                Spacer(Modifier.height(4.dp))
+                TextButton(onClick = onCancel) { Text("取消下载") }
             }
-        },
-        confirmButton = {
-            when (val s = status) {
-                is DownloadStatus.Done -> {
-                    Button(onClick = {
-                        UpdateInstaller.install(context, File(s.localPath))
-                    }) {
-                        Icon(
-                            Icons.Default.InstallMobile,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
+            is DownloadStatus.Failed -> {
+                Text(
+                    text = "下载失败：${s.message}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            is DownloadStatus.Done -> {
+                Text(
+                    text = "下载完成：${s.localPath}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            else -> {
+                if (target.apkUrl.isNotBlank()) {
+                    Button(
+                        onClick = onDownload,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("立即安装")
+                        Text(if (result.hasUpdate) "下载并安装" else "重新下载")
                     }
                 }
-                is DownloadStatus.Downloading -> {
-                    Button(onClick = {
-                        downloadJob?.cancel()
-                        status = DownloadStatus.Idle
-                    }) {
-                        Text("取消下载")
-                    }
-                }
-                else -> {
-                    if (target != null && target.apkUrl.isNotBlank()) {
-                        Button(onClick = {
-                            downloadJob?.cancel()
-                            val cacheFile = File(context.cacheDir, "update/${target.versionName}.apk")
-                            downloadJob = scope.launch {
-                                status = DownloadStatus.Downloading(0, target.sizeBytes)
-                                GitHubApi.downloadApk(target.apkUrl, cacheFile).collectLatest { st ->
-                                    status = st
-                                    if (st is DownloadStatus.Failed) downloadJob = null
-                                    if (st is DownloadStatus.Done) downloadJob = null
-                                }
-                            }
-                        }) {
-                            Icon(
-                                Icons.Default.CloudDownload,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(if (result.hasUpdate) "下载并安装" else "重新下载")
-                        }
-                    }
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(if (status is DownloadStatus.Downloading) "隐藏" else "关闭")
             }
         }
-    )
+    }
 }
 
 @Composable
-fun HistoryDialog(
-    releases: List<RemoteRelease>,
-    loading: Boolean,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.History, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("历史版本", fontWeight = FontWeight.SemiBold)
-            }
-        },
-        text = {
-            Box(modifier = Modifier.height(360.dp)) {
-                if (loading) {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                } else if (releases.isEmpty()) {
-                    Text("暂无可用历史版本")
-                } else {
-                    LazyColumn {
-                        items(releases) { release ->
-                            HistoryRow(release = release)
-                            HorizontalDivider(
-                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                            )
-                        }
+private fun HistoryTab(releases: List<RemoteRelease>) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    if (releases.isEmpty()) {
+        Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+            Text("暂无可用历史版本")
+        }
+        return
+    }
+    LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
+        items(releases, key = { it.versionName }) { release ->
+            HistoryRow(
+                release = release,
+                onDownload = {
+                    if (release.apkUrl.isBlank()) return@HistoryRow
+                    val f = File(context.cacheDir, "update/${release.versionName}.apk")
+                    scope.launch {
+                        GitHubApi.downloadApk(release.apkUrl, f).collectLatest { /* handled in row */ }
                     }
                 }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("关闭") }
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
         }
-    )
+    }
 }
 
 @Composable
-private fun HistoryRow(release: RemoteRelease) {
+private fun HistoryRow(release: RemoteRelease, onDownload: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf<DownloadStatus>(DownloadStatus.Idle) }
     var job by remember { mutableStateOf<Job?>(null) }
 
-    LaunchedEffect(release.versionName) {
-        // 行销毁时取消下载
-    }
     DisposableEffect(release.versionName) {
         onDispose { job?.cancel() }
     }

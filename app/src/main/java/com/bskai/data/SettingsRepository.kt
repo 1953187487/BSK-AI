@@ -37,7 +37,11 @@ class SettingsRepository(context: Context) {
             apiProviderKey = prefs.getString(KEY_API_KEY, "") ?: "",
             apiModel = prefs.getString(KEY_API_MODEL, "") ?: "",
             apiConnected = prefs.getBoolean(KEY_API_CONNECTED, false),
-            themeStyle = ThemeStyle.fromKey(prefs.getString(KEY_THEME_STYLE, ThemeStyle.AURORA.key))
+            themeStyle = ThemeStyle.fromKey(prefs.getString(KEY_THEME_STYLE, ThemeStyle.AURORA.key)),
+            customModelList = prefs.getString(KEY_CUSTOM_MODELS, "")
+                ?.split('\n')
+                ?.filter { it.isNotBlank() }
+                ?: emptyList()
         )
     }
 
@@ -57,6 +61,7 @@ class SettingsRepository(context: Context) {
             .putString(KEY_API_MODEL, s.apiModel)
             .putBoolean(KEY_API_CONNECTED, s.apiConnected)
             .putString(KEY_THEME_STYLE, s.themeStyle.key)
+            .putString(KEY_CUSTOM_MODELS, s.customModelList.joinToString("\n"))
             .apply()
     }
 
@@ -70,6 +75,23 @@ class SettingsRepository(context: Context) {
 
     fun setLastSeenVersion(version: String) {
         prefs.edit().putString(KEY_LAST_VERSION, version).apply()
+    }
+
+    fun agreementVersion(): String? = prefs.getString(KEY_AGREEMENT_VERSION, null)
+
+    fun setAgreementVersion(version: String) {
+        prefs.edit().putString(KEY_AGREEMENT_VERSION, version).apply()
+    }
+
+    fun sessionAgreementAck(version: String): Boolean =
+        prefs.getString(KEY_AGREEMENT_SESSION, null) == version
+
+    fun markSessionAgreement(version: String) {
+        prefs.edit().putString(KEY_AGREEMENT_SESSION, version).apply()
+    }
+
+    fun clearSessionAgreement() {
+        prefs.edit().remove(KEY_AGREEMENT_SESSION).apply()
     }
 
     fun selectedLanguage(): String = prefs.getString(KEY_LANGUAGE, "zh") ?: "zh"
@@ -97,5 +119,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_LAST_VERSION = "last_version"
         private const val KEY_LANGUAGE = "selected_language"
         private const val KEY_THEME_STYLE = "theme_style"
+        private const val KEY_CUSTOM_MODELS = "custom_models"
+        private const val KEY_AGREEMENT_VERSION = "agreement_version"
+        private const val KEY_AGREEMENT_SESSION = "agreement_session"
     }
 }

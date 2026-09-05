@@ -86,9 +86,7 @@ import com.bskai.data.ThemeStyle
 import com.bskai.update.GitHubApi
 import com.bskai.update.RemoteRelease
 import com.bskai.update.UpdateCheckResult
-import com.bskai.ui.theme.AuroraGradient
-import com.bskai.ui.theme.GlassTint
-import com.bskai.ui.theme.NeonGlow
+import com.bskai.ui.theme.ThemeBackdrop
 import com.bskai.util.Permissions
 import kotlinx.coroutines.launch
 
@@ -264,7 +262,7 @@ private fun StandardLayout(
     val style = settings.themeStyle
 
     Box(modifier = Modifier.fillMaxSize()) {
-        ThemeBackground(style = style)
+        ThemeBackdrop(style = style, dark = settings.darkTheme)
 
         Column(modifier = Modifier.fillMaxSize()) {
             TopHeader(
@@ -348,7 +346,7 @@ private fun VoiceLayout(
     val style = settings.themeStyle
 
     Box(modifier = Modifier.fillMaxSize()) {
-        ThemeBackground(style = style)
+        ThemeBackdrop(style = style, dark = settings.darkTheme)
 
         Column(modifier = Modifier.fillMaxSize()) {
             // Slim header: just menu
@@ -934,126 +932,3 @@ private fun PermissionHint(text: String, action: () -> Unit) {
     }
 }
 
-@Composable
-private fun ThemeBackground(style: ThemeStyle) {
-    when (style) {
-        ThemeStyle.AURORA -> {
-            val transition = rememberInfiniteTransition(label = "aurora")
-            val shift by transition.animateFloat(
-                initialValue = 0f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(8000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "shift"
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .drawBehind {
-                        val colors = AuroraGradient
-                        val c0 = colors[0].copy(alpha = 0.18f)
-                        val c1 = colors[1].copy(alpha = 0.10f)
-                        val c2 = colors[2].copy(alpha = 0.10f)
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                listOf(c0, Color.Transparent),
-                                center = Offset(size.width * (0.2f + 0.4f * shift), size.height * 0.15f),
-                                radius = size.width * 0.7f
-                            )
-                        )
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                listOf(c1, Color.Transparent),
-                                center = Offset(size.width * (0.8f - 0.3f * shift), size.height * 0.55f),
-                                radius = size.width * 0.6f
-                            )
-                        )
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                listOf(c2, Color.Transparent),
-                                center = Offset(size.width * (0.5f + 0.4f * shift), size.height * 0.95f),
-                                radius = size.width * 0.7f
-                            )
-                        )
-                    }
-            )
-        }
-        ThemeStyle.NEON -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color(0xFF060014),
-                                Color(0xFF1A0040),
-                                Color(0xFF060014)
-                            )
-                        )
-                    )
-                    .drawBehind {
-                        val colors = NeonGlow
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                listOf(colors[0].copy(alpha = 0.20f), Color.Transparent),
-                                center = Offset(size.width * 0.25f, size.height * 0.2f),
-                                radius = size.width * 0.6f
-                            )
-                        )
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                listOf(colors[1].copy(alpha = 0.18f), Color.Transparent),
-                                center = Offset(size.width * 0.8f, size.height * 0.8f),
-                                radius = size.width * 0.7f
-                            )
-                        )
-                    }
-            )
-        }
-        ThemeStyle.GLASS -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color(0xFF1F1B3A),
-                                Color(0xFF2B2350),
-                                Color(0xFF14122A)
-                            )
-                        )
-                    )
-                    .drawBehind {
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                listOf(Color(0xFFB8B0FF).copy(alpha = 0.18f), Color.Transparent),
-                                center = Offset(size.width * 0.2f, size.height * 0.1f),
-                                radius = size.width * 0.5f
-                            )
-                        )
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                listOf(Color(0xFF80E1FF).copy(alpha = 0.15f), Color.Transparent),
-                                center = Offset(size.width * 0.85f, size.height * 0.7f),
-                                radius = size.width * 0.55f
-                            )
-                        )
-                    }
-            )
-        }
-        ThemeStyle.VOICE -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.radialGradient(
-                            listOf(Color(0xFF1F0A0A), Color(0xFF0A0A12)),
-                            radius = Float.POSITIVE_INFINITY
-                        )
-                    )
-            )
-        }
-    }
-}
