@@ -152,6 +152,8 @@ class AgentEngine(
         val s = settings.settings.value
         val systemPrompt = "你是一个智能AI助手AURA，运行在Android设备上。你友好、专业、乐于助人。" +
                 when {
+                    s.chatMode == com.bskai.data.ChatMode.DEV ->
+                        "\n当前处于应用开发模式。你可以使用 run_shell、read_file、write_file、list_files 等工具来帮助用户开发 Android 应用。"
                     s.thinkingLevel == 1 -> "\n请简要分析问题并给出答案。"
                     s.thinkingLevel == 2 -> "\n请逐步推理，考虑多种可能性。"
                     s.thinkingLevel >= 3 -> "\n请深入分析，考虑所有角度，给出详细推理过程。"

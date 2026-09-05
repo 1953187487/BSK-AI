@@ -1,5 +1,6 @@
 package com.bskai.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -14,18 +15,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
-import com.bskai.data.Agreements
 import com.bskai.data.loadAnnouncements
 import com.bskai.ui.chat.ChatScreen
 import com.bskai.ui.settings.SettingsScreen
 import com.bskai.ui.terminal.TerminalScreen
-import kotlinx.coroutines.launch
 
 @Composable
 fun AuraScaffold(app: AuraApp) {
@@ -88,27 +87,42 @@ fun AuraScaffold(app: AuraApp) {
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-             ChatScreen(
-                 app = app,
-                 onOpenSettings = { showSettings = true }
-             )
+            ChatScreen(
+                app = app,
+                onOpenSettings = { showSettings = true }
+            )
 
             if (showSettings) {
-                SettingsScreen(
-                    app = app,
-                    onClose = { showSettings = false },
-                    onOpenTerminal = {
-                        showSettings = false
-                        showTerminal = true
-                    }
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                        .zIndex(10f)
+                ) {
+                    SettingsScreen(
+                        app = app,
+                        onClose = { showSettings = false },
+                        onOpenTerminal = {
+                            showSettings = false
+                            showTerminal = true
+                        }
+                    )
+                }
             }
+
             if (showTerminal) {
-                TerminalScreen(
-                    engine = app.terminal,
-                    shizuku = app.shizuku,
-                    onClose = { showTerminal = false }
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                        .zIndex(10f)
+                ) {
+                    TerminalScreen(
+                        engine = app.terminal,
+                        shizuku = app.shizuku,
+                        onClose = { showTerminal = false }
+                    )
+                }
             }
         }
     }

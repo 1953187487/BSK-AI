@@ -34,7 +34,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -46,12 +45,10 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -127,18 +124,13 @@ fun ChatScreen(
     var showModelDialog by rememberSaveable { mutableStateOf(false) }
     var showSlashSuggestions by rememberSaveable { mutableStateOf(false) }
     var slashQuery by rememberSaveable { mutableStateOf("") }
-    var showModeSelector by remember { mutableStateOf(false) }
     var showFeedbackDialog by remember { mutableStateOf(false) }
     var showCopyMenu by remember { mutableStateOf(false) }
     var copyMenuText by remember { mutableStateOf("") }
-    var copyMenuX by remember { mutableStateOf(0f) }
-    var copyMenuY by remember { mutableStateOf(0f) }
 
     val messageQueue = remember { mutableStateListOf<QueuedMessage>() }
     var queueIdCounter by remember { mutableIntStateOf(0) }
-    var editingMessageIndex by remember { mutableIntStateOf(-1) }
 
-    // Feedback dialog logic
     val shouldShowFeedback = remember {
         val s = settings
         !s.feedbackDismissedThisSession &&
@@ -221,163 +213,65 @@ fun ChatScreen(
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
                 shadowElevation = 4.dp
             ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.secondary
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Row(
-                            modifier = Modifier.weight(1f),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        Brush.linearGradient(
-                                            listOf(
-                                                MaterialTheme.colorScheme.primary,
-                                                MaterialTheme.colorScheme.secondary
-                                            )
-                                        )
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("🤖", fontSize = 20.sp)
-                            }
-                            Spacer(Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "AURA",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    maxLines = 1
-                                )
-                                Text(
-                                    text = if (chatMode == ChatMode.DEV) "应用开发模式" else "思考模式 · 深度 $thinkingLevel",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                        Text("🤖", fontSize = 20.sp)
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "AURA",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = if (chatMode == ChatMode.DEV) "应用开发模式" else "思考模式 · 深度 $thinkingLevel",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Box {
+                        IconButton(onClick = { showTopMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = null, modifier = Modifier.size(22.dp))
                         }
-                        IconButton(onClick = { showModeSelector = true }) {
-                            Icon(
-                                if (chatMode == ChatMode.DEV) Icons.Default.Build else Icons.Default.Settings,
-                                contentDescription = "模式",
-                                modifier = Modifier.size(22.dp)
+                        DropdownMenu(expanded = showTopMenu, onDismissRequest = { showTopMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("思考深度: $thinkingLevel/3") },
+                                onClick = {}
+                            )
+                            DropdownMenuItem(
+                                text = { Text("清空对话") },
+                                onClick = {
+                                    showTopMenu = false
+                                    app.agent.clearConversation()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("当前：${BuildConfig.APP_VERSION}") },
+                                enabled = false,
+                                onClick = {}
                             )
                         }
-                        Box {
-                            IconButton(onClick = { showTopMenu = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = null, modifier = Modifier.size(22.dp))
-                            }
-                            DropdownMenu(expanded = showTopMenu, onDismissRequest = { showTopMenu = false }) {
-                                DropdownMenuItem(
-                                    text = { Text("思考深度: $thinkingLevel/3") },
-                                    onClick = {}
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("清空对话") },
-                                    onClick = {
-                                        showTopMenu = false
-                                        app.agent.clearConversation()
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("当前：${BuildConfig.APP_VERSION}") },
-                                    enabled = false,
-                                    onClick = {}
-                                )
-                            }
-                        }
                     }
-
-                    Spacer(Modifier.height(6.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Surface(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(38.dp)
-                                .clickable { showModelDialog = true },
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = settings.apiModel.ifBlank { "选择模型" },
-                                    fontSize = 13.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f),
-                                    fontWeight = if (settings.apiModel.isNotBlank()) FontWeight.Medium else FontWeight.Normal,
-                                    color = if (settings.apiModel.isNotBlank()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Icon(
-                                    Icons.Default.KeyboardArrowDown,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        if (chatMode == ChatMode.THINK) {
-                            Surface(
-                                modifier = Modifier
-                                    .height(38.dp)
-                                    .clickable {
-                                        val next = if (thinkingLevel >= 3) 1 else thinkingLevel + 1
-                                        app.settings.update { it.copy(thinkingLevel = next) }
-                                    },
-                                shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text("🧠", fontSize = 16.sp)
-                                    Text(
-                                        text = "思考 $thinkingLevel",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            }
-                        }
-
-                        if (chatMode == ChatMode.DEV) {
-                            Surface(
-                                modifier = Modifier
-                                    .height(38.dp)
-                                    .clickable { showModelDialog = true },
-                                shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text("🔧", fontSize = 16.sp)
-                                    Text(
-                                        text = "构建工具",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            }
-                        }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "设置", modifier = Modifier.size(22.dp))
                     }
                 }
             }
@@ -502,14 +396,24 @@ fun ChatScreen(
                 }
             }
 
-            // Input bar
+            // Input bar with mode selection
             ChatInputBar(
                 text = input,
                 onTextChange = { input = it; detectSlash(it) },
                 onSubmit = { submitText() },
                 onAddToQueue = { addToQueue() },
                 processing = processing,
-                queueSize = messageQueue.size
+                queueSize = messageQueue.size,
+                chatMode = chatMode,
+                thinkingLevel = thinkingLevel,
+                onToggleMode = {
+                    val next = if (chatMode == ChatMode.THINK) ChatMode.DEV else ChatMode.THINK
+                    app.settings.update { it.copy(chatMode = next) }
+                },
+                onThinkingLevelChange = { level ->
+                    app.settings.update { it.copy(thinkingLevel = level) }
+                },
+                onOpenModelSelector = { showModelDialog = true }
             )
         }
     }
@@ -523,17 +427,6 @@ fun ChatScreen(
                 showModelDialog = false
                 onOpenSettings()
             }
-        )
-    }
-
-    if (showModeSelector) {
-        ModeSelectorDialog(
-            currentMode = chatMode,
-            onSelect = { mode ->
-                app.settings.update { it.copy(chatMode = mode) }
-                showModeSelector = false
-            },
-            onDismiss = { showModeSelector = false }
         )
     }
 
@@ -555,7 +448,6 @@ fun ChatScreen(
         )
     }
 
-    // Copy context menu
     if (showCopyMenu) {
         AlertDialog(
             onDismissRequest = { showCopyMenu = false },
@@ -579,55 +471,6 @@ fun ChatScreen(
             }
         )
     }
-}
-
-@Composable
-private fun ModeSelectorDialog(
-    currentMode: ChatMode,
-    onSelect: (ChatMode) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("选择模式", fontWeight = FontWeight.Bold) },
-        text = {
-            Column {
-                ChatMode.entries.forEach { mode ->
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clickable { onSelect(mode) },
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (currentMode == mode)
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = mode.label,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.weight(1f)
-                            )
-                            if (currentMode == mode) {
-                                Icon(
-                                    Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("关闭") }
-        }
-    )
 }
 
 @Composable
@@ -682,7 +525,12 @@ private fun ChatInputBar(
     onSubmit: () -> Unit,
     onAddToQueue: () -> Unit,
     processing: Boolean,
-    queueSize: Int
+    queueSize: Int,
+    chatMode: ChatMode,
+    thinkingLevel: Int,
+    onToggleMode: () -> Unit,
+    onThinkingLevelChange: (Int) -> Unit,
+    onOpenModelSelector: () -> Unit
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
@@ -701,6 +549,102 @@ private fun ChatInputBar(
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
             }
+
+            // Mode selection row
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // Mode toggle button
+                Surface(
+                    modifier = Modifier
+                        .height(36.dp)
+                        .clickable { onToggleMode() },
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (chatMode == ChatMode.DEV)
+                        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f)
+                    else
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = if (chatMode == ChatMode.DEV) "🔧" else "🧠",
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = if (chatMode == ChatMode.DEV) "开发" else "思考",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                // Thinking level selector (only in THINK mode)
+                if (chatMode == ChatMode.THINK) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        (1..3).forEach { level ->
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(36.dp)
+                                    .clickable { onThinkingLevelChange(level) },
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (thinkingLevel == level)
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "$level",
+                                        fontSize = 12.sp,
+                                        fontWeight = if (thinkingLevel == level) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (thinkingLevel == level)
+                                            MaterialTheme.colorScheme.onPrimary
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Model selector
+                Surface(
+                    modifier = Modifier
+                        .height(36.dp)
+                        .clickable { onOpenModelSelector() },
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text("📦", fontSize = 14.sp)
+                        Text(
+                            text = "模型",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            // Input row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -1092,7 +1036,7 @@ private fun ModelSelectionDialog(
                             )
                             Spacer(Modifier.height(4.dp))
                         }
-                        items(availableModels) { model ->
+                        itemsIndexed(availableModels) { _, model ->
                             val progress = downloadProgress[model]
                             Surface(
                                 modifier = Modifier
@@ -1137,7 +1081,7 @@ private fun ModelSelectionDialog(
                     Spacer(Modifier.height(6.dp))
                 }
 
-                items(allApiModels) { model ->
+                itemsIndexed(allApiModels) { _, model ->
                     ModelItem(
                         name = model,
                         subtitle = if (model == settings.apiModel && settings.modelSource == "api") "当前使用" else null,

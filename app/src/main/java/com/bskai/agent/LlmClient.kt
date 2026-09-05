@@ -112,7 +112,7 @@ class LlmClient(@Suppress("UNUSED_PARAMETER") context: Context) {
         }
         val request = Request.Builder()
             .url(url)
-            .addHeader("Authorization", "Bearer ${s.apiProviderKey}")
+            .apply { if (s.apiProviderKey.isNotBlank()) addHeader("Authorization", "Bearer ${s.apiProviderKey}") }
             .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
             .build()
 
@@ -166,7 +166,7 @@ class LlmClient(@Suppress("UNUSED_PARAMETER") context: Context) {
         }
         val request = Request.Builder()
             .url(url)
-            .addHeader("Authorization", "Bearer ${s.apiProviderKey}")
+            .apply { if (s.apiProviderKey.isNotBlank()) addHeader("Authorization", "Bearer ${s.apiProviderKey}") }
             .addHeader("Accept", "text/event-stream")
             .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
             .build()
@@ -299,12 +299,12 @@ class LlmClient(@Suppress("UNUSED_PARAMETER") context: Context) {
                 base.endsWith("/v1") -> "$base/models"
                 else -> "$base/models"
             }
-            val req = Request.Builder()
+            val reqBuilder = Request.Builder()
                 .url(url)
-                .addHeader("Authorization", "Bearer $apiKey")
+                .apply { if (apiKey.isNotBlank()) addHeader("Authorization", "Bearer $apiKey") }
                 .get()
                 .build()
-            val call = client.newCall(req)
+            val call = client.newCall(reqBuilder)
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: java.io.IOException) {
                     if (cont.isActive) cont.resume(emptyList())

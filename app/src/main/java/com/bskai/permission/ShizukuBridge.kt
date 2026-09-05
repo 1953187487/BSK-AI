@@ -9,12 +9,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import rikka.shizuku.Shizuku
 
-/**
- * Shizuku 状态 / 授权封装。
- *
- * Shizuku 是由 rikka 维护的"通过 ADB 或 Root 提权后给普通应用 binder IPC"的开源项目，
- * 遵循 Apache-2.0：https://github.com/RikkaApps/Shizuku
- */
 class ShizukuBridge(private val context: Context) {
 
     enum class State { UNAVAILABLE, NEED_PERMISSION, GRANTED }
@@ -59,6 +53,10 @@ class ShizukuBridge(private val context: Context) {
             Log.w(TAG, "requestPermission failed", e)
             _state.value = State.UNAVAILABLE
         }
+    }
+
+    fun onPermissionResult() {
+        _state.value = detect()
     }
 
     fun binder(): IBinder? = try { Shizuku.getBinder() } catch (_: Throwable) { null }

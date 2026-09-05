@@ -26,15 +26,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -64,11 +67,12 @@ import com.bskai.data.Language
 import com.bskai.data.loadLanguages
 
 /**
- * 4步引导协议对话框：
+ * 5步引导协议对话框：
  * 第1步：选择语言
  * 第2步：配置 API 地址
  * 第3步：授权权限（可跳过）
- * 第4步：开源协议与用户须知
+ * 第4步：下载开发工具（可跳过）
+ * 第5步：开源协议与用户须知
  */
 @Composable
 fun FourStepAgreementDialog(
@@ -109,7 +113,7 @@ fun FourStepAgreementDialog(
                 )
                 // Step indicators
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    repeat(4) { i ->
+                    repeat(5) { i ->
                         Box(
                             modifier = Modifier
                                 .padding(horizontal = 2.dp)
@@ -141,7 +145,8 @@ fun FourStepAgreementDialog(
                         onKeyChange = { apiKey = it }
                     )
                     2 -> PermissionStepContent()
-                    3 -> AgreementStepContent(
+                    3 -> BuildToolsStepContent()
+                    4 -> AgreementStepContent(
                         agreedOpenSource = agreedOpenSource,
                         agreedPrivacy = agreedPrivacy,
                         onToggleOpenSource = { agreedOpenSource = it },
@@ -162,11 +167,7 @@ fun FourStepAgreementDialog(
             ) {
                 TextButton(
                     onClick = {
-                        if (step == 0) {
-                            // First step, can't go back
-                        } else {
-                            step -= 1
-                        }
+                        if (step > 0) step -= 1
                     },
                     enabled = step > 0
                 ) {
@@ -175,9 +176,10 @@ fun FourStepAgreementDialog(
                 Button(
                     enabled = when (step) {
                         0 -> languageCode.isNotBlank()
-                        1 -> true  // API config is optional
-                        2 -> true  // Permissions are optional
-                        3 -> agreedOpenSource && agreedPrivacy
+                        1 -> true
+                        2 -> true
+                        3 -> true
+                        4 -> agreedOpenSource && agreedPrivacy
                         else -> true
                     },
                     onClick = {
@@ -185,10 +187,8 @@ fun FourStepAgreementDialog(
                             0 -> step = 1
                             1 -> step = 2
                             2 -> step = 3
-                            3 -> {
-                                // Save all preferences and complete
-                                onComplete()
-                            }
+                            3 -> step = 4
+                            4 -> onComplete()
                         }
                     }
                 ) {
@@ -197,7 +197,8 @@ fun FourStepAgreementDialog(
                             0 -> "下一步"
                             1 -> "下一步"
                             2 -> "跳过"
-                            3 -> "同意并开始使用"
+                            3 -> "跳过"
+                            4 -> "同意并开始使用"
                             else -> "下一步"
                         }
                     )
@@ -452,6 +453,94 @@ private fun PermissionStepContent() {
                     notifLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 }) {
                     Text("授权")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BuildToolsStepContent() {
+    var downloading by remember { mutableStateOf(false) }
+    var downloaded by remember { mutableStateOf(false) }
+    var progress by remember { mutableStateOf(0f) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = "开发工具",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = "下载构建工具以在应用内开发 Android 应用。您可以跳过此步骤，稍后在设置中下载。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(16.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Build,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("APK 构建工具", fontWeight = FontWeight.Medium)
+                        Text(
+                            "包含 aapt2、d8、apksigner 等 Android 构建工具链",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                if (downloading || downloaded) {
+                    Spacer(Modifier.height(12.dp))
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth().height(6.dp)
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = if (downloaded) "下载完成" else "${(progress * 100).toInt()}%",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (!downloading && !downloaded) {
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            downloading = true
+                            // Simulate download progress
+                            progress = 0.3f
+                            downloaded = true
+                            downloading = false
+                            progress = 1f
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("下载构建工具")
+                    }
+                }
+                if (downloaded) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "✓ 已就绪，可以在应用开发模式中构建 APK",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }

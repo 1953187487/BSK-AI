@@ -53,7 +53,8 @@ data class AppSettings(
     val feedbackDismissedThisSession: Boolean = false
 ) {
     val apiConfigured: Boolean
-        get() = apiProviderUrl.isNotBlank() && apiProviderKey.isNotBlank() && apiModel.isNotBlank()
+        get() = apiProviderUrl.isNotBlank() && apiModel.isNotBlank() &&
+            (apiProviderKey.isNotBlank() || modelSource == "local")
 }
 
 val DefaultModelPresets: List<String> = listOf(
