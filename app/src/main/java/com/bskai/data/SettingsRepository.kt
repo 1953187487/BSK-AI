@@ -41,7 +41,8 @@ class SettingsRepository(context: Context) {
             customModelList = prefs.getString(KEY_CUSTOM_MODELS, "")
                 ?.split('\n')
                 ?.filter { it.isNotBlank() }
-                ?: emptyList()
+                ?: emptyList(),
+            agentToolsEnabled = prefs.getBoolean(KEY_AGENT_TOOLS_ENABLED, false)
         )
     }
 
@@ -62,6 +63,7 @@ class SettingsRepository(context: Context) {
             .putBoolean(KEY_API_CONNECTED, s.apiConnected)
             .putString(KEY_THEME_STYLE, s.themeStyle.key)
             .putString(KEY_CUSTOM_MODELS, s.customModelList.joinToString("\n"))
+            .putBoolean(KEY_AGENT_TOOLS_ENABLED, s.agentToolsEnabled)
             .apply()
     }
 
@@ -122,5 +124,6 @@ class SettingsRepository(context: Context) {
         private const val KEY_CUSTOM_MODELS = "custom_models"
         private const val KEY_AGREEMENT_VERSION = "agreement_version"
         private const val KEY_AGREEMENT_SESSION = "agreement_session"
+        private const val KEY_AGENT_TOOLS_ENABLED = "agent_tools_enabled"
     }
 }

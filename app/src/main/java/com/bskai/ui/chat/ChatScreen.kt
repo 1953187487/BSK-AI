@@ -486,7 +486,9 @@ private fun TopHeader(
                 expanded = showModelMenu,
                 onDismissRequest = { onShowModelMenu(false) }
             ) {
-                DefaultModelPresets.forEach { model ->
+                val customModels = settings.customModelList
+                val allModels = (DefaultModelPresets + customModels).distinct()
+                allModels.forEach { model ->
                     DropdownMenuItem(
                         text = {
                             Text(
@@ -597,13 +599,14 @@ private fun ModelPickerBar(
     val settings by app.settings.settings.collectAsState()
     val currentModel = settings.apiModel.ifBlank { "未选择模型" }
     val configured = settings.apiConfigured
+    val allModels = (DefaultModelPresets + settings.customModelList).distinct()
 
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(DefaultModelPresets) { model ->
+        items(allModels) { model ->
             val selected = model == settings.apiModel
             Surface(
                 shape = MaterialTheme.shapes.small,
@@ -667,7 +670,7 @@ private fun InputBar(
                 value = text,
                 onValueChange = onTextChange,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("说点什么，或点右侧说话…") },
+                placeholder = { Text("说点什么，点右侧说话，或输入 / 使用命令…") },
                 shape = MaterialTheme.shapes.large,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = {

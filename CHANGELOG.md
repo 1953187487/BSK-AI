@@ -1,5 +1,16 @@
 # AURA 更新记录
 
+## v2.0.0（正式版）
+- 内置终端：LOCAL / Shizuku / ROOT 三后端，危险命令自动拦截
+- AI 工具调用：LLM 可调用 run_shell / list_files / read_file / write_file，多轮工具调用历史完整保留
+- 工作区：默认内部工作区 + SAF 外部工作区导入，可切换、重命名、删除
+- 斜杠命令：/ws、/model、/clear、/help
+- 自定义模型列表：设置页增删，对话页联动展示
+- 设置页：AI 工具开关、工作区管理、内置终端入口、Shizuku 权限状态
+- Manifest：补全 Shizuku provider 声明与权限
+- 修复 TerminalScreen ROOT 后端 enabled 逻辑
+- 修复 WorkspaceTools ListFilesTool parametersSchema
+
 ## v2.0.0-beta.1（预测试版）
 - 应用全面转型为手机语音助手「AURA」
 - 全新深色紫蓝渐变 UI，Material 3 设计语言

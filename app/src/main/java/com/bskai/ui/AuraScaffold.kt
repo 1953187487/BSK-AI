@@ -26,6 +26,7 @@ import com.bskai.ui.chat.ChatScreen
 import com.bskai.ui.legal.AgreementDecision
 import com.bskai.ui.legal.AgreementDialog
 import com.bskai.ui.settings.SettingsScreen
+import com.bskai.ui.terminal.TerminalScreen
 import com.bskai.ui.update.CombinedUpdateDialog
 import com.bskai.update.UpdateCheckResult
 import kotlinx.coroutines.launch
@@ -77,12 +78,16 @@ fun AuraScaffold(app: AuraApp) {
 
     var updateResult by remember { mutableStateOf<UpdateCheckResult?>(null) }
     var showSettings by remember { mutableStateOf(false) }
+    var showTerminal by remember { mutableStateOf(false) }
 
     var pendingAgreementFor by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         com.bskai.MainActivity.navRequests.collect { target ->
-            if (target == "settings") showSettings = true
+            when (target) {
+                "settings" -> showSettings = true
+                "terminal" -> showTerminal = true
+            }
         }
     }
 
@@ -98,7 +103,21 @@ fun AuraScaffold(app: AuraApp) {
             )
 
             if (showSettings) {
-                SettingsScreen(app = app, onClose = { showSettings = false })
+                SettingsScreen(
+                    app = app,
+                    onClose = { showSettings = false },
+                    onOpenTerminal = {
+                        showSettings = false
+                        showTerminal = true
+                    }
+                )
+            }
+            if (showTerminal) {
+                TerminalScreen(
+                    engine = app.terminal,
+                    shizuku = app.shizuku,
+                    onClose = { showTerminal = false }
+                )
             }
         }
     }

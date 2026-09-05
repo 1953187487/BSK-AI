@@ -1,11 +1,13 @@
 package com.bskai.agent
 
 import android.content.Context
+import com.bskai.agent.slash.SlashRegistry
+import com.bskai.agent.tools.ToolRegistry
 import com.bskai.data.SettingsRepository
+import com.bskai.workspace.WorkspaceManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 
 class AgentEngine(
     @Suppress("UNUSED_PARAMETER") context: Context,
@@ -17,9 +19,20 @@ class AgentEngine(
     private val _conversation = MutableStateFlow<List<ChatMsg>>(emptyList())
     val conversation: StateFlow<List<ChatMsg>> = _conversation.asStateFlow()
 
+    var toolRegistry: ToolRegistry? = null
+    var workspace: WorkspaceManager? = null
+    var slashRegistry: SlashRegistry? = null
+
+    val workspaceEnabled: Boolean
+        get() = settings.settings.value.agentToolsEnabled
+
+    fun setWorkspaceEnabled(enabled: Boolean) {
+        settings.update { it.copy(agentToolsEnabled = enabled) }
+    }
+
     /**
      * 用户发言入口。先入栈 user 消息，再启动一次 assistant 回复。
-     * 流式 chat：先把 assistant 占位空消息放入栈，每收到一段 delta 就替换最后一条的 content。
+     * 若已启用工具注册且配置了工具，走工具循环；否则走流式文本回复。
      */
     suspend fun answer(userText: String): String {
         val text = userText.trim()
@@ -34,7 +47,64 @@ class AgentEngine(
             return fallback
         }
 
-        // 占位 assistant，content="" 会随流式更新
+        val registry = toolRegistry
+        if (s.agentToolsEnabled && registry != null && registry.all().isNotEmpty()) {
+            return runToolLoop(registry)
+        }
+
+        return runStreamingReply()
+    }
+
+    /**
+     * 工具循环：发送 chat 请求，若有 tool_calls 则逐个执行并回填结果，
+     * 最多循环 maxToolRounds 轮，直到模型不再发起工具调用。
+     */
+    private suspend fun runToolLoop(registry: ToolRegistry): String {
+        val s = settings.settings.value
+        val toolsJson = registry.toolsJsonForLlm()
+        val maxRounds = 4
+        var finalContent = ""
+
+        for (round in 1..maxRounds) {
+            val messages = buildRequestMessages()
+            val resp = try {
+                llm.chat(s, messages, toolsJson)
+            } catch (e: Exception) {
+                val msg = "工具调用失败：${e.message ?: "未知错误"}"
+                append(ChatMsg("assistant", msg))
+                return msg
+            }
+
+            if (resp.toolCalls.isEmpty()) {
+                finalContent = resp.content.ifEmpty { "抱歉，我没有想好怎么回答。" }
+                append(ChatMsg("assistant", finalContent))
+                return finalContent
+            }
+
+            append(ChatMsg("assistant", resp.content, toolCalls = resp.toolCalls))
+
+            for (call in resp.toolCalls) {
+                val tool = registry.get(call.name)
+                val result = if (tool != null) {
+                    try {
+                        tool.execute(call.argumentsJson)
+                    } catch (e: Exception) {
+                        com.bskai.agent.tools.ToolResult(call.name, "执行异常：${e.message}", true)
+                    }
+                } else {
+                    com.bskai.agent.tools.ToolResult(call.name, "未知工具：${call.name}", true)
+                }
+                append(ChatMsg("tool", result.content, toolCallId = call.id, toolName = call.name))
+            }
+        }
+
+        finalContent = "已达到工具调用轮次上限，请尝试更具体的指令。"
+        append(ChatMsg("assistant", finalContent))
+        return finalContent
+    }
+
+    private suspend fun runStreamingReply(): String {
+        val s = settings.settings.value
         val placeholderIndex = appendAndReturnIndex(ChatMsg("assistant", ""))
         val sb = StringBuilder()
 
@@ -53,7 +123,7 @@ class AgentEngine(
                     }
                     is LlmClient.StreamEvent.Error -> {
                         if (sb.isEmpty()) {
-                            val fallback = localReply(text)
+                            val fallback = localReply("")
                             updateLastAssistant(fallback)
                         }
                     }
@@ -63,25 +133,32 @@ class AgentEngine(
             sb.toString().ifEmpty { "抱歉，我没有想好怎么回答。" }
         } catch (_: Exception) {
             if (sb.isEmpty()) {
-                val fallback = localReply(text)
+                val fallback = localReply("")
                 updateLastAssistant(fallback)
                 fallback
             } else sb.toString()
         }
     }
 
+    private fun buildRequestMessages(): List<ChatMsg> {
+        val system = ChatMsg(
+            "system",
+            "你是 AURA，一位手机语音助手。请用简体中文简洁回答，语气友好。" +
+                if (workspaceEnabled) " 当前已启用工作区工具，你可以读写文件、执行 shell 命令。" else ""
+        )
+        val history = _conversation.value.takeLast(settings.settings.value.maxHistoryLength.coerceAtLeast(10))
+        return listOf(system) + history
+    }
+
     fun notifyAssistant(text: String) {
         append(ChatMsg("assistant", text))
     }
 
-    fun recentMessages(max: Int): List<ChatMsg> {
-        val system = ChatMsg(
-            "system",
-            "你是 AURA，一位手机语音助手。请用简体中文简洁回答，语气友好。"
-        )
-        val history = _conversation.value.takeLast(max.coerceAtLeast(2))
-        return listOf(system) + history
+    fun clearConversation() {
+        _conversation.value = emptyList()
     }
+
+    fun recentMessages(max: Int): List<ChatMsg> = buildRequestMessages()
 
     private fun append(msg: ChatMsg) {
         val max = settings.settings.value.maxHistoryLength

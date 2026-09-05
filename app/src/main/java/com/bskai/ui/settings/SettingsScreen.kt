@@ -46,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,10 +55,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
+import com.bskai.agent.slash.SlashRegistry
 import com.bskai.data.DefaultApiUrlPresets
 import com.bskai.data.DefaultModelPresets
 import com.bskai.data.ThemeStyle
+import com.bskai.permission.ShizukuBridge
 import com.bskai.update.GitHubApi
+import com.bskai.workspace.WorkspaceManager
 import com.bskai.ui.theme.AuroraGradient
 import com.bskai.ui.theme.GlassTint
 import com.bskai.ui.theme.NeonGlow
@@ -67,13 +71,20 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     app: AuraApp,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onOpenTerminal: () -> Unit = {}
 ) {
     val settings by app.settings.settings.collectAsState()
     var showApiDialog by rememberSaveable { mutableStateOf(false) }
+    var showAddModelDialog by rememberSaveable { mutableStateOf(false) }
     var checking by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    val workspaceManager = app.workspace
+    val workspaces by workspaceManager.workspaces.collectAsState()
+    val activeWorkspace by workspaceManager.activeId.collectAsState()
+    val shizukuState = app.shizuku.state.collectAsState().value
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -186,6 +197,15 @@ fun SettingsScreen(
                         Text("配置")
                     }
                 }
+                Spacer(Modifier.height(6.dp))
+                SettingRow(
+                    title = "自定义模型列表",
+                    description = "已保存 ${settings.customModelList.size} 个模型"
+                ) {
+                    OutlinedButton(onClick = { showAddModelDialog = true }) {
+                        Text("管理")
+                    }
+                }
             }
             item {
                 SectionHeader("后台服务")
@@ -202,6 +222,38 @@ fun SettingsScreen(
                 }
             }
             item {
+                SectionHeader("工具与工作区")
+                SettingRow(
+                    title = "AI 工具调用",
+                    description = if (settings.agentToolsEnabled) "已启用 · 可使用终端、文件读写" else "已关闭 · 仅文本对话"
+                ) {
+                    Switch(
+                        checked = settings.agentToolsEnabled,
+                        onCheckedChange = { v ->
+                            app.settings.update { it.copy(agentToolsEnabled = v) }
+                        }
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                SettingRow(
+                    title = "工作区",
+                    description = "当前：${workspaces.firstOrNull { it.id == activeWorkspace }?.name ?: "默认"} · 共 ${workspaces.size} 个"
+                ) {
+                    OutlinedButton(onClick = { /* TODO: workspace management dialog */ }) {
+                        Text("管理")
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                SettingRow(
+                    title = "内置终端",
+                    description = "打开 AURA 内置终端"
+                ) {
+                    OutlinedButton(onClick = { onOpenTerminal() }) {
+                        Text("打开")
+                    }
+                }
+            }
+            item {
                 SectionHeader("权限")
                 PermissionRow(
                     name = "录音权限",
@@ -212,6 +264,15 @@ fun SettingsScreen(
                     name = "通知权限",
                     granted = Permissions.hasNotification(context),
                     onRequest = { }
+                )
+                PermissionRow(
+                    name = "Shizuku",
+                    granted = shizukuState == ShizukuBridge.State.GRANTED,
+                    onRequest = {
+                        if (shizukuState == ShizukuBridge.State.NEED_PERMISSION) {
+                            app.shizuku.requestPermission()
+                        }
+                    }
                 )
             }
             item {
@@ -276,6 +337,81 @@ fun SettingsScreen(
         )
     }
 
+    if (showAddModelDialog) {
+        CustomModelDialog(
+            currentModels = settings.customModelList,
+            onDismiss = { showAddModelDialog = false },
+            onSave = { models ->
+                app.settings.update { it.copy(customModelList = models) }
+                showAddModelDialog = false
+            }
+        )
+    }
+
+}
+
+@Composable
+private fun CustomModelDialog(
+    currentModels: List<String>,
+    onDismiss: () -> Unit,
+    onSave: (List<String>) -> Unit
+) {
+    val models = remember { mutableStateListOf<String>().also { it.addAll(currentModels) } }
+    var newModel by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("自定义模型") },
+        text = {
+            Column {
+                models.forEachIndexed { index, model ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = model,
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        IconButton(onClick = { models.removeAt(index) }) {
+                            Icon(Icons.Default.Close, contentDescription = "删除")
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = newModel,
+                        onValueChange = { newModel = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("添加模型名") },
+                        singleLine = true
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(
+                        onClick = {
+                            if (newModel.isNotBlank() && !models.contains(newModel.trim())) {
+                                models.add(newModel.trim())
+                                newModel = ""
+                            }
+                        }
+                    ) {
+                        Text("添加")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onSave(models.toList()) }) { Text("保存") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }
 
 @Composable

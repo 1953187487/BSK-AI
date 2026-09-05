@@ -44,7 +44,37 @@ class VoiceCoordinator(
     }
 
     fun submit(text: String) {
-        handleSpeech(text.trim())
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return
+        if (trimmed.startsWith("/")) {
+            handleSlash(trimmed)
+            return
+        }
+        handleSpeech(trimmed)
+    }
+
+    private fun handleSlash(command: String) {
+        val registry = agent.slashRegistry
+        if (registry == null) {
+            agent.notifyAssistant("斜杠命令暂不可用")
+            return
+        }
+        val key = command.substringBefore(" ").removePrefix("/")
+        val arg = command.substringAfter(" ", "").trim()
+        val cmd = registry.get(key)
+        if (cmd == null) {
+            agent.notifyAssistant("未知命令 /$key，输入 /help 查看可用命令")
+            return
+        }
+        when (val outcome = cmd.resolve(arg)) {
+            is com.bskai.agent.slash.SlashOutcome.LocalMessage ->
+                agent.notifyAssistant(outcome.message)
+            is com.bskai.agent.slash.SlashOutcome.SendToAi -> {
+                if (outcome.note != null) agent.notifyAssistant(outcome.note)
+                handleSpeech(outcome.text)
+            }
+            is com.bskai.agent.slash.SlashOutcome.Cancel -> Unit
+        }
     }
 
     private fun handleSpeech(text: String) {

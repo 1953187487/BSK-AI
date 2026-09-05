@@ -25,7 +25,9 @@ data class AppSettings(
     val apiProviderKey: String = "",
     val apiModel: String = "",
     val apiConnected: Boolean = false,
-    val themeStyle: ThemeStyle = ThemeStyle.AURORA
+    val themeStyle: ThemeStyle = ThemeStyle.AURORA,
+    val customModelList: List<String> = emptyList(),
+    val agentToolsEnabled: Boolean = false
 ) {
     val apiConfigured: Boolean
         get() = apiProviderUrl.isNotBlank() && apiProviderKey.isNotBlank() && apiModel.isNotBlank()

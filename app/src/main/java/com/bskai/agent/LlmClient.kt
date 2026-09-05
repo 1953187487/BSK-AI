@@ -24,7 +24,8 @@ data class ChatMsg(
     val role: String,
     val content: String,
     val toolCallId: String? = null,
-    val toolName: String? = null
+    val toolName: String? = null,
+    val toolCalls: List<ToolCall> = emptyList()
 )
 
 data class LlmResponse(
@@ -47,10 +48,55 @@ class LlmClient(@Suppress("UNUSED_PARAMETER") context: Context) {
         .build()
 
     /**
+     * 把消息列表序列化为 OpenAI 协议的 messages 数组。
+     * - role=tool：输出 content + tool_call_id
+     * - role=assistant 且带 toolCalls：输出 content + tool_calls 数组（完整 id/function）
+     * - 其余：role + content
+     */
+    private fun wireMessages(messages: List<ChatMsg>): JSONArray {
+        val arr = JSONArray()
+        messages.forEach { m ->
+            val o = JSONObject().put("role", m.role)
+            when {
+                m.role == "tool" -> {
+                    o.put("content", m.content)
+                    o.put("tool_call_id", m.toolCallId ?: "")
+                }
+                m.role == "assistant" && m.toolCalls.isNotEmpty() -> {
+                    o.put("content", m.content)
+                    val calls = JSONArray()
+                    m.toolCalls.forEach { c ->
+                        calls.put(
+                            JSONObject().apply {
+                                put("id", c.id)
+                                put("type", "function")
+                                put(
+                                    "function", JSONObject().apply {
+                                        put("name", c.name)
+                                        put("arguments", c.argumentsJson.ifBlank { "{}" })
+                                    }
+                                )
+                            }
+                        )
+                    }
+                    o.put("tool_calls", calls)
+                }
+                else -> o.put("content", m.content)
+            }
+            arr.put(o)
+        }
+        return arr
+    }
+
+    /**
      * 调用 OpenAI 兼容 chat/completions。若 messages 中包含 tool 角色则会被一并序列化。
      * @param toolsJson LLM 工具描述 JSON 数组字符串，传 null/空则不带 tools
      */
-    suspend fun chat(s: AppSettings, messages: List<ChatMsg>): LlmResponse = suspendCancellableCoroutine { cont ->
+    suspend fun chat(
+        s: AppSettings,
+        messages: List<ChatMsg>,
+        toolsJson: String? = null
+    ): LlmResponse = suspendCancellableCoroutine { cont ->
         val base = s.apiProviderUrl.trim().trimEnd('/')
         if (base.isEmpty()) {
             cont.resumeWithException(IllegalStateException("未配置 API 地址"))
@@ -59,21 +105,8 @@ class LlmClient(@Suppress("UNUSED_PARAMETER") context: Context) {
         val url = if (base.endsWith("/chat/completions")) base else "$base/chat/completions"
         val payload = JSONObject().apply {
             put("model", s.apiModel)
-            val arr = JSONArray()
-            messages.forEach { m ->
-                val o = JSONObject().put("role", m.role)
-                if (m.role == "tool") {
-                    o.put("content", m.content)
-                    o.put("tool_call_id", m.toolCallId ?: "")
-                } else if (m.role == "assistant" && m.toolName != null) {
-                    // 兼容：assistant 带 tool_calls 的消息通过单独路径构造
-                    o.put("content", m.content)
-                } else {
-                    o.put("content", m.content)
-                }
-                arr.put(o)
-            }
-            put("messages", arr)
+            put("messages", wireMessages(messages))
+            if (!toolsJson.isNullOrBlank()) put("tools", JSONArray(toolsJson))
             put("temperature", 0.6)
             put("stream", false)
         }
@@ -114,8 +147,9 @@ class LlmClient(@Suppress("UNUSED_PARAMETER") context: Context) {
      * 流式 chat：返回 Flow<StreamEvent>，每个 delta 触发一次 collect。
      * SSE 格式：data: {json}\n\n
      * 结束标记：data: [DONE]
+     * @param toolsJson LLM 工具描述 JSON 数组字符串，传 null/空则不带 tools
      */
-    fun chatStream(s: AppSettings, messages: List<ChatMsg>): Flow<StreamEvent> = callbackFlow {
+    fun chatStream(s: AppSettings, messages: List<ChatMsg>, toolsJson: String? = null): Flow<StreamEvent> = callbackFlow {
         val base = s.apiProviderUrl.trim().trimEnd('/')
         if (base.isEmpty()) {
             trySend(StreamEvent.Error("未配置 API 地址"))
@@ -125,18 +159,8 @@ class LlmClient(@Suppress("UNUSED_PARAMETER") context: Context) {
         val url = if (base.endsWith("/chat/completions")) base else "$base/chat/completions"
         val payload = JSONObject().apply {
             put("model", s.apiModel)
-            val arr = JSONArray()
-            messages.forEach { m ->
-                val o = JSONObject().put("role", m.role)
-                if (m.role == "tool") {
-                    o.put("content", m.content)
-                    o.put("tool_call_id", m.toolCallId ?: "")
-                } else {
-                    o.put("content", m.content)
-                }
-                arr.put(o)
-            }
-            put("messages", arr)
+            put("messages", wireMessages(messages))
+            if (!toolsJson.isNullOrBlank()) put("tools", JSONArray(toolsJson))
             put("temperature", 0.6)
             put("stream", true)
         }
@@ -173,7 +197,7 @@ class LlmClient(@Suppress("UNUSED_PARAMETER") context: Context) {
                     try {
                         val reader = BufferedReader(source.inputStream().reader(Charsets.UTF_8))
                         val sb = StringBuilder()
-                        var toolCallsBuilder = StringBuilder()
+                        val toolCalls = LinkedHashMap<Int, MutableList<String>>()
                         while (true) {
                             val line = reader.readLine() ?: break
                             if (line.isEmpty()) continue
@@ -181,7 +205,17 @@ class LlmClient(@Suppress("UNUSED_PARAMETER") context: Context) {
                             if (!line.startsWith("data:")) continue
                             val payload = line.substring(5).trim()
                             if (payload == "[DONE]") {
-                                trySend(StreamEvent.Done(fullContent = sb.toString(), toolCallsJson = toolCallsBuilder.toString()))
+                                val calls = JSONArray()
+                                toolCalls.forEach { (_, parts) ->
+                                    calls.put(
+                                        JSONObject().apply {
+                                            put("id", parts[0])
+                                            put("name", parts[1])
+                                            put("arguments", parts[2])
+                                        }
+                                    )
+                                }
+                                trySend(StreamEvent.Done(fullContent = sb.toString(), toolCallsJson = calls.toString()))
                                 break
                             }
                             try {
@@ -198,10 +232,17 @@ class LlmClient(@Suppress("UNUSED_PARAMETER") context: Context) {
                                 val tc = delta.optJSONArray("tool_calls")
                                 if (tc != null && tc.length() > 0) {
                                     for (i in 0 until tc.length()) {
-                                        val fn = tc.getJSONObject(i).optJSONObject("function")
+                                        val objCall = tc.getJSONObject(i)
+                                        val idx = objCall.optInt("index", 0)
+                                        val entry = toolCalls.getOrPut(idx) { mutableListOf("", "", StringBuilder().toString()) }
+                                        val id = objCall.optString("id", "")
+                                        if (id.isNotEmpty() && entry[0].isEmpty()) entry[0] = id
+                                        val fn = objCall.optJSONObject("function")
                                         if (fn != null) {
+                                            val nm = fn.optString("name", "")
+                                            if (nm.isNotEmpty() && entry[1].isEmpty()) entry[1] = nm
                                             val args = fn.optString("arguments", "")
-                                            if (args.isNotEmpty()) toolCallsBuilder.append(args)
+                                            if (args.isNotEmpty()) entry[2] = entry[2] + args
                                         }
                                     }
                                 }
