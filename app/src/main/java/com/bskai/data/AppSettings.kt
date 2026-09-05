@@ -18,3 +18,21 @@ data class AppSettings(
     val apiConfigured: Boolean
         get() = apiProviderUrl.isNotBlank() && apiProviderKey.isNotBlank() && apiModel.isNotBlank()
 }
+
+val DefaultModelPresets: List<String> = listOf(
+    "gpt-4o-mini",
+    "gpt-4o",
+    "gpt-3.5-turbo",
+    "deepseek-chat",
+    "qwen-turbo",
+    "qwen-plus",
+    "gemini-1.5-flash",
+    "claude-3-5-sonnet"
+)
+
+val DefaultApiUrlPresets: List<String> = listOf(
+    "https://api.openai.com/v1",
+    "https://api.deepseek.com/v1",
+    "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "https://generativelanguage.googleapis.com/v1beta/openai"
+)

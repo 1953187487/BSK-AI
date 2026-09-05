@@ -1,16 +1,12 @@
 package com.bskai.ui
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -28,11 +24,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
-import com.bskai.MainActivity
 import com.bskai.data.loadAnnouncements
 import com.bskai.ui.chat.ChatScreen
 import com.bskai.ui.settings.SettingsScreen
-import com.bskai.ui.skills.SkillsScreen
+import com.bskai.ui.update.HistoryDialog
+import com.bskai.ui.update.UpdateDialog
+import com.bskai.update.RemoteRelease
+import com.bskai.update.UpdateCheckResult
+import com.bskai.update.GitHubApi
+import kotlinx.coroutines.launch
 
 @Composable
 fun AuraScaffold(app: AuraApp) {
@@ -63,7 +63,7 @@ fun AuraScaffold(app: AuraApp) {
                 },
                 title = { Text(target.title) },
                 text = {
-                    Column {
+                    androidx.compose.foundation.layout.Column {
                         Text(target.content)
                         target.changelog.forEach { line ->
                             Text("• $line")
@@ -81,23 +81,29 @@ fun AuraScaffold(app: AuraApp) {
 
     var tab by rememberSaveable { mutableStateOf("chat") }
     LaunchedEffect(Unit) {
-        MainActivity.navRequests.collect { target ->
+        com.bskai.MainActivity.navRequests.collect { target ->
             if (target != null) tab = target
         }
     }
+
+    var updateResult by remember { mutableStateOf<UpdateCheckResult?>(null) }
+    var historyReleases by remember { mutableStateOf<List<RemoteRelease>?>(null) }
+    var historyLoading by remember { mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     Scaffold(
         bottomBar = {
             NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                 listOf(
-                    Triple("chat", "对话", Icons.Default.Chat),
-                    Triple("skills", "技能", Icons.Default.Extension),
-                    Triple("settings", "设置", Icons.Default.Settings)
-                ).forEach { (key, label, icon) ->
+                    Pair("chat", "对话") to Icons.Default.Chat,
+                    Pair("settings", "设置") to Icons.Default.Settings
+                ).forEach { (keyLabel, icon) ->
+                    val key = keyLabel.first
+                    val label = keyLabel.second
                     NavigationBarItem(
                         selected = tab == key,
                         onClick = { tab = key },
-                        icon = { Icon(icon, contentDescription = label) },
+                        icon = { androidx.compose.material3.Icon(icon, contentDescription = label) },
                         label = { Text(label) }
                     )
                 }
@@ -106,10 +112,34 @@ fun AuraScaffold(app: AuraApp) {
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (tab) {
-                "chat" -> ChatScreen(app = app)
-                "skills" -> SkillsScreen(app = app)
+                "chat" -> ChatScreen(
+                    app = app,
+                    onShowUpdate = { updateResult = it },
+                    onShowHistory = {
+                        historyReleases = emptyList()
+                        historyLoading = true
+                        scope.launch {
+                            val r = GitHubApi.listReleases()
+                                .filter { it.versionCode > 0 }
+                                .sortedByDescending { it.versionCode }
+                            historyReleases = r
+                            historyLoading = false
+                        }
+                    }
+                )
                 "settings" -> SettingsScreen(app = app)
             }
         }
+    }
+
+    updateResult?.let {
+        UpdateDialog(result = it, onDismiss = { updateResult = null })
+    }
+    historyReleases?.let {
+        HistoryDialog(
+            releases = it,
+            loading = historyLoading && it.isEmpty(),
+            onDismiss = { historyReleases = null }
+        )
     }
 }

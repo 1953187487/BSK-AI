@@ -43,6 +43,10 @@ class VoiceCoordinator(
         voice.stopListening()
     }
 
+    fun submit(text: String) {
+        handleSpeech(text.trim())
+    }
+
     private fun handleSpeech(text: String) {
         if (text.isBlank()) return
         scope.launch {

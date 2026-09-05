@@ -1,8 +1,9 @@
 package com.bskai.ui.settings
 
 import android.Manifest
-import android.os.Build
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,18 +11,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -31,24 +37,39 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
+import com.bskai.data.DefaultApiUrlPresets
+import com.bskai.data.DefaultModelPresets
+import com.bskai.update.GitHubApi
+import com.bskai.update.RemoteRelease
 import com.bskai.util.Permissions
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(app: AuraApp) {
     val settings by app.settings.settings.collectAsState()
     var showApiDialog by rememberSaveable { mutableStateOf(false) }
+    var showUrlMenu by remember { mutableStateOf(false) }
+    var checking by remember { mutableStateOf(false) }
+    var historyReleases by remember { mutableStateOf<List<RemoteRelease>?>(null) }
+    var historyLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
@@ -64,10 +85,7 @@ fun SettingsScreen(app: AuraApp) {
         }
         item {
             SectionHeader("外观")
-            SettingRow(
-                title = "深色模式",
-                description = "使用深色配色"
-            ) {
+            SettingRow(title = "深色模式", description = "使用深色配色") {
                 Switch(
                     checked = settings.darkTheme,
                     onCheckedChange = { v ->
@@ -79,10 +97,7 @@ fun SettingsScreen(app: AuraApp) {
         }
         item {
             SectionHeader("语音")
-            SettingRow(
-                title = "语音播报",
-                description = "关闭后 AURA 只在屏幕上回答"
-            ) {
+            SettingRow(title = "语音播报", description = "关闭后 AURA 只在屏幕上回答") {
                 Switch(
                     checked = settings.ttsEnabled,
                     onCheckedChange = { v ->
@@ -122,10 +137,7 @@ fun SettingsScreen(app: AuraApp) {
         }
         item {
             SectionHeader("反馈")
-            SettingRow(
-                title = "振动反馈",
-                description = "播报时震动一下"
-            ) {
+            SettingRow(title = "振动反馈", description = "播报时震动一下") {
                 Switch(
                     checked = settings.vibrateOnResponse,
                     onCheckedChange = { v ->
@@ -133,10 +145,7 @@ fun SettingsScreen(app: AuraApp) {
                     }
                 )
             }
-            SettingRow(
-                title = "波形动画",
-                description = "说话时显示波动"
-            ) {
+            SettingRow(title = "波形动画", description = "说话时显示波动") {
                 Switch(
                     checked = settings.showWaveAnimation,
                     onCheckedChange = { v ->
@@ -149,7 +158,8 @@ fun SettingsScreen(app: AuraApp) {
             SectionHeader("AI 服务")
             SettingRow(
                 title = "自定义 AI",
-                description = if (settings.apiConfigured) "已连接：${settings.apiModel}" else "未配置"
+                description = if (settings.apiConfigured) "已连接：${settings.apiModel}"
+                else "未配置 · 可在对话页选择预设模型"
             ) {
                 OutlinedButton(onClick = { showApiDialog = true }) {
                     Text("配置")
@@ -172,14 +182,69 @@ fun SettingsScreen(app: AuraApp) {
         }
         item {
             SectionHeader("权限")
-            PermissionRow(name = "录音权限", granted = Permissions.hasRecordAudio(LocalContextCurrent()), required = Manifest.permission.RECORD_AUDIO)
-            PermissionRow(name = "通知权限", granted = Permissions.hasNotification(LocalContextCurrent()), required = Manifest.permission.POST_NOTIFICATIONS)
+            PermissionRow(
+                name = "录音权限",
+                granted = Permissions.hasRecordAudio(context),
+                onRequest = { /* handled in chat screen */ }
+            )
+            PermissionRow(
+                name = "通知权限",
+                granted = Permissions.hasNotification(context),
+                onRequest = { }
+            )
         }
         item {
-            SectionHeader("关于")
+            SectionHeader("版本")
             SettingRow(
-                title = "AURA",
-                description = "版本 ${BuildConfig.APP_NAME} ${BuildConfig.APP_VERSION} (${BuildConfig.BUILD_NUMBER})"
+                title = "检查更新",
+                description = "当前 ${BuildConfig.APP_VERSION} (${BuildConfig.BUILD_NUMBER})"
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        if (checking) return@OutlinedButton
+                        checking = true
+                        scope.launch {
+                            val releases = GitHubApi.listReleases()
+                            checking = false
+                            val r = releases
+                                .filter { it.versionCode > 0 }
+                                .sortedByDescending { it.versionCode }
+                            val latest = r.firstOrNull()
+                            val hasUpdate = latest != null && latest.versionCode > BuildConfig.BUILD_NUMBER
+                            android.widget.Toast.makeText(
+                                context,
+                                if (hasUpdate) "发现新版本 ${latest?.versionName}" else "已是最新",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    },
+                    enabled = !checking
+                ) {
+                    Icon(Icons.Default.SystemUpdateAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(if (checking) "检查中…" else "检查")
+                }
+            }
+            SettingRow(title = "历史版本", description = "查看所有已发布的 AURA 版本") {
+                OutlinedButton(onClick = {
+                    historyReleases = emptyList()
+                    historyLoading = true
+                    scope.launch {
+                        val r = GitHubApi.listReleases()
+                            .filter { it.versionCode > 0 }
+                            .sortedByDescending { it.versionCode }
+                        historyReleases = r
+                        historyLoading = false
+                    }
+                }) {
+                    Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("查看")
+                }
+            }
+            SettingRow(
+                title = "关于 AURA",
+                description = "${BuildConfig.APP_NAME} ${BuildConfig.APP_VERSION} · Kotlin + Jetpack Compose"
             ) {}
         }
     }
@@ -189,6 +254,8 @@ fun SettingsScreen(app: AuraApp) {
             initialUrl = settings.apiProviderUrl,
             initialKey = settings.apiProviderKey,
             initialModel = settings.apiModel,
+            urlPresets = DefaultApiUrlPresets,
+            modelPresets = DefaultModelPresets,
             onDismiss = { showApiDialog = false },
             onSave = { url, key, model ->
                 app.settings.update {
@@ -201,6 +268,14 @@ fun SettingsScreen(app: AuraApp) {
                 }
                 showApiDialog = false
             }
+        )
+    }
+
+    historyReleases?.let { list ->
+        com.bskai.ui.update.HistoryDialog(
+            releases = list,
+            loading = historyLoading && list.isEmpty(),
+            onDismiss = { historyReleases = null }
         )
     }
 }
@@ -260,7 +335,11 @@ private fun SliderRow(
 }
 
 @Composable
-private fun PermissionRow(name: String, granted: Boolean, required: String) {
+private fun PermissionRow(
+    name: String,
+    granted: Boolean,
+    onRequest: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -272,9 +351,7 @@ private fun PermissionRow(name: String, granted: Boolean, required: String) {
         )
         Spacer(Modifier.width(8.dp))
         Text(name, modifier = Modifier.weight(1f))
-        TextButton(onClick = {
-            // UI 层不直接处理；仅显示状态。
-        }) {
+        TextButton(onClick = onRequest) {
             Text(if (granted) "已授权" else "去授权")
         }
     }
@@ -285,42 +362,160 @@ private fun ApiConfigDialog(
     initialUrl: String,
     initialKey: String,
     initialModel: String,
+    urlPresets: List<String>,
+    modelPresets: List<String>,
     onDismiss: () -> Unit,
     onSave: (String, String, String) -> Unit
 ) {
     var url by remember { mutableStateOf(initialUrl) }
     var key by remember { mutableStateOf(initialKey) }
     var model by remember { mutableStateOf(initialModel) }
+    var showUrlMenu by remember { mutableStateOf(false) }
+    var showModelMenu by remember { mutableStateOf(false) }
+    var testing by remember { mutableStateOf(false) }
+    var testResult by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("自定义 AI 服务") },
         text = {
             Column {
                 Text(
-                    text = "填入 OpenAI 兼容服务的地址、API Key 与模型名，例如 DeepSeek / 自建 OpenAI 网关。",
+                    text = "填入 OpenAI 兼容服务的地址、API Key 与模型名，模型可从下拉预设选择。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("服务地址") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(10.dp))
+
+                Box {
+                    OutlinedTextField(
+                        value = url,
+                        onValueChange = { url = it },
+                        label = { Text("服务地址") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            IconButton(onClick = { showUrlMenu = !showUrlMenu }) {
+                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                            }
+                        }
+                    )
+                    DropdownMenu(
+                        expanded = showUrlMenu,
+                        onDismissRequest = { showUrlMenu = false }
+                    ) {
+                        urlPresets.forEach { preset ->
+                            DropdownMenuItem(
+                                text = { Text(preset) },
+                                onClick = {
+                                    url = preset
+                                    showUrlMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
+
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(value = key, onValueChange = { key = it }, label = { Text("API Key") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(value = model, onValueChange = { model = it }, label = { Text("模型名") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+
+                Box {
+                    OutlinedTextField(
+                        value = model,
+                        onValueChange = { model = it },
+                        label = { Text("模型名") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            IconButton(onClick = { showModelMenu = !showModelMenu }) {
+                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                            }
+                        }
+                    )
+                    DropdownMenu(
+                        expanded = showModelMenu,
+                        onDismissRequest = { showModelMenu = false }
+                    ) {
+                        modelPresets.forEach { preset ->
+                            DropdownMenuItem(
+                                text = { Text(preset) },
+                                onClick = {
+                                    model = preset
+                                    showModelMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                if (testResult != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = testResult!!,
+                            modifier = Modifier.padding(10.dp),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
             Button(onClick = { onSave(url.trim(), key.trim(), model.trim()) }) { Text("保存") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            Row {
+                TextButton(
+                    onClick = {
+                        if (testing) return@TextButton
+                        if (url.isBlank() || key.isBlank() || model.isBlank()) {
+                            testResult = "请先填写完整的服务地址、API Key 与模型名"
+                            return@TextButton
+                        }
+                        testing = true
+                        testResult = "正在测试模型…"
+                        scope.launch {
+                            val result = com.bskai.update.GitHubApi::class.java // silence
+                            val test = com.bskai.agent.LlmClient(context)
+                            val res = runCatching {
+                                test.chat(
+                                    com.bskai.data.AppSettings(
+                                        apiProviderUrl = url.trim(),
+                                        apiProviderKey = key.trim(),
+                                        apiModel = model.trim()
+                                    ),
+                                    listOf(
+                                        com.bskai.agent.ChatMsg(
+                                            "system",
+                                            "请用一句话用简体中文回复自我介绍"
+                                        ),
+                                        com.bskai.agent.ChatMsg("user", "测试请求")
+                                    )
+                                )
+                            }
+                            testing = false
+                            testResult = res.fold(
+                                onSuccess = { "✓ 测试成功：$it".take(180) },
+                                onFailure = { "× 测试失败：${it.message ?: "未知错误"}" }
+                            )
+                        }
+                    },
+                    enabled = !testing
+                ) {
+                    Text(if (testing) "测试中…" else "测试模型")
+                }
+                TextButton(onClick = onDismiss) { Text("取消") }
+            }
         }
     )
 }
-
-@Composable
-private fun LocalContextCurrent(): android.content.Context =
-    androidx.compose.ui.platform.LocalContext.current
 
 @Composable
 private fun HorizontalDivider(alpha: Float) {
