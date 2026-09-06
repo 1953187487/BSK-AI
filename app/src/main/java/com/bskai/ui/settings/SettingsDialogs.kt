@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -45,7 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -105,11 +104,6 @@ fun UpdateCenterDialog(onDismiss: () -> Unit) {
 }
 
 @Composable
-fun LocalModelDownloadDialog(app: AuraApp, onDismiss: () -> Unit) {
-    com.bskai.ui.chat.UnifiedModelDialog(app = app, onDismiss = onDismiss)
-}
-
-@Composable
 fun AboutAuraDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -131,7 +125,7 @@ fun AboutAuraDialog(onDismiss: () -> Unit) {
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "AURA 是一款集成 AI 对话、终端、音乐播放的 Android 应用。",
+                    "AURA 是一款集成 AI 对话、终端、IDE、音乐播放的 Android 应用。",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(Modifier.height(8.dp))
@@ -192,7 +186,7 @@ fun CustomModelManagerDialog(app: AuraApp, onDismiss: () -> Unit) {
                             }
                         }
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = "添加")
+                        Icon(Icons.Default.CheckCircle, contentDescription = "添加")
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -320,7 +314,7 @@ fun ThemeSelectDialog(current: ThemeStyle, onSelect: (ThemeStyle) -> Unit, onDis
                             }
                             if (current == style) {
                                 Icon(
-                                    Icons.Default.Check,
+                                    Icons.Default.CheckCircle,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
@@ -374,12 +368,13 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                     Spacer(Modifier.height(8.dp))
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        color = Color(0xFF0D1117)
                     ) {
                         Text(
                             installOutput.ifEmpty { "安装中..." },
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = FontFamily.Monospace,
+                            color = Color(0xFFE6EDF3),
                             modifier = Modifier.padding(8.dp).heightIn(max = 100.dp)
                         )
                     }
@@ -388,7 +383,6 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                         CircularProgressIndicator()
                     }
                 } else {
-                    // Category filter
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -473,10 +467,8 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
                         onClick = {
-                            loading = true
                             scope.launch {
                                 toolStatus = DevTools.checkAll(engine)
-                                loading = false
                             }
                         }
                     ) {

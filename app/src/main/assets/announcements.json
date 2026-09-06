@@ -1,13 +1,18 @@
 {
   "announcements": [
     {
-      "version": "2.0.7",
-      "title": "AURA 2.0.7 全面重写：横竖屏适配 + 终端升级 + 开发工具 + UI 设计",
-      "content": "AURA 2.0.7 重大更新。UI 全面重写，横竖屏自动适配（横屏按钮在左边），终端 GitHub Dark 主题，开发工具支持 Android 依赖一键安装，应用图标重绘，工作区支持导出，模型配置支持从服务商刷新模型列表，协议和 Shizuku 授权问题修复。",
+      "version": "2.0.8",
+      "title": "AURA 2.0.8 IDE 集成 + 模型配置重写 + 工作区全链重写 + Shizuku 修复",
+      "content": "AURA 2.0.8 重大更新。新增 IDE 功能（开发 Android 应用、依赖管理、APK 构建），模型选择器重写（本地模型 5 大下载源 + 自定义服务商合并），工作区全链重写（新建/切换/删除/导出），Shizuku 授权问题彻底修复，整体 UI 重写。",
       "changelog": [
-        "UI 全面重写：横竖屏自动适配，横屏按钮在左边 NavigationRail",
-        "终端升级：GitHub Dark 配色方案，ASCII art 欢迎页，复制全部按钮",
-        "开发工具升级：支持 Android 开发依赖（aapt2/d8/apksigner/adb/java 等）一键安装",
+        "新增 IDE 功能：文件浏览器、代码编辑器、依赖管理、APK 构建",
+        "模型选择器重写：本地模型内置 5 大下载源（HuggingFace/Ollama/LM Studio/vLLM/Jan）",
+        "自定义服务商：测试连接后自动拉取模型列表",
+        "工作区全链重写：新建/切换/删除/导出完整功能",
+        "Shizuku 授权修复：移除 Context 依赖，修复 binder 监听器注册",
+        "整体 UI 重写：更现代的 Material 3 设计",
+        "导航栏新增 IDE Tab（对话/终端/IDE/设置）",
+        "versionCode 310, versionName 2.0.8"
         "应用图标重绘：AI 神经网络图案",
         "工作区支持导出为 ZIP",
         "模型配置：从服务商刷新模型列表并选择下载",

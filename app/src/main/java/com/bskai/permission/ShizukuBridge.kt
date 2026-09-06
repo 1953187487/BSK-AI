@@ -1,6 +1,5 @@
 package com.bskai.permission
 
-import android.content.Context
 import android.content.pm.PackageManager
 import android.os.IBinder
 import android.util.Log
@@ -9,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import rikka.shizuku.Shizuku
 
-class ShizukuBridge(private val context: Context) {
+class ShizukuBridge {
 
     enum class State { UNAVAILABLE, NEED_PERMISSION, GRANTED }
 
@@ -18,12 +17,13 @@ class ShizukuBridge(private val context: Context) {
 
     private val requestPermissionListener =
         Shizuku.OnRequestPermissionResultListener { _, grantResult ->
-            _state.value = if (grantResult == PackageManager.PERMISSION_GRANTED)
+            val newState = if (grantResult == PackageManager.PERMISSION_GRANTED)
                 State.GRANTED else State.NEED_PERMISSION
+            _state.value = newState
         }
 
     private val binderDeathListener = Shizuku.OnBinderDeadListener {
-        _state.value = detect()
+        _state.value = State.UNAVAILABLE
     }
 
     private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
@@ -35,10 +35,15 @@ class ShizukuBridge(private val context: Context) {
             Shizuku.addRequestPermissionResultListener(requestPermissionListener)
             Shizuku.addBinderDeadListener(binderDeathListener)
             Shizuku.addBinderReceivedListener(binderReceivedListener)
-        } catch (_: Throwable) {}
+            Shizuku.addBinderReceivedListener(binderReceivedListener)
+        } catch (t: Throwable) {
+            Log.w(TAG, "Shizuku init failed", t)
+        }
     }
 
-    fun refresh() { _state.value = detect() }
+    fun refresh() {
+        _state.value = detect()
+    }
 
     fun isGranted(): Boolean = _state.value == State.GRANTED
 
@@ -86,5 +91,7 @@ class ShizukuBridge(private val context: Context) {
         try { Shizuku.removeBinderReceivedListener(binderReceivedListener) } catch (_: Throwable) {}
     }
 
-    companion object { private const val TAG = "ShizukuBridge" }
+    companion object {
+        private const val TAG = "ShizukuBridge"
+    }
 }

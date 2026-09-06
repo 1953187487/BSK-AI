@@ -211,7 +211,7 @@ fun TerminalScreen(
                                 color = COLOR_GREEN
                             )
                             Text(
-                                text = "│  Welcome to AURA Terminal v2.0.6     │",
+                                text = "│  Welcome to AURA Terminal v2.0.8     │",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = FontFamily.Monospace,
                                 color = COLOR_GREEN

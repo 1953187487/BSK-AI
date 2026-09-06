@@ -50,7 +50,7 @@ class AuraApp : Application() {
         super.onCreate()
         settings = SettingsRepository(this)
         applyLocale()
-        shizuku = ShizukuBridge(this)
+        shizuku = ShizukuBridge()
         terminal = TerminalEngine(shizuku)
         workspace = WorkspaceManager(this, settings)
         workspace.ensureDefault()

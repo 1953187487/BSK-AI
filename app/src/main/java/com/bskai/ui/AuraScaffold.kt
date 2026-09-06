@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Terminal
@@ -34,12 +35,14 @@ import com.bskai.AuraApp
 import com.bskai.BuildConfig
 import com.bskai.data.loadAnnouncements
 import com.bskai.ui.chat.ChatScreen
+import com.bskai.ui.ide.IdeScreen
 import com.bskai.ui.settings.SettingsScreen
 import com.bskai.ui.terminal.TerminalScreen
 
-private enum class Tab(val label: String, val icon: ImageVector) {
+private enum class AuraTab(val label: String, val icon: ImageVector) {
     CHAT("对话", Icons.Default.Chat),
     TERMINAL("终端", Icons.Default.Terminal),
+    IDE("IDE", Icons.Default.Build),
     SETTINGS("设置", Icons.Default.Settings)
 }
 
@@ -96,21 +99,21 @@ fun AuraScaffold(app: AuraApp) {
     LaunchedEffect(Unit) {
         com.bskai.MainActivity.navRequests.collect { target ->
             when (target) {
-                "settings" -> currentTab = 2
+                "settings" -> currentTab = 3
                 "terminal" -> currentTab = 1
+                "ide" -> currentTab = 2
             }
         }
     }
 
     if (isLandscape) {
-        // 横屏：按钮在左边
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { padding ->
             Row(modifier = Modifier.fillMaxSize().padding(padding)) {
                 NavigationRail {
-                    Tab.entries.forEachIndexed { index, tab ->
+                    AuraTab.entries.forEachIndexed { index, tab ->
                         NavigationRailItem(
                             selected = currentTab == index,
                             onClick = { currentTab = index },
@@ -123,19 +126,19 @@ fun AuraScaffold(app: AuraApp) {
                     when (currentTab) {
                         0 -> ChatScreen(app = app, snackbarHostState = snackbarHostState)
                         1 -> TerminalScreen(engine = app.terminal, shizuku = app.shizuku)
-                        2 -> SettingsScreen(app = app)
+                        2 -> IdeScreen(app = app)
+                        3 -> SettingsScreen(app = app)
                     }
                 }
             }
         }
     } else {
-        // 竖屏：按钮在底部
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 NavigationBar {
-                    Tab.entries.forEachIndexed { index, tab ->
+                    AuraTab.entries.forEachIndexed { index, tab ->
                         NavigationBarItem(
                             selected = currentTab == index,
                             onClick = { currentTab = index },
@@ -150,7 +153,8 @@ fun AuraScaffold(app: AuraApp) {
                 when (currentTab) {
                     0 -> ChatScreen(app = app, snackbarHostState = snackbarHostState)
                     1 -> TerminalScreen(engine = app.terminal, shizuku = app.shizuku)
-                    2 -> SettingsScreen(app = app)
+                    2 -> IdeScreen(app = app)
+                    3 -> SettingsScreen(app = app)
                 }
             }
         }

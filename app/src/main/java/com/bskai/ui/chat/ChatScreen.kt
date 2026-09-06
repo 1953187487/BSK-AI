@@ -23,10 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Settings
@@ -38,7 +36,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
@@ -57,7 +54,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -160,13 +156,9 @@ fun ChatScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (messages.isEmpty()) {
-                item {
-                    EmptyHint(settings.apiConfigured)
-                }
+                item { EmptyHint(settings.apiConfigured) }
             }
-            items(messages) { msg ->
-                ChatBubble(msg = msg)
-            }
+            items(messages) { msg -> ChatBubble(msg = msg) }
         }
 
         Surface(
@@ -214,8 +206,7 @@ private fun ChatBubble(msg: ChatMsg) {
     ) {
         Surface(
             shape = RoundedCornerShape(
-                topStart = 16.dp,
-                topEnd = 16.dp,
+                topStart = 16.dp, topEnd = 16.dp,
                 bottomStart = if (isUser) 16.dp else 4.dp,
                 bottomEnd = if (isUser) 4.dp else 16.dp
             ),
@@ -254,6 +245,20 @@ data class ChatMsg(
     val content: String
 )
 
+data class ModelSource(
+    val name: String,
+    val baseUrl: String,
+    val description: String
+)
+
+val localModelSources = listOf(
+    ModelSource("HuggingFace", "https://huggingface.co/api/models?tag=llama", "HuggingFace 模型仓库"),
+    ModelSource("Ollama Library", "https://ollama.com/api/tags", "Ollama 官方模型库"),
+    ModelSource("LM Studio", "https://api.lmstudio.ai/v1/models", "LM Studio 模型市场"),
+    ModelSource("vLLM", "http://localhost:8000/v1/models", "vLLM 本地推理"),
+    ModelSource("Jan", "http://localhost:1337/v1/models", "Jan 本地模型")
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UnifiedModelDialog(app: AuraApp, onDismiss: () -> Unit) {
@@ -262,7 +267,6 @@ fun UnifiedModelDialog(app: AuraApp, onDismiss: () -> Unit) {
     val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(0) }
 
-    var downloadUrl by remember { mutableStateOf("") }
     var downloadProgress by remember { mutableStateOf(mapOf<String, DownloadStatus>()) }
     var downloading by remember { mutableStateOf<String?>(null) }
 
@@ -272,6 +276,8 @@ fun UnifiedModelDialog(app: AuraApp, onDismiss: () -> Unit) {
     var availableModels by remember { mutableStateOf<List<ModelInfo>>(emptyList()) }
     var isLoadingModels by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<String?>(null) }
+
+    var selectedSource by remember { mutableStateOf<ModelSource?>(null) }
 
     val providers = listOf(
         "Ollama" to "http://localhost:11434/v1",
@@ -302,7 +308,7 @@ fun UnifiedModelDialog(app: AuraApp, onDismiss: () -> Unit) {
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("本地模型", fontSize = 12.sp)
                         }
@@ -329,43 +335,80 @@ fun UnifiedModelDialog(app: AuraApp, onDismiss: () -> Unit) {
                 Spacer(Modifier.height(12.dp))
 
                 if (selectedTab == 0) {
-                    Text("选择本地模型", style = MaterialTheme.typography.labelLarge)
+                    Text("选择下载源", style = MaterialTheme.typography.labelLarge)
                     Spacer(Modifier.height(8.dp))
-                    LazyColumn(modifier = Modifier.fillMaxWidth().height(200.dp)) {
-                        item {
-                            Text("从服务商获取模型列表", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = providerUrl,
-                                onValueChange = { providerUrl = it },
-                                label = { Text("服务商地址") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Button(
-                                onClick = {
-                                    if (providerUrl.isNotBlank()) {
-                                        isLoadingModels = true
-                                        scope.launch {
-                                            val models = withContext(Dispatchers.IO) {
-                                                LlmClient(app).listModels(providerUrl, providerKey)
-                                            }
-                                            availableModels = models
-                                            isLoadingModels = false
-                                        }
-                                    }
-                                },
-                                enabled = !isLoadingModels && providerUrl.isNotBlank(),
-                                modifier = Modifier.fillMaxWidth()
+
+                    LazyColumn(modifier = Modifier.fillMaxWidth().height(250.dp)) {
+                        items(localModelSources) { source ->
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                    .clickable {
+                                        selectedSource = source
+                                        providerUrl = source.baseUrl
+                                        availableModels = emptyList()
+                                        testResult = null
+                                    },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (selectedSource == source) MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                             ) {
-                                Text(if (isLoadingModels) "加载中..." else "刷新模型列表")
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(source.name, fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                                        Text(source.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                    }
+                                    if (selectedSource == source) {
+                                        Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
                             }
                         }
+
+                        if (selectedSource != null) {
+                            item {
+                                Spacer(Modifier.height(12.dp))
+                                Button(
+                                    onClick = {
+                                        if (providerUrl.isNotBlank()) {
+                                            isLoadingModels = true
+                                            scope.launch {
+                                                val models = withContext(Dispatchers.IO) {
+                                                    try {
+                                                        LlmClient(app).listModels(providerUrl, providerKey)
+                                                    } catch (e: Exception) {
+                                                        emptyList()
+                                                    }
+                                                }
+                                                availableModels = models
+                                                isLoadingModels = false
+                                            }
+                                        }
+                                    },
+                                    enabled = !isLoadingModels && providerUrl.isNotBlank(),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    if (isLoadingModels) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("刷新中...")
+                                    } else {
+                                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("刷新模型列表")
+                                    }
+                                }
+                            }
+                        }
+
                         if (availableModels.isNotEmpty()) {
                             item {
                                 Spacer(Modifier.height(12.dp))
-                                Text("可用模型", style = MaterialTheme.typography.labelMedium)
+                                Text("可用模型 (${availableModels.size})", style = MaterialTheme.typography.labelMedium)
                                 Spacer(Modifier.height(4.dp))
                             }
                             items(availableModels) { model ->
@@ -489,6 +532,33 @@ fun UnifiedModelDialog(app: AuraApp, onDismiss: () -> Unit) {
                                 }
                                 testResult?.let {
                                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+
+                        if (availableModels.isNotEmpty()) {
+                            item {
+                                Spacer(Modifier.height(8.dp))
+                                Text("可用模型", style = MaterialTheme.typography.labelMedium)
+                                Spacer(Modifier.height(4.dp))
+                            }
+                            items(availableModels) { model ->
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                        .clickable {
+                                            app.settings.update { it.copy(apiModel = model.id, modelSource = "api") }
+                                        },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(model.name, modifier = Modifier.weight(1f))
+                                    }
                                 }
                             }
                         }

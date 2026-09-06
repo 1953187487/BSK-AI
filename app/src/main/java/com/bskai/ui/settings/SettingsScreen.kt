@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -100,6 +102,7 @@ fun SettingsScreen(
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showDevToolsDialog by remember { mutableStateOf(false) }
+    var showWorkspaceDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -155,7 +158,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Folder,
                     title = "工作区",
                     subtitle = if (settings.workspaceEnabled) "已启用" else "已禁用",
-                    onClick = { app.settings.update { it.copy(workspaceEnabled = !it.workspaceEnabled) } }
+                    onClick = { showWorkspaceDialog = true }
                 )
                 SettingsItem(
                     icon = Icons.Default.Security,
@@ -210,7 +213,7 @@ fun SettingsScreen(
     }
 
     if (showLocalModelDialog) {
-        LocalModelDownloadDialog(app = app, onDismiss = { showLocalModelDialog = false })
+        com.bskai.ui.chat.UnifiedModelDialog(app = app, onDismiss = { showLocalModelDialog = false })
     }
 
     if (showAboutDialog) {
@@ -244,6 +247,13 @@ fun SettingsScreen(
         DevToolsDialog(
             engine = app.terminal,
             onDismiss = { showDevToolsDialog = false }
+        )
+    }
+
+    if (showWorkspaceDialog) {
+        WorkspaceManageDialog(
+            app = app,
+            onDismiss = { showWorkspaceDialog = false }
         )
     }
 }
@@ -303,5 +313,111 @@ private fun SettingsItem(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun WorkspaceManageDialog(app: AuraApp, onDismiss: () -> Unit) {
+    val workspaces = app.workspace.workspaces.collectAsState().value
+    val activeId = app.workspace.activeId.collectAsState().value
+    val scope = rememberCoroutineScope()
+    var showNewDialog by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("工作区管理", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("工作区列表", style = MaterialTheme.typography.labelLarge)
+                    IconButton(onClick = { showNewDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = "新建")
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                if (workspaces.isEmpty()) {
+                    Text("暂无工作区", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    LazyColumn {
+                        items(workspaces) { ws ->
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                    .clickable { app.workspace.setActive(ws.id) },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (ws.id == activeId) MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Folder,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = if (ws.id == activeId) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(ws.name, fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                                        Text(
+                                            if (ws.kind == WorkspaceEntry.Kind.INTERNAL) "内部" else "外部",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                    if (ws.id == activeId) {
+                                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("完成") }
+        }
+    )
+
+    if (showNewDialog) {
+        var name by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showNewDialog = false },
+            title = { Text("新建工作区") },
+            text = {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("工作区名称") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (name.isNotBlank()) {
+                            val id = name.lowercase().replace(" ", "_") + "_" + System.currentTimeMillis()
+                            app.workspace.createInternal(id, name)
+                            showNewDialog = false
+                        }
+                    },
+                    enabled = name.isNotBlank()
+                ) {
+                    Text("创建")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewDialog = false }) { Text("取消") }
+            }
+        )
     }
 }
