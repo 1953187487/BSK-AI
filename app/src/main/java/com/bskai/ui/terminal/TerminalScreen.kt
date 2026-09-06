@@ -102,9 +102,7 @@ fun TerminalScreen(
     ) {
         // Top bar
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -114,7 +112,7 @@ fun TerminalScreen(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = TerminalEngine.Backend.entries.size.toString() + " 后端",
+                text = "${TerminalEngine.Backend.entries.size} 后端",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -124,9 +122,7 @@ fun TerminalScreen(
 
         // Backend selector
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             TerminalEngine.Backend.entries.forEach { b ->
@@ -179,9 +175,7 @@ fun TerminalScreen(
                         )
                     }
                 }
-                items(history) { line ->
-                    HistoryLineView(line)
-                }
+                items(history) { line -> HistoryLineView(line) }
             }
         }
 
@@ -189,72 +183,57 @@ fun TerminalScreen(
 
         // Input row
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "$ ",
                 color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
             )
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },
                 modifier = Modifier.weight(1f),
+                placeholder = { Text("输入命令...") },
                 singleLine = true,
-                placeholder = { Text("输入命令…") },
                 shape = RoundedCornerShape(12.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { run() })
             )
-            Spacer(Modifier.width(4.dp))
-            IconButton(onClick = { run() }, enabled = input.isNotBlank()) {
-                Icon(Icons.Default.PlayArrow, contentDescription = "执行",
-                    tint = if (input.isNotBlank()) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.outline)
+            Spacer(Modifier.width(8.dp))
+            IconButton(onClick = { run() }) {
+                Icon(Icons.Default.PlayArrow, contentDescription = "执行")
             }
         }
     }
 }
-
-private data class HistoryLine(
-    val prompt: String,
-    val command: String? = null,
-    val output: String? = null,
-    val isError: Boolean = false
-)
 
 @Composable
 private fun HistoryLineView(line: HistoryLine) {
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        Row {
-            Text(
-                text = "${line.prompt} ",
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 13.sp
-            )
-            if (line.command != null) {
-                Text(
-                    text = line.command,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 13.sp
-                )
-            }
-        }
-        if (line.output != null) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Text(
+            text = "${line.prompt} ${line.command}",
+            style = MaterialTheme.typography.bodySmall,
+            fontFamily = FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold
+        )
+        if (line.output.isNotEmpty()) {
             Text(
                 text = line.output,
-                color = if (line.isError) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(start = 4.dp)
+                color = if (line.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
             )
         }
     }
 }
+
+data class HistoryLine(
+    val prompt: String = "",
+    val command: String = "",
+    val output: String = "",
+    val isError: Boolean = false
+)

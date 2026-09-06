@@ -1,5 +1,8 @@
 package com.bskai.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -7,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,6 +36,7 @@ fun AuraScaffold(app: AuraApp) {
     val allAnnouncements = remember { loadAnnouncements(app) }
     val lastSeen = app.settings.lastSeenVersion()
     val currentVersion = BuildConfig.APP_VERSION
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var showAnnouncement by rememberSaveable(lastSeen) {
         mutableStateOf(lastSeen != currentVersion && allAnnouncements.isNotEmpty())
@@ -84,20 +90,26 @@ fun AuraScaffold(app: AuraApp) {
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             ChatScreen(
                 app = app,
-                onOpenSettings = { showSettings = true }
+                onOpenSettings = { showSettings = true },
+                snackbarHostState = snackbarHostState
             )
 
-            if (showSettings) {
+            AnimatedVisibility(
+                visible = showSettings,
+                enter = slideInVertically(initialOffsetY = { it }),
+                exit = slideOutVertically(targetOffsetY = { it }),
+                modifier = Modifier.zIndex(10f)
+            ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
-                        .zIndex(10f)
                 ) {
                     SettingsScreen(
                         app = app,
@@ -110,12 +122,16 @@ fun AuraScaffold(app: AuraApp) {
                 }
             }
 
-            if (showTerminal) {
+            AnimatedVisibility(
+                visible = showTerminal,
+                enter = slideInVertically(initialOffsetY = { it }),
+                exit = slideOutVertically(targetOffsetY = { it }),
+                modifier = Modifier.zIndex(10f)
+            ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
-                        .zIndex(10f)
                 ) {
                     TerminalScreen(
                         engine = app.terminal,

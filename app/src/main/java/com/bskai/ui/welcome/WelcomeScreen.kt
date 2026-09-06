@@ -49,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.bskai.AuraApp
 import com.bskai.data.Agreements
 import com.bskai.data.Language
@@ -65,17 +66,11 @@ fun WelcomeScreen(app: AuraApp, onDone: () -> Unit) {
 
     val filtered = remember(search, languages) {
         if (search.isBlank()) languages
-        else languages.filter {
-            it.name.contains(search, true) || it.nativeName.contains(search, true)
-        }
+        else languages.filter { it.name.contains(search, true) || it.nativeName.contains(search, true) }
     }
 
     Surface(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
             Spacer(Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -108,39 +103,25 @@ fun WelcomeScreen(app: AuraApp, onDone: () -> Unit) {
             Box(modifier = Modifier.weight(1f)) {
                 when (step) {
                     0 -> LanguageStep(
-                        languages = filtered,
-                        selected = languageCode,
-                        onSelect = { languageCode = it },
-                        search = search,
-                        onSearch = { search = it }
+                        languages = filtered, selected = languageCode,
+                        onSelect = { languageCode = it }, search = search, onSearch = { search = it }
                     )
                     1 -> AgreementStep(
-                        agreedOpenSource = agreedOpenSource,
-                        agreedPrivacy = agreedPrivacy,
-                        onToggleOpenSource = { agreedOpenSource = it },
-                        onTogglePrivacy = { agreedPrivacy = it }
-                    )                    else -> WelcomeDoneStep()
+                        agreedOpenSource = agreedOpenSource, agreedPrivacy = agreedPrivacy,
+                        onToggleOpenSource = { agreedOpenSource = it }, onTogglePrivacy = { agreedPrivacy = it }
+                    )
+                    else -> WelcomeDoneStep()
                 }
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(
-                    onClick = {
-                        if (step == 0) {
-                            onDone()
-                        } else {
-                            step -= 1
-                        }
-                    }
-                ) {
+                TextButton(onClick = { if (step == 0) onDone() else step -= 1 }) {
                     Text(if (step == 0) "退出" else "上一步")
                 }
                 Button(
@@ -180,22 +161,16 @@ private fun LanguageStep(
     onSearch: (String) -> Unit
 ) {
     Column {
+        Text("选择界面语言", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(
-            text = "选择界面语言",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
-        )
-        Text(
-            text = "你可以随时在设置中更改",
+            "你可以随时在设置中更改",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
-            value = search,
-            onValueChange = onSearch,
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
+            value = search, onValueChange = onSearch,
+            modifier = Modifier.fillMaxWidth(), singleLine = true,
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             placeholder = { Text("搜索语言") },
             shape = RoundedCornerShape(14.dp),
@@ -203,16 +178,9 @@ private fun LanguageStep(
         )
         Spacer(Modifier.height(10.dp))
         val popular = listOf("zh", "en", "ja", "ko", "es", "fr", "de")
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             popular.forEach { code ->
-                FilterChip(
-                    selected = selected == code,
-                    onClick = { onSelect(code) },
-                    label = { Text(code.uppercase()) }
-                )
+                FilterChip(selected = selected == code, onClick = { onSelect(code) }, label = { Text(code.uppercase()) })
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -241,22 +209,13 @@ private fun LanguageStep(
                         contentAlignment = Alignment.Center
                     ) {
                         if (selected == lang.code) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(12.dp)
-                            )
+                            Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
                         }
                     }
                     Spacer(Modifier.width(12.dp))
                     Text(lang.nativeName.ifBlank { lang.name }, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.weight(1f))
-                    Text(
-                        text = lang.name,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(lang.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -270,28 +229,19 @@ private fun AgreementStep(
     onToggleOpenSource: (Boolean) -> Unit,
     onTogglePrivacy: (Boolean) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-    ) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Text("用户协议", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(
-            text = "使用前请阅读并同意以下条款",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
+            "请阅读并同意以下条款后继续使用 AURA。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(14.dp))
 
-        AgreementCard(
-            section = Agreements.openSource,
-            checked = agreedOpenSource,
-            onCheckedChange = onToggleOpenSource
-        )
+        AgreementCard(section = Agreements.openSource, checked = agreedOpenSource, onCheckedChange = onToggleOpenSource)
         Spacer(Modifier.height(12.dp))
         AgreementCard(
-            section = Agreements.privacy.copy(
-                body = Agreements.renderPrivacy(com.bskai.BuildConfig.APP_VERSION)
-            ),
+            section = Agreements.privacy.copy(body = Agreements.renderPrivacy(com.bskai.BuildConfig.APP_VERSION)),
             checked = agreedPrivacy,
             onCheckedChange = onTogglePrivacy
         )
@@ -311,14 +261,10 @@ private fun AgreementCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            Text(
-                text = section.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
+            Text(section.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(8.dp))
             Text(
-                text = section.body,
+                section.body,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth()
@@ -334,10 +280,9 @@ private fun AgreementCard(
             ) {
                 Checkbox(checked = checked, onCheckedChange = onCheckedChange)
                 Text(
-                    text = "我已阅读并同意",
+                    "我已阅读并同意",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (checked) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurface
+                    color = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -347,41 +292,18 @@ private fun AgreementCard(
 @Composable
 private fun WelcomeDoneStep() {
     Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        modifier = Modifier.fillMaxSize().padding(top = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            Icons.Default.CheckCircle,
-            contentDescription = null,
-            modifier = Modifier.size(72.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
+        Text("🎉", fontSize = 64.sp)
         Spacer(Modifier.height(16.dp))
-        Text(
-            text = "欢迎使用 AURA",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
+        Text("一切就绪", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "按住说话按钮说出指令，即可完成音量、静音、报时、打开应用等操作。",
+            "AURA 已准备就绪，点击开始使用即可体验。",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 24.dp)
-        )
-        Spacer(Modifier.height(24.dp))
-        Text(
-            text = "点击右上角更多，在设置中配置 AI 服务可获得更强的对话能力。",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 24.dp)
+            textAlign = TextAlign.Center
         )
     }
 }
-
-private const val openSourceBody = ""
-private const val privacyBody = ""

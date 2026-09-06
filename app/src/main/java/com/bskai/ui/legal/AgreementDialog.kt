@@ -66,18 +66,8 @@ import com.bskai.data.DefaultApiUrlPresets
 import com.bskai.data.Language
 import com.bskai.data.loadLanguages
 
-/**
- * 5步引导协议对话框：
- * 第1步：选择语言
- * 第2步：配置 API 地址
- * 第3步：授权权限（可跳过）
- * 第4步：下载开发工具（可跳过）
- * 第5步：开源协议与用户须知
- */
 @Composable
-fun FourStepAgreementDialog(
-    onComplete: () -> Unit
-) {
+fun FourStepAgreementDialog(onComplete: () -> Unit) {
     var step by rememberSaveable { mutableIntStateOf(0) }
     var languageCode by rememberSaveable { mutableStateOf("zh") }
     var apiUrl by rememberSaveable { mutableStateOf("") }
@@ -88,15 +78,8 @@ fun FourStepAgreementDialog(
     val context = androidx.compose.ui.platform.LocalContext.current
     val languages = remember { loadLanguages(context) }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp)
-        ) {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
             Spacer(Modifier.height(16.dp))
 
             // Header
@@ -111,7 +94,6 @@ fun FourStepAgreementDialog(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
-                // Step indicators
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     repeat(5) { i ->
                         Box(
@@ -134,23 +116,17 @@ fun FourStepAgreementDialog(
             Box(modifier = Modifier.weight(1f)) {
                 when (step) {
                     0 -> LanguageStepContent(
-                        languages = languages,
-                        selected = languageCode,
-                        onSelect = { languageCode = it }
+                        languages = languages, selected = languageCode, onSelect = { languageCode = it }
                     )
                     1 -> ApiConfigStepContent(
-                        apiUrl = apiUrl,
-                        apiKey = apiKey,
-                        onUrlChange = { apiUrl = it },
-                        onKeyChange = { apiKey = it }
+                        apiUrl = apiUrl, apiKey = apiKey,
+                        onUrlChange = { apiUrl = it }, onKeyChange = { apiKey = it }
                     )
                     2 -> PermissionStepContent()
                     3 -> BuildToolsStepContent()
                     4 -> AgreementStepContent(
-                        agreedOpenSource = agreedOpenSource,
-                        agreedPrivacy = agreedPrivacy,
-                        onToggleOpenSource = { agreedOpenSource = it },
-                        onTogglePrivacy = { agreedPrivacy = it }
+                        agreedOpenSource = agreedOpenSource, agreedPrivacy = agreedPrivacy,
+                        onToggleOpenSource = { agreedOpenSource = it }, onTogglePrivacy = { agreedPrivacy = it }
                     )
                 }
             }
@@ -159,18 +135,11 @@ fun FourStepAgreementDialog(
 
             // Bottom buttons
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(
-                    onClick = {
-                        if (step > 0) step -= 1
-                    },
-                    enabled = step > 0
-                ) {
+                TextButton(onClick = { if (step > 0) step -= 1 }, enabled = step > 0) {
                     Text(if (step == 0) "退出" else "上一步")
                 }
                 Button(
@@ -215,31 +184,22 @@ private fun LanguageStepContent(
     onSelect: (String) -> Unit
 ) {
     var search by rememberSaveable { mutableStateOf("") }
-
     val filtered = remember(search, languages) {
         if (search.isBlank()) languages
-        else languages.filter {
-            it.name.contains(search, true) || it.nativeName.contains(search, true)
-        }
+        else languages.filter { it.name.contains(search, true) || it.nativeName.contains(search, true) }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        Text("选择界面语言", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(
-            text = "选择界面语言",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
-        )
-        Text(
-            text = "选择您偏好的语言，稍后可在设置中更改",
+            "选择您偏好的语言，稍后可在设置中更改",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
-            value = search,
-            onValueChange = { search = it },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
+            value = search, onValueChange = { search = it },
+            modifier = Modifier.fillMaxWidth(), singleLine = true,
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             placeholder = { Text("搜索语言") },
             shape = RoundedCornerShape(14.dp),
@@ -247,14 +207,10 @@ private fun LanguageStepContent(
         )
         Spacer(Modifier.height(10.dp))
         val popular = listOf("zh", "en", "ja", "ko", "es", "fr", "de")
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             popular.forEach { code ->
                 FilterChip(
-                    selected = selected == code,
-                    onClick = { onSelect(code) },
+                    selected = selected == code, onClick = { onSelect(code) },
                     label = { Text(code.uppercase()) }
                 )
             }
@@ -285,22 +241,13 @@ private fun LanguageStepContent(
                         contentAlignment = Alignment.Center
                     ) {
                         if (selected == lang.code) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(12.dp)
-                            )
+                            Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
                         }
                     }
                     Spacer(Modifier.width(12.dp))
                     Text(lang.nativeName.ifBlank { lang.name }, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.weight(1f))
-                    Text(
-                        text = lang.name,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text(lang.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -309,41 +256,25 @@ private fun LanguageStepContent(
 
 @Composable
 private fun ApiConfigStepContent(
-    apiUrl: String,
-    apiKey: String,
-    onUrlChange: (String) -> Unit,
-    onKeyChange: (String) -> Unit
+    apiUrl: String, apiKey: String,
+    onUrlChange: (String) -> Unit, onKeyChange: (String) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-    ) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Text("配置 AI 服务", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(
-            text = "配置 AI 服务",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
-        )
-        Text(
-            text = "配置 AI 服务地址和密钥，稍后可在设置中更改。您可以跳过此步骤。",
+            "配置 AI 服务地址和密钥，稍后可在设置中更改。您可以跳过此步骤。",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
-            value = apiUrl,
-            onValueChange = onUrlChange,
-            label = { Text("API 地址") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            value = apiUrl, onValueChange = onUrlChange,
+            label = { Text("API 地址") }, singleLine = true, modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
-            value = apiKey,
-            onValueChange = onKeyChange,
-            label = { Text("API Key") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            value = apiKey, onValueChange = onKeyChange,
+            label = { Text("API Key") }, singleLine = true, modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(12.dp))
         Text("快速选择:", style = MaterialTheme.typography.labelMedium)
@@ -372,89 +303,44 @@ private fun PermissionStepContent() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-    ) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Text("授权权限", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(
-            text = "授权权限",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
-        )
-        Text(
-            text = "应用需要以下权限以提供完整功能。您可以跳过此步骤，稍后在系统设置中授权。",
+            "应用需要以下权限以提供完整功能。您可以跳过此步骤，稍后在系统设置中授权。",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(16.dp))
 
-        // Notification permission
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.Security,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("通知权限", fontWeight = FontWeight.Medium)
-                    Text(
-                        "用于显示后台通知",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                TextButton(onClick = {
-                    notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }) {
-                    Text("授权")
-                }
-            }
-        }
-
+        PermissionCard(
+            title = "通知权限",
+            description = "用于显示后台通知",
+            onGrant = { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }
+        )
         Spacer(Modifier.height(12.dp))
+        PermissionCard(
+            title = "存储权限",
+            description = "用于读写工作区文件",
+            onGrant = { notifLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE) }
+        )
+    }
+}
 
-        // Storage permission
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.Security,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("存储权限", fontWeight = FontWeight.Medium)
-                    Text(
-                        "用于读写工作区文件",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                TextButton(onClick = {
-                    notifLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                }) {
-                    Text("授权")
-                }
+@Composable
+private fun PermissionCard(title: String, description: String, onGrant: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.Medium)
+                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            TextButton(onClick = onGrant) { Text("授权") }
         }
     }
 }
@@ -465,18 +351,10 @@ private fun BuildToolsStepContent() {
     var downloaded by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-    ) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Text("开发工具", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(
-            text = "开发工具",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
-        )
-        Text(
-            text = "下载构建工具以在应用内开发 Android 应用。您可以跳过此步骤，稍后在设置中下载。",
+            "下载构建工具以在应用内开发 Android 应用。您可以跳过此步骤，稍后在设置中下载。",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -489,12 +367,7 @@ private fun BuildToolsStepContent() {
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Build,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Icon(Icons.Default.Build, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text("APK 构建工具", fontWeight = FontWeight.Medium)
@@ -507,10 +380,7 @@ private fun BuildToolsStepContent() {
                 }
                 if (downloading || downloaded) {
                     Spacer(Modifier.height(12.dp))
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier.fillMaxWidth().height(6.dp)
-                    )
+                    LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(6.dp))
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = if (downloaded) "下载完成" else "${(progress * 100).toInt()}%",
@@ -523,21 +393,18 @@ private fun BuildToolsStepContent() {
                     Button(
                         onClick = {
                             downloading = true
-                            // Simulate download progress
                             progress = 0.3f
                             downloaded = true
                             downloading = false
                             progress = 1f
                         },
                         modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("下载构建工具")
-                    }
+                    ) { Text("下载构建工具") }
                 }
                 if (downloaded) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "✓ 已就绪，可以在应用开发模式中构建 APK",
+                        "✓ 已就绪，可以在应用开发模式中构建 APK",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -549,38 +416,22 @@ private fun BuildToolsStepContent() {
 
 @Composable
 private fun AgreementStepContent(
-    agreedOpenSource: Boolean,
-    agreedPrivacy: Boolean,
-    onToggleOpenSource: (Boolean) -> Unit,
-    onTogglePrivacy: (Boolean) -> Unit
+    agreedOpenSource: Boolean, agreedPrivacy: Boolean,
+    onToggleOpenSource: (Boolean) -> Unit, onTogglePrivacy: (Boolean) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-    ) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Text("开源协议与用户须知", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(
-            text = "开源协议与用户须知",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
-        )
-        Text(
-            text = "请阅读并同意以下条款后继续使用 AURA。",
+            "请阅读并同意以下条款后继续使用 AURA。",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(14.dp))
 
-        AgreementCard(
-            section = Agreements.openSource,
-            checked = agreedOpenSource,
-            onCheckedChange = onToggleOpenSource
-        )
+        AgreementCard(section = Agreements.openSource, checked = agreedOpenSource, onCheckedChange = onToggleOpenSource)
         Spacer(Modifier.height(12.dp))
         AgreementCard(
-            section = Agreements.privacy.copy(
-                body = Agreements.renderPrivacy(BuildConfig.APP_VERSION)
-            ),
+            section = Agreements.privacy.copy(body = Agreements.renderPrivacy(BuildConfig.APP_VERSION)),
             checked = agreedPrivacy,
             onCheckedChange = onTogglePrivacy
         )
@@ -589,25 +440,17 @@ private fun AgreementStepContent(
 }
 
 @Composable
-private fun AgreementCard(
-    section: AgreementSection,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
+private fun AgreementCard(section: AgreementSection, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            Text(
-                text = section.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
+            Text(section.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(8.dp))
             Text(
-                text = section.body,
+                section.body,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth()
@@ -623,10 +466,9 @@ private fun AgreementCard(
             ) {
                 Checkbox(checked = checked, onCheckedChange = onCheckedChange)
                 Text(
-                    text = "我已阅读并同意",
+                    "我已阅读并同意",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (checked) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurface
+                    color = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
             }
         }

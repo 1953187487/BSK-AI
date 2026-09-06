@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.bskai.BuildConfig
 import com.bskai.update.DownloadStatus
 import com.bskai.update.GitHubApi
@@ -71,13 +72,10 @@ fun CombinedUpdateDialog(
     val target = result.latestRelease
 
     var tab by remember { mutableIntStateOf(0) }
-
     var status by remember { mutableStateOf<DownloadStatus>(DownloadStatus.Idle) }
     var downloadJob by remember { mutableStateOf<Job?>(null) }
 
-    DisposableEffect(Unit) {
-        onDispose { downloadJob?.cancel() }
-    }
+    DisposableEffect(Unit) { onDispose { downloadJob?.cancel() } }
 
     fun startDownload(release: RemoteRelease) {
         if (release.apkUrl.isBlank()) return
@@ -98,9 +96,7 @@ fun CombinedUpdateDialog(
     }
 
     AlertDialog(
-        onDismissRequest = {
-            if (status !is DownloadStatus.Downloading) onDismiss()
-        },
+        onDismissRequest = { if (status !is DownloadStatus.Downloading) onDismiss() },
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Update, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -117,13 +113,9 @@ fun CombinedUpdateDialog(
         },
         text = {
             Column {
-                TabRow(
-                    selectedTabIndex = tab,
-                    containerColor = MaterialTheme.colorScheme.surface
-                ) {
+                TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.surface) {
                     Tab(
-                        selected = tab == 0,
-                        onClick = { tab = 0 },
+                        selected = tab == 0, onClick = { tab = 0 },
                         text = {
                             val label = if (result.hasUpdate) "最新 (有更新)" else "最新"
                             Text(label, fontWeight = if (result.hasUpdate) FontWeight.SemiBold else FontWeight.Normal)
@@ -131,17 +123,14 @@ fun CombinedUpdateDialog(
                         icon = { Icon(Icons.Default.Update, contentDescription = null) }
                     )
                     Tab(
-                        selected = tab == 1,
-                        onClick = { tab = 1 },
+                        selected = tab == 1, onClick = { tab = 1 },
                         text = { Text("历史版本 (${result.releases.size})") },
                         icon = { Icon(Icons.Default.History, contentDescription = null) }
                     )
                 }
                 Spacer(Modifier.height(10.dp))
                 if (tab == 0) LatestTab(
-                    target = target,
-                    result = result,
-                    status = status,
+                    target = target, result = result, status = status,
                     onDownload = { target?.let { startDownload(it) } },
                     onCancel = {
                         downloadJob?.cancel()
@@ -181,10 +170,7 @@ private fun LatestTab(
             Text("暂未获取到版本信息", style = MaterialTheme.typography.bodyMedium)
             return
         }
-        Text(
-            text = "${target.name} · ${target.versionName}",
-            fontWeight = FontWeight.Medium
-        )
+        Text("${target.name} · ${target.versionName}", fontWeight = FontWeight.Medium)
         Text(
             text = "发布：${target.publishedAtLabel()} · ${formatSize(target.sizeBytes)}" +
                 if (target.isPrerelease) " · 测试版" else "",
@@ -199,79 +185,39 @@ private fun LatestTab(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "检测到新版本，点击下方按钮下载并安装。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(10.dp)
+                    text = "有新版本可用",
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
-        } else {
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(10.dp)
-                ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.height(8.dp))
+        }
+        when (status) {
+            is DownloadStatus.Idle -> {
+                Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("已是最新版本", style = MaterialTheme.typography.bodySmall)
+                    Text("下载更新")
                 }
             }
-        }
-        if (target.body.isNotBlank()) {
-            Spacer(Modifier.height(10.dp))
-            Text(target.body, style = MaterialTheme.typography.bodySmall)
-        }
-        Spacer(Modifier.height(12.dp))
-        when (val s = status) {
             is DownloadStatus.Downloading -> {
                 LinearProgressIndicator(
-                    progress = { s.percent.coerceIn(0, 100) / 100f },
+                    progress = { status.percent.coerceIn(0, 100) / 100f },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
-                ) {
-                    Text("${s.percent}%", style = MaterialTheme.typography.bodySmall)
-                    Text(
-                        "${formatSize(s.bytesRead)} / ${formatSize(s.total)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text("${status.percent}%", style = MaterialTheme.typography.labelSmall)
                 Spacer(Modifier.height(4.dp))
-                TextButton(onClick = onCancel) { Text("取消下载") }
-            }
-            is DownloadStatus.Failed -> {
-                Text(
-                    text = "下载失败：${s.message}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
+                TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("取消") }
             }
             is DownloadStatus.Done -> {
-                Text(
-                    text = "下载完成：${s.localPath}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("下载完成，点击下方按钮安装", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
             }
-            else -> {
-                if (target.apkUrl.isNotBlank()) {
-                    Button(
-                        onClick = onDownload,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(if (result.hasUpdate) "下载并安装" else "重新下载")
-                    }
-                }
+            is DownloadStatus.Failed -> {
+                Text("下载失败: ${status.message}", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(4.dp))
+                Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) { Text("重试") }
             }
         }
     }
@@ -279,114 +225,33 @@ private fun LatestTab(
 
 @Composable
 private fun HistoryTab(releases: List<RemoteRelease>) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    if (releases.isEmpty()) {
-        Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-            Text("暂无可用历史版本")
-        }
-        return
-    }
-    LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
-        items(releases, key = { it.versionName }) { release ->
-            HistoryRow(
-                release = release,
-                onDownload = {
-                    if (release.apkUrl.isBlank()) return@HistoryRow
-                    val f = File(context.cacheDir, "update/${release.versionName}.apk")
-                    scope.launch {
-                        GitHubApi.downloadApk(release.apkUrl, f).collectLatest { /* handled in row */ }
+    LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
+        items(releases) { release ->
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(release.tagName, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                        if (release.isPrerelease) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
+                            ) {
+                                Text("测试版", fontSize = 10.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                        }
                     }
-                }
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-        }
-    }
-}
-
-@Composable
-private fun HistoryRow(release: RemoteRelease, onDownload: () -> Unit) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var status by remember { mutableStateOf<DownloadStatus>(DownloadStatus.Idle) }
-    var job by remember { mutableStateOf<Job?>(null) }
-
-    DisposableEffect(release.versionName) {
-        onDispose { job?.cancel() }
-    }
-
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "${release.name} · ${release.versionName}",
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = "${release.publishedAtLabel()} · ${formatSize(release.sizeBytes)}" +
-                        if (release.isPrerelease) " · 测试版" else "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            when (val s = status) {
-                is DownloadStatus.Downloading -> {
+                    Text(release.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        text = "${s.percent}%",
-                        style = MaterialTheme.typography.bodySmall,
+                        "${release.publishedAtLabel()} · ${formatSize(release.sizeBytes)}",
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                is DownloadStatus.Done -> {
-                    OutlinedButton(onClick = {
-                        UpdateInstaller.install(context, File(s.localPath))
-                    }) {
-                        Icon(Icons.Default.InstallMobile, contentDescription = null, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("安装")
-                    }
-                }
-                is DownloadStatus.Failed -> {
-                    Text(
-                        text = "失败",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-                else -> {
-                    if (release.apkUrl.isNotBlank()) {
-                        OutlinedButton(onClick = {
-                            job?.cancel()
-                            val f = File(context.cacheDir, "update/${release.versionName}.apk")
-                            job = scope.launch {
-                                status = DownloadStatus.Downloading(0, release.sizeBytes)
-                                GitHubApi.downloadApk(release.apkUrl, f).collectLatest { st ->
-                                    status = st
-                                    if (st is DownloadStatus.Done || st is DownloadStatus.Failed) job = null
-                                }
-                            }
-                        }) {
-                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("下载")
-                        }
-                    }
-                }
             }
-        }
-        if (status is DownloadStatus.Downloading) {
-            Spacer(Modifier.height(4.dp))
-            LinearProgressIndicator(
-                progress = { (status as DownloadStatus.Downloading).percent.coerceIn(0, 100) / 100f },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        if (status is DownloadStatus.Failed) {
-            Text(
-                text = (status as DownloadStatus.Failed).message,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error
-            )
         }
     }
 }
