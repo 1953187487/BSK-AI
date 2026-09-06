@@ -1,6 +1,23 @@
 {
   "announcements": [
     {
+      "version": "2.0.6",
+      "title": "AURA 2.0.6 终端升级 + 开发工具管理 + 应用图标重绘 + 协议完善",
+      "content": "AURA 2.0.6 发布。终端 UI 升级为 GitHub Dark 主题配色，新增开发工具管理（git/python3/node/clang/cmake 等），应用图标重绘为 AI 神经网络图案，协议内容全面更新，统一模型选择器完善，设置页增加开发工具入口。",
+      "changelog": [
+        "终端 UI 升级：GitHub Dark 配色方案，带色彩主题的状态指示",
+        "新增开发工具管理：git、python3、node、clang、cmake、make、curl、wget、vim、nano",
+        "应用图标重绘：AI 神经网络图标（发光球体 + 节点连接 + 终端提示符）",
+        "协议内容全面更新：开源协议、隐私说明、终端与工作区权限说明",
+        "统一模型选择器：下载至本地 + 自定义服务商双 Tab 结构",
+        "设置页新增开发工具入口",
+        "关于页集成协议内容展示",
+        "终端欢迎页 ASCII art 装饰",
+        "minSdk 28，targetSdk 34",
+        "versionCode 308"
+      ]
+    },
+    {
       "version": "2.0.4",
       "title": "AURA 2.0.4 应用开发模式 + 消息队列 + 4步引导协议",
       "content": "AURA 2.0.4 发布。新增应用开发模式（AI 辅助开发 Android 应用），消息队列功能，长按复制/重发，反馈弹窗，4步引导协议（语言→API配置→权限→协议），修复 Shizuku 授权 bug，本地模型下载速度显示。",

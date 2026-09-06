@@ -33,6 +33,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
@@ -48,6 +50,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -57,8 +60,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -84,9 +85,12 @@ import com.bskai.data.ChatMode
 import com.bskai.data.DefaultModelPresets
 import com.bskai.data.ThemeStyle
 import com.bskai.ui.theme.ThemeBackdrop
+import com.bskai.update.DownloadStatus
+import com.bskai.update.GitHubApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-
-data class QueuedMessage(val text: String, val id: Int)
+import kotlinx.coroutines.withContext
+import java.io.File
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -109,9 +113,6 @@ fun ChatScreen(
     var showFeedbackDialog by remember { mutableStateOf(false) }
     var showCopyMenu by remember { mutableStateOf(false) }
     var copyMenuText by remember { mutableStateOf("") }
-
-    val messageQueue = remember { mutableStateListOf<QueuedMessage>() }
-    var queueIdCounter by remember { mutableIntStateOf(0) }
 
     val shouldShowFeedback = remember {
         val s = settings
@@ -152,20 +153,6 @@ fun ChatScreen(
         }
         input = ""
         showSlashSuggestions = false
-    }
-
-    fun addToQueue() {
-        if (input.isBlank()) return
-        messageQueue.add(QueuedMessage(input.trim(), queueIdCounter++))
-        input = ""
-    }
-
-    fun sendQueue() {
-        if (messageQueue.isNotEmpty()) {
-            val combined = messageQueue.joinToString("\n") { it.text }
-            messageQueue.clear()
-            app.coordinator.submit(combined)
-        }
     }
 
     fun detectSlash(query: String) {
@@ -272,44 +259,6 @@ fun ChatScreen(
                 }
             }
 
-            // Message queue display
-            if (messageQueue.isNotEmpty()) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(8.dp)) {
-                        Text(
-                            "消息队列 (${messageQueue.size})",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        messageQueue.forEach { qm ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    qm.text,
-                                    modifier = Modifier.weight(1f),
-                                    fontSize = 12.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                IconButton(onClick = { messageQueue.remove(qm) }, modifier = Modifier.size(24.dp)) {
-                                    Icon(Icons.Default.Delete, "移除", modifier = Modifier.size(14.dp))
-                                }
-                            }
-                        }
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            TextButton(onClick = { sendQueue() }) { Text("立即发送全部", fontSize = 12.sp) }
-                        }
-                    }
-                }
-            }
-
             // Chat messages
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 LazyColumn(
@@ -345,9 +294,7 @@ fun ChatScreen(
                 text = input,
                 onTextChange = { input = it; detectSlash(it) },
                 onSubmit = { submitText() },
-                onAddToQueue = { addToQueue() },
                 processing = processing,
-                queueSize = messageQueue.size,
                 chatMode = chatMode,
                 thinkingLevel = thinkingLevel,
                 onToggleMode = {
@@ -361,7 +308,7 @@ fun ChatScreen(
     }
 
     if (showModelDialog) {
-        ModelSelectionDialog(
+        UnifiedModelDialog(
             app = app,
             onDismiss = { showModelDialog = false }
         )
@@ -414,9 +361,7 @@ private fun ChatInputBar(
     text: String,
     onTextChange: (String) -> Unit,
     onSubmit: () -> Unit,
-    onAddToQueue: () -> Unit,
     processing: Boolean,
-    queueSize: Int,
     chatMode: ChatMode,
     thinkingLevel: Int,
     onToggleMode: () -> Unit,
@@ -429,15 +374,6 @@ private fun ChatInputBar(
         modifier = Modifier.fillMaxWidth().imePadding().navigationBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
-            if (queueSize > 0) {
-                Text(
-                    "队列中有 $queueSize 条消息",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-            }
-
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -517,16 +453,6 @@ private fun ChatInputBar(
                     enabled = !processing
                 )
                 Spacer(Modifier.width(8.dp))
-                if (text.isNotBlank()) {
-                    IconButton(onClick = onAddToQueue, modifier = Modifier.size(36.dp)) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "加入队列",
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.secondary
-                        )
-                    }
-                }
                 val canSend = text.isNotBlank() && !processing
                 Box(
                     modifier = Modifier
@@ -764,146 +690,337 @@ private fun FeedbackDialog(
     )
 }
 
+/**
+ * 统一模型选择器：
+ * - 下载至本地模型：从线上下载模型文件到本地运行
+ * - 自定义服务商模型：配置 API 地址和 Key，拉取可用模型
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ModelSelectionDialog(
+fun UnifiedModelDialog(
     app: AuraApp,
     onDismiss: () -> Unit
 ) {
     val settings by app.settings.settings.collectAsState()
     val scope = rememberCoroutineScope()
-    val allApiModels = (DefaultModelPresets + settings.customModelList).distinct()
+    val context = LocalContext.current
 
+    var selectedTab by rememberSaveable { mutableStateOf(0) }
+
+    // 本地下载状态
+    var downloadUrl by rememberSaveable { mutableStateOf("") }
+    var downloadProgress by remember { mutableStateOf(mapOf<String, DownloadStatus>()) }
+    var downloading by remember { mutableStateOf<String?>(null) }
+
+    // 自定义服务商状态
     var selectedProvider by rememberSaveable { mutableStateOf("") }
     var providerUrl by rememberSaveable { mutableStateOf("") }
     var providerKey by rememberSaveable { mutableStateOf("") }
     var availableModels by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoadingModels by remember { mutableStateOf(false) }
-    var downloadProgress by remember { mutableStateOf(mapOf<String, Float>()) }
+    var testResult by remember { mutableStateOf<String?>(null) }
 
     val providers = listOf(
         "Ollama" to "http://localhost:11434/v1",
         "LM Studio" to "http://localhost:1234/v1",
         "vLLM" to "http://localhost:8000/v1",
+        "Jan" to "http://localhost:1337/v1",
         "OpenAI" to "https://api.openai.com/v1",
         "DeepSeek" to "https://api.deepseek.com/v1",
         "DashScope" to "https://dashscope.aliyuncs.com/compatible-mode/v1",
         "Custom" to ""
     )
 
+    LaunchedEffect(selectedProvider, providerUrl) {
+        if (selectedProvider.isNotEmpty() && providerUrl.isNotBlank() && selectedProvider != "Custom") {
+            isLoadingModels = true
+            testResult = null
+            try {
+                val models = withContext(Dispatchers.IO) {
+                    LlmClient(app).listModels(providerUrl, providerKey)
+                }
+                availableModels = models
+                app.settings.update { it.copy(apiProviderUrl = providerUrl, apiProviderKey = providerKey, modelSource = "local") }
+            } catch (e: Exception) {
+                testResult = "加载失败: ${e.message}"
+                availableModels = emptyList()
+            }
+            isLoadingModels = false
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择模型", fontWeight = FontWeight.Bold) },
+        title = { Text("模型配置", fontWeight = FontWeight.Bold) },
         text = {
-            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp)) {
-                item {
-                    Text("本地 AI 提供商", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Column(modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp)) {
+                // Tab 切换
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(
+                        modifier = Modifier.weight(1f).height(44.dp)
+                            .combinedClickable(onClick = { selectedTab = 0 }),
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (selectedTab == 0) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("下载至本地", fontSize = 12.sp, fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal)
+                        }
+                    }
+                    Surface(
+                        modifier = Modifier.weight(1f).height(44.dp)
+                            .combinedClickable(onClick = { selectedTab = 1 }),
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (selectedTab == 1) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CloudQueue, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("自定义服务商", fontSize = 12.sp, fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                if (selectedTab == 0) {
+                    // ====== 下载至本地模型 ======
+                    Text("从线上下载模型到本地运行", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(8.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        providers.chunked(3).forEach { row ->
+                    OutlinedTextField(
+                        value = downloadUrl,
+                        onValueChange = { downloadUrl = it },
+                        label = { Text("模型下载链接") },
+                        placeholder = { Text("https://huggingface.co/.../resolve/main/xxx.gguf") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    Text("常用模型源:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(4.dp))
+                    val sources = listOf(
+                        "Ollama Library" to "https://ollama.com/library",
+                        "Hugging Face" to "https://huggingface.co/models",
+                        "ModelScope" to "https://modelscope.cn/models"
+                    )
+                    sources.forEach { (name, url) ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                .combinedClickable(onClick = { downloadUrl = url }),
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                row.forEach { (name, url) ->
-                                    Surface(
-                                        modifier = Modifier.weight(1f).height(44.dp)
-                                            .combinedClickable(onClick = {
-                                                selectedProvider = name
-                                                providerUrl = url
-                                                availableModels = emptyList()
-                                            }),
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = if (selectedProvider == name) MaterialTheme.colorScheme.primaryContainer
-                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                                    ) {
-                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                            Text(
-                                                name, fontSize = 11.sp,
-                                                fontWeight = if (selectedProvider == name) FontWeight.Bold else FontWeight.Normal,
-                                                maxLines = 1, overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                    }
-                                }
-                                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                                Text(name, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                                Text(url.take(30) + "...", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
-                    Spacer(Modifier.height(10.dp))
-                }
 
-                if (selectedProvider.isNotEmpty()) {
-                    item {
-                        OutlinedTextField(
-                            value = providerUrl, onValueChange = { providerUrl = it },
-                            label = { Text("API 地址") }, singleLine = true, modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        OutlinedTextField(
-                            value = providerKey, onValueChange = { providerKey = it },
-                            label = { Text("API Key (可选)") }, singleLine = true, modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
+                    if (downloadUrl.isNotBlank()) {
                         Button(
                             onClick = {
+                                val fileName = downloadUrl.substringAfterLast("/").ifBlank { "model.gguf" }
+                                val targetFile = File(context.filesDir, "models/$fileName")
+                                targetFile.parentFile?.mkdirs()
+                                downloading = fileName
                                 scope.launch {
-                                    isLoadingModels = true
-                                    try {
-                                        val models = LlmClient(app).listModels(providerUrl, providerKey)
-                                        availableModels = models
-                                        app.settings.update {
-                                            it.copy(
-                                                apiProviderUrl = providerUrl,
-                                                apiProviderKey = providerKey,
-                                                apiModel = models.firstOrNull() ?: "",
-                                                modelSource = "local"
-                                            )
-                                        }
-                                    } catch (_: Exception) { availableModels = emptyList() }
-                                    isLoadingModels = false
-                                }
-                            },
-                            enabled = providerUrl.isNotBlank() && !isLoadingModels,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text(if (isLoadingModels) "连接中…" else "连接并获取模型") }
-                        Spacer(Modifier.height(8.dp))
-                    }
-
-                    if (availableModels.isNotEmpty()) {
-                        item {
-                            Text(
-                                "可用模型 (${availableModels.size})",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(Modifier.height(4.dp))
-                        }
-                        items(availableModels) { model ->
-                            val progress = downloadProgress[model]
-                            Surface(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
-                                    .combinedClickable(onClick = {
-                                        app.settings.update { it.copy(apiModel = model) }
-                                        onDismiss()
-                                    }),
-                                shape = RoundedCornerShape(10.dp),
-                                color = if (model == settings.apiModel) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(model, fontWeight = FontWeight.Medium, fontSize = 13.sp)
-                                        if (progress != null) {
-                                            Spacer(Modifier.height(4.dp))
-                                            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(4.dp))
+                                    GitHubApi.downloadApk(downloadUrl, targetFile).collect { status ->
+                                        downloadProgress = downloadProgress + (fileName to status)
+                                        if (status is DownloadStatus.Done || status is DownloadStatus.Failed) {
+                                            downloading = null
+                                            if (status is DownloadStatus.Done) {
+                                                app.settings.update { it.copy(apiModel = fileName, modelSource = "local") }
+                                            }
                                         }
                                     }
-                                    if (model == settings.apiModel) {
-                                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                }
+                            },
+                            enabled = downloading == null,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(if (downloading != null) "下载中…" else "开始下载")
+                        }
+                    }
+
+                    downloadProgress.forEach { (name, status) ->
+                        Spacer(Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(name, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                when (status) {
+                                    is DownloadStatus.Downloading -> {
+                                        Spacer(Modifier.height(4.dp))
+                                        LinearProgressIndicator(
+                                            progress = { status.percent.coerceIn(0, 100) / 100f },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        Text("${status.percent}%", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    is DownloadStatus.Done -> {
+                                        Text("下载完成", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
+                                    }
+                                    is DownloadStatus.Failed -> {
+                                        Text("下载失败: ${status.message}", fontSize = 10.sp, color = MaterialTheme.colorScheme.error)
+                                    }
+                                    else -> {}
+                                }
+                            }
+                        }
+                    }
+
+                } else {
+                    // ====== 自定义服务商模型 ======
+                    Text("配置 AI 服务商地址和密钥", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(8.dp))
+
+                    LazyColumn(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+                        item {
+                            Text("选择服务商", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(6.dp))
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                providers.chunked(3).forEach { row ->
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        row.forEach { (name, url) ->
+                                            Surface(
+                                                modifier = Modifier.weight(1f).height(40.dp)
+                                                    .combinedClickable(onClick = {
+                                                        selectedProvider = name
+                                                        providerUrl = url
+                                                        availableModels = emptyList()
+                                                        testResult = null
+                                                    }),
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = if (selectedProvider == name) MaterialTheme.colorScheme.primaryContainer
+                                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                            ) {
+                                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                    Text(
+                                                        name, fontSize = 11.sp,
+                                                        fontWeight = if (selectedProvider == name) FontWeight.Bold else FontWeight.Normal,
+                                                        maxLines = 1, overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                        }
+
+                        if (selectedProvider.isNotEmpty()) {
+                            item {
+                                OutlinedTextField(
+                                    value = providerUrl,
+                                    onValueChange = { providerUrl = it },
+                                    label = { Text("API 地址") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                OutlinedTextField(
+                                    value = providerKey,
+                                    onValueChange = { providerKey = it },
+                                    label = { Text("API Key (可选)") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(
+                                        onClick = {
+                                            scope.launch {
+                                                isLoadingModels = true
+                                                testResult = null
+                                                try {
+                                                    val models = withContext(Dispatchers.IO) {
+                                                        LlmClient(app).listModels(providerUrl, providerKey)
+                                                    }
+                                                    availableModels = models
+                                                    app.settings.update { it.copy(apiProviderUrl = providerUrl, apiProviderKey = providerKey, modelSource = "local") }
+                                                    testResult = "连接成功，获取到 ${models.size} 个模型"
+                                                } catch (e: Exception) {
+                                                    testResult = "连接失败: ${e.message}"
+                                                    availableModels = emptyList()
+                                                }
+                                                isLoadingModels = false
+                                            }
+                                        },
+                                        enabled = providerUrl.isNotBlank() && !isLoadingModels,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(if (isLoadingModels) "测试中…" else "测试连接")
+                                    }
+                                    if (availableModels.isNotEmpty()) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                app.settings.update { it.copy(apiModel = availableModels.first()) }
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("使用首个")
+                                        }
+                                    }
+                                }
+                                if (testResult != null) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = testResult!!,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (testResult!!.startsWith("连接成功")) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.error
+                                    )
+                                }
+                                Spacer(Modifier.height(6.dp))
+                            }
+
+                            if (isLoadingModels) {
+                                item {
+                                    Box(modifier = Modifier.fillMaxWidth().height(60.dp), contentAlignment = Alignment.Center) {
+                                        CircularProgressIndicator()
+                                    }
+                                }
+                            }
+
+                            items(availableModels) { model ->
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                        .combinedClickable(onClick = {
+                                            app.settings.update { it.copy(apiModel = model) }
+                                        }),
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (model == settings.apiModel) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(model, fontWeight = FontWeight.Medium, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                                        if (model == settings.apiModel) {
+                                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                        }
                                     }
                                 }
                             }
@@ -911,57 +1028,26 @@ private fun ModelSelectionDialog(
                     }
                 }
 
-                item {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
-                    Text("API 模型预设", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(6.dp))
-                }
-
-                items(allApiModels) { model ->
-                    ModelItem(
-                        name = model,
-                        subtitle = if (model == settings.apiModel && settings.modelSource == "api") "当前使用" else null,
-                        selected = model == settings.apiModel && settings.modelSource == "api",
-                        onClick = {
-                            app.settings.update { it.copy(apiModel = model, modelSource = "api") }
-                            onDismiss()
-                        }
+                // 当前已选模型
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("当前: ", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = if (settings.apiModel.isNotBlank()) settings.apiModel else "未选择",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (settings.apiModel.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                     )
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("管理模型") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
+        confirmButton = { TextButton(onClick = onDismiss) { Text("完成") } }
     )
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun ModelItem(
-    name: String,
-    subtitle: String?,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp).combinedClickable(onClick = onClick),
-        shape = RoundedCornerShape(10.dp),
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(name, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (subtitle != null) {
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            if (selected) {
-                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-            }
-        }
-    }
 }

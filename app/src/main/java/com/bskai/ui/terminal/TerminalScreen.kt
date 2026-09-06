@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,22 +21,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ClearAll
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -47,11 +46,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -60,6 +58,17 @@ import androidx.compose.ui.unit.sp
 import com.bskai.permission.ShizukuBridge
 import com.bskai.terminal.TerminalEngine
 import kotlinx.coroutines.launch
+
+private val COLOR_BG = Color(0xFF0D1117)
+private val COLOR_SURFACE = Color(0xFF161B22)
+private val COLOR_DIVIDER = Color(0xFF21262D)
+private val COLOR_TEXT = Color(0xFFE6EDF3)
+private val COLOR_MUTED = Color(0xFF8B949E)
+private val COLOR_GREEN = Color(0xFF3FB950)
+private val COLOR_BLUE = Color(0xFF58A6FF)
+private val COLOR_RED = Color(0xFFF85149)
+private val COLOR_INPUT_BORDER = Color(0xFF30363D)
+private val COLOR_PLACEHOLDER = Color(0xFF484F58)
 
 @Composable
 fun TerminalScreen(
@@ -72,6 +81,7 @@ fun TerminalScreen(
     val scope = rememberCoroutineScope()
     val history = remember { mutableStateListOf<HistoryLine>() }
     var input by remember { mutableStateOf("") }
+    val clipboard = LocalClipboardManager.current
 
     fun run() {
         val cmd = input.trim()
@@ -81,11 +91,28 @@ fun TerminalScreen(
         scope.launch {
             val r = engine.execute(cmd)
             history.add(HistoryLine(
-                prompt = "${r.backend.name.lowercase()}:${r.exitCode}",
+                prompt = r.backend.name.lowercase() + ":" + r.exitCode,
                 output = if (r.stdout.isNotEmpty()) r.stdout else r.stderr.ifEmpty { "(no output)" },
                 isError = r.exitCode != 0
             ))
         }
+    }
+
+    fun clearHistory() {
+        history.clear()
+    }
+
+    fun copyAll() {
+        val sb = StringBuilder()
+        for (line in history) {
+            if (line.command.isNotEmpty()) sb.append(line.prompt + " " + line.command)
+            if (line.output.isNotEmpty()) {
+                if (sb.isNotEmpty()) sb.append("\n")
+                sb.append(line.output)
+            }
+            sb.append("\n")
+        }
+        clipboard.setText(AnnotatedString(sb.toString()))
     }
 
     LaunchedEffect(history.size) {
@@ -95,29 +122,46 @@ fun TerminalScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(COLOR_BG)
             .imePadding()
             .navigationBarsPadding()
     ) {
-        // Top bar
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Surface(
+            color = COLOR_SURFACE,
+            shadowElevation = 4.dp
         ) {
-            Text(
-                text = "内置终端",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = "${TerminalEngine.Backend.entries.size} 后端",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "AURA Terminal",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = COLOR_TEXT,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = backend.name.lowercase(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = when (backend) {
+                        TerminalEngine.Backend.LOCAL -> COLOR_GREEN
+                        TerminalEngine.Backend.SHIZUKU -> COLOR_BLUE
+                        TerminalEngine.Backend.ROOT -> COLOR_RED
+                    },
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = { copyAll() }) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = "复制全部", modifier = Modifier.size(18.dp), tint = COLOR_MUTED)
+                }
+                IconButton(onClick = { clearHistory() }) {
+                    Icon(Icons.Default.ClearAll, contentDescription = "清空", modifier = Modifier.size(18.dp), tint = COLOR_MUTED)
+                }
+            }
         }
 
-        // Backend selector
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -132,27 +176,26 @@ fun TerminalScreen(
                     selected = backend == b,
                     onClick = { engine.setBackend(b) },
                     enabled = enabled,
-                    label = { Text(b.name) }
+                    label = { Text(b.name, fontSize = 11.sp) }
                 )
             }
             if (shizukuState == ShizukuBridge.State.NEED_PERMISSION) {
                 AssistChip(
                     onClick = { shizuku?.requestPermission() },
-                    label = { Text("授权 Shizuku") },
-                    leadingIcon = { Icon(Icons.Default.Security, contentDescription = null) }
+                    label = { Text("授权 Shizuku", fontSize = 11.sp) },
+                    leadingIcon = { Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(14.dp)) }
                 )
             } else if (shizukuState == ShizukuBridge.State.UNAVAILABLE) {
                 Text(
-                    text = "Shizuku 未安装，仅本地后端可用",
+                    text = "Shizuku 未安装",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = COLOR_MUTED
                 )
             }
         }
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        HorizontalDivider(color = COLOR_DIVIDER)
 
-        // Output area
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             LazyColumn(
                 state = listState,
@@ -160,48 +203,78 @@ fun TerminalScreen(
             ) {
                 if (history.isEmpty()) {
                     item {
-                        Text(
-                            text = "欢迎使用 AURA 内置终端\n\n" +
-                                "• LOCAL 后端：仅本应用权限\n" +
-                                "• SHIZUKU 后端：经 Shizuku 提权（无需 root）\n" +
-                                "• ROOT 后端：直接以 root 身份执行\n\n" +
-                                "提示：危险命令（rm -rf /、mkfs、shutdown 等）会被拒绝。\n" +
-                                "AI 也可通过 run_shell 工具调用本终端，每次执行会写入审计日志。",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Column {
+                            Text(
+                                text = "╭──────────────────────────────────────╮",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = COLOR_GREEN
+                            )
+                            Text(
+                                text = "│  Welcome to AURA Terminal v2.0.6     │",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = COLOR_GREEN
+                            )
+                            Text(
+                                text = "╰──────────────────────────────────────╯",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = COLOR_GREEN
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = "  • LOCAL  — 应用沙盒权限\n  • SHIZUKU — Shizuku 提权（免 root）\n  • ROOT   — 直接 root 执行\n\n  危险命令自动拦截\n  AI 可通过 run_shell 工具调用",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = COLOR_MUTED,
+                                lineHeight = 18.sp
+                            )
+                        }
                     }
                 }
                 items(history) { line -> HistoryLineView(line) }
             }
         }
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        HorizontalDivider(color = COLOR_DIVIDER)
 
-        // Input row
         Row(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "$ ",
-                color = MaterialTheme.colorScheme.primary,
+                color = COLOR_GREEN,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
+                fontFamily = FontFamily.Monospace,
+                fontSize = 14.sp
             )
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("输入命令...") },
+                placeholder = { Text("输入命令...", color = COLOR_PLACEHOLDER) },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(8.dp),
+                textStyle = TextStyle(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 14.sp,
+                    color = COLOR_TEXT
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = COLOR_GREEN,
+                    unfocusedBorderColor = COLOR_INPUT_BORDER,
+                    cursorColor = COLOR_GREEN,
+                    focusedContainerColor = COLOR_BG,
+                    unfocusedContainerColor = COLOR_BG
+                ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { run() })
             )
             Spacer(Modifier.width(8.dp))
             IconButton(onClick = { run() }) {
-                Icon(Icons.Default.PlayArrow, contentDescription = "执行")
+                Icon(Icons.Default.PlayArrow, contentDescription = "执行", tint = COLOR_GREEN)
             }
         }
     }
@@ -209,20 +282,25 @@ fun TerminalScreen(
 
 @Composable
 private fun HistoryLineView(line: HistoryLine) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Text(
-            text = "${line.prompt} ${line.command}",
-            style = MaterialTheme.typography.bodySmall,
-            fontFamily = FontFamily.Monospace,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.SemiBold
-        )
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+        if (line.command.isNotEmpty()) {
+            Text(
+                text = line.prompt + " " + line.command,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                color = COLOR_BLUE,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp
+            )
+        }
         if (line.output.isNotEmpty()) {
             Text(
                 text = line.output,
                 style = MaterialTheme.typography.bodySmall,
                 fontFamily = FontFamily.Monospace,
-                color = if (line.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                color = if (line.isError) COLOR_RED else COLOR_TEXT,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
             )
         }
     }
