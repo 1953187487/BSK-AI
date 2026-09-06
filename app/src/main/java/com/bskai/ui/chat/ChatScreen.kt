@@ -1,15 +1,8 @@
-@file:OptIn(ExperimentalFoundationApi::class)
 package com.bskai.ui.chat
 
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -28,7 +21,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -42,10 +34,8 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -58,9 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -100,10 +88,10 @@ import kotlinx.coroutines.launch
 
 data class QueuedMessage(val text: String, val id: Int)
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatScreen(
     app: AuraApp,
-    onOpenSettings: () -> Unit,
     snackbarHostState: SnackbarHostState = SnackbarHostState()
 ) {
     val conversation by app.agent.conversation.collectAsState()
@@ -136,7 +124,7 @@ fun ChatScreen(
     }
 
     LaunchedEffect(conversation.size) {
-        if (conversation.isNotEmpty()) listState.animateScrollToItem(conversation.size - 1)
+        if (conversation.isNotEmpty()) listState.scrollToItem(conversation.size - 1)
     }
 
     fun copyToClipboard(text: String) {
@@ -193,47 +181,166 @@ fun ChatScreen(
         ThemeBackdrop(style = style, dark = settings.darkTheme)
 
         Column(modifier = Modifier.fillMaxSize()) {
-            ChatTopBar(
-                chatMode = chatMode,
-                thinkingLevel = thinkingLevel,
-                showMenu = showTopMenu,
-                onMenuToggle = { showTopMenu = it },
-                onClearConversation = { app.agent.clearConversation() },
-                onOpenSettings = onOpenSettings
-            )
-
-            AnimatedVisibility(visible = showSlashSuggestions) {
-                SlashSuggestions(
-                    app = app,
-                    query = slashQuery,
-                    onSelect = { cmd ->
-                        input = "/$cmd "
-                        showSlashSuggestions = false
+            // Top bar
+            Surface(
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                shadowElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("🤖", fontSize = 20.sp)
                     }
-                )
+                    Spacer(Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("AURA", fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1)
+                        Text(
+                            text = if (chatMode == ChatMode.DEV) "应用开发模式" else "思考模式 · 深度 $thinkingLevel",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Box {
+                        IconButton(onClick = { showTopMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = null, modifier = Modifier.size(22.dp))
+                        }
+                        DropdownMenu(expanded = showTopMenu, onDismissRequest = { showTopMenu = false }) {
+                            DropdownMenuItem(text = { Text("思考深度: $thinkingLevel/3") }, onClick = {})
+                            DropdownMenuItem(
+                                text = { Text("清空对话") },
+                                onClick = {
+                                    showTopMenu = false
+                                    app.agent.clearConversation()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("当前：${BuildConfig.APP_VERSION}") },
+                                enabled = false,
+                                onClick = {}
+                            )
+                        }
+                    }
+                }
             }
 
-            AnimatedVisibility(visible = messageQueue.isNotEmpty()) {
-                MessageQueue(
-                    queue = messageQueue,
-                    onRemove = { messageQueue.remove(it) },
-                    onSendAll = { sendQueue() }
-                )
+            // Slash command suggestions
+            if (showSlashSuggestions) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    shadowElevation = 2.dp
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+                        val suggestions = app.slashRegistry.suggestions(slashQuery)
+                        suggestions.forEach { cmd ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .combinedClickable(onClick = {
+                                        input = "/${cmd.key} "
+                                        showSlashSuggestions = false
+                                    })
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "/${cmd.key}",
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.width(70.dp)
+                                )
+                                Text(
+                                    text = cmd.description,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
-            ChatMessages(
-                conversation = conversation,
-                processing = processing,
-                listState = listState,
-                apiConfigured = settings.apiConfigured,
-                style = style,
-                onLongPress = { text ->
-                    copyMenuText = text
-                    showCopyMenu = true
-                },
-                onResend = { text -> app.coordinator.submit(text) }
-            )
+            // Message queue display
+            if (messageQueue.isNotEmpty()) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Text(
+                            "消息队列 (${messageQueue.size})",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        messageQueue.forEach { qm ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    qm.text,
+                                    modifier = Modifier.weight(1f),
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                IconButton(onClick = { messageQueue.remove(qm) }, modifier = Modifier.size(24.dp)) {
+                                    Icon(Icons.Default.Delete, "移除", modifier = Modifier.size(14.dp))
+                                }
+                            }
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            TextButton(onClick = { sendQueue() }) { Text("立即发送全部", fontSize = 12.sp) }
+                        }
+                    }
+                }
+            }
 
+            // Chat messages
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp)
+                ) {
+                    if (conversation.isEmpty()) {
+                        item { EmptyHint(settings.apiConfigured) }
+                    } else {
+                        itemsIndexed(conversation) { _, msg ->
+                            val isStreaming = msg.role == "assistant" && processing &&
+                                msg === conversation.lastOrNull { it.role == "assistant" } &&
+                                msg.content.isNotEmpty() &&
+                                conversation.last() === msg
+                            ChatBubble(
+                                msg = msg,
+                                style = style,
+                                streaming = isStreaming,
+                                onLongPress = { copyMenuText = it; showCopyMenu = true },
+                                onResend = if (msg.role == "user") {
+                                    { app.coordinator.submit(msg.content) }
+                                } else null
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Input bar
             ChatInputBar(
                 text = input,
                 onTextChange = { input = it; detectSlash(it) },
@@ -256,11 +363,7 @@ fun ChatScreen(
     if (showModelDialog) {
         ModelSelectionDialog(
             app = app,
-            onDismiss = { showModelDialog = false },
-            onOpenSettings = {
-                showModelDialog = false
-                onOpenSettings()
-            }
+            onDismiss = { showModelDialog = false }
         )
     }
 
@@ -305,369 +408,7 @@ fun ChatScreen(
     }
 }
 
-@Composable
-private fun ChatTopBar(
-    chatMode: ChatMode,
-    thinkingLevel: Int,
-    showMenu: Boolean,
-    onMenuToggle: (Boolean) -> Unit,
-    onClearConversation: () -> Unit,
-    onOpenSettings: () -> Unit
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-        shadowElevation = 4.dp
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("🤖", fontSize = 20.sp)
-            }
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("AURA", fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1)
-                Text(
-                    text = if (chatMode == ChatMode.DEV) "应用开发模式" else "思考模式 · 深度 $thinkingLevel",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Box {
-                IconButton(onClick = { onMenuToggle(true) }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = null, modifier = Modifier.size(22.dp))
-                }
-                DropdownMenu(expanded = showMenu, onDismissRequest = { onMenuToggle(false) }) {
-                    DropdownMenuItem(text = { Text("思考深度: $thinkingLevel/3") }, onClick = {})
-                    DropdownMenuItem(
-                        text = { Text("清空对话") },
-                        onClick = {
-                            onMenuToggle(false)
-                            onClearConversation()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("当前：${BuildConfig.APP_VERSION}") },
-                        enabled = false,
-                        onClick = {}
-                    )
-                }
-            }
-            IconButton(onClick = onOpenSettings) {
-                Icon(Icons.Default.Settings, contentDescription = "设置", modifier = Modifier.size(22.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun SlashSuggestions(app: AuraApp, query: String, onSelect: (String) -> Unit) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-        shadowElevation = 2.dp
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-            val suggestions = app.slashRegistry.suggestions(query)
-            suggestions.forEach { cmd ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .combinedClickable(onClick = { onSelect(cmd.key) })
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "/${cmd.key}",
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.width(70.dp)
-                    )
-                    Text(
-                        text = cmd.description,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 13.sp
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MessageQueue(
-    queue: List<QueuedMessage>,
-    onRemove: (QueuedMessage) -> Unit,
-    onSendAll: () -> Unit
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(8.dp)) {
-            Text(
-                "消息队列 (${queue.size})",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.height(4.dp))
-            queue.forEach { qm ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        qm.text,
-                        modifier = Modifier.weight(1f),
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    IconButton(onClick = { onRemove(qm) }, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Delete, "移除", modifier = Modifier.size(14.dp))
-                    }
-                }
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onSendAll) { Text("立即发送全部", fontSize = 12.sp) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ChatMessages(
-    conversation: List<ChatMsg>,
-    processing: Boolean,
-    listState: androidx.compose.foundation.lazy.LazyListState,
-    apiConfigured: Boolean,
-    style: ThemeStyle,
-    onLongPress: (String) -> Unit,
-    onResend: (String) -> Unit
-) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
-        ) {
-            if (conversation.isEmpty()) {
-                item { EmptyHint(apiConfigured) }
-            } else {
-                itemsIndexed(conversation) { _, msg ->
-                    val isStreaming = msg.role == "assistant" && processing &&
-                        msg === conversation.lastOrNull { it.role == "assistant" } &&
-                        msg.content.isNotEmpty() &&
-                        conversation.last() === msg
-                    ChatBubble(
-                        msg = msg,
-                        style = style,
-                        streaming = isStreaming,
-                        onLongPress = { onLongPress(msg.content) },
-                        onResend = if (msg.role == "user") {
-                            { onResend(msg.content) }
-                        } else null
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ChatBubble(
-    msg: ChatMsg,
-    style: ThemeStyle,
-    streaming: Boolean = false,
-    onLongPress: () -> Unit = {},
-    onResend: (() -> Unit)? = null
-) {
-    val isUser = msg.role == "user"
-    val isTool = msg.role == "tool"
-    val glass = style == ThemeStyle.GLASS || style == ThemeStyle.LIQUID
-
-    if (isTool) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .combinedClickable(onLongClick = onLongPress, onClick = {}),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-        ) {
-            Column(modifier = Modifier.padding(10.dp)) {
-                Text(
-                    text = "🔧 ${msg.toolName ?: "工具调用"}",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.tertiary
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = msg.content,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 5,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-        return
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.Top
-    ) {
-        if (!isUser) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "🤖", fontSize = 18.sp)
-            }
-            Spacer(Modifier.width(8.dp))
-        }
-        Surface(
-            shape = if (isUser) RoundedCornerShape(20.dp, 6.dp, 20.dp, 20.dp)
-            else RoundedCornerShape(6.dp, 20.dp, 20.dp, 20.dp),
-            color = when {
-                isUser -> MaterialTheme.colorScheme.primary
-                glass -> MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)
-                else -> MaterialTheme.colorScheme.surfaceVariant
-            },
-            modifier = Modifier
-                .fillMaxWidth(0.78f)
-                .combinedClickable(
-                    onLongClick = {
-                        onLongPress()
-                        onResend?.invoke()
-                    },
-                    onClick = {}
-                )
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                if (msg.toolCalls.isNotEmpty()) {
-                    msg.toolCalls.forEach { call ->
-                        Text(
-                            text = "⚡ 调用 ${call.name}(${call.argumentsJson.take(60)}${if (call.argumentsJson.length > 60) "..." else ""})",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.tertiary,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    if (msg.content.isNotBlank()) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 6.dp),
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                        )
-                    }
-                }
-                if (msg.content.isNotBlank()) {
-                    Text(
-                        text = msg.content,
-                        color = if (isUser) MaterialTheme.colorScheme.onPrimary
-                        else MaterialTheme.colorScheme.onSurface,
-                        fontSize = 15.sp
-                    )
-                }
-                if (streaming && !isUser && msg.content.isNotEmpty()) {
-                    Spacer(Modifier.height(4.dp))
-                    StreamingCursor(color = MaterialTheme.colorScheme.onSurface)
-                }
-            }
-        }
-        if (isUser) {
-            Spacer(Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondary),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun StreamingCursor(modifier: Modifier = Modifier, color: Color) {
-    val alpha by rememberInfiniteTransition(label = "cursor")
-        .animateFloat(
-            initialValue = 0.3f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(animation = tween(700), repeatMode = RepeatMode.Reverse),
-            label = "alpha"
-        )
-    Box(
-        modifier = modifier
-            .size(width = 2.dp, height = 16.dp)
-            .background(color.copy(alpha = alpha), RoundedCornerShape(1.dp))
-    )
-}
-
-@Composable
-private fun EmptyHint(apiConfigured: Boolean) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("🤖", fontSize = 56.sp)
-        Spacer(Modifier.height(16.dp))
-        Text("你好，我是 AURA", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "配置 AI 服务后开始对话\n输入 / 查看可用命令",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            lineHeight = 22.sp
-        )
-        if (!apiConfigured) {
-            Spacer(Modifier.height(16.dp))
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-            ) {
-                Text(
-                    text = "尚未配置 AI 服务\n前往设置添加 API 或下载本地模型",
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    }
-}
-
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChatInputBar(
     text: String,
@@ -715,11 +456,7 @@ private fun ChatInputBar(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(text = if (chatMode == ChatMode.DEV) "🔧" else "🧠", fontSize = 14.sp)
-                        Text(
-                            text = if (chatMode == ChatMode.DEV) "开发" else "思考",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Text(text = if (chatMode == ChatMode.DEV) "开发" else "思考", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
 
@@ -819,6 +556,176 @@ private fun ChatInputBar(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ChatBubble(
+    msg: ChatMsg,
+    style: ThemeStyle,
+    streaming: Boolean = false,
+    onLongPress: (String) -> Unit = {},
+    onResend: (() -> Unit)? = null
+) {
+    val isUser = msg.role == "user"
+    val isTool = msg.role == "tool"
+    val glass = style == ThemeStyle.GLASS || style == ThemeStyle.LIQUID
+
+    if (isTool) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .combinedClickable(onLongClick = { onLongPress(msg.content) }, onClick = {}),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+        ) {
+            Column(modifier = Modifier.padding(10.dp)) {
+                Text(
+                    text = "🔧 ${msg.toolName ?: "工具调用"}",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = msg.content,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 5,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        return
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Top
+    ) {
+        if (!isUser) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.linearGradient(
+                            listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "🤖", fontSize = 18.sp)
+            }
+            Spacer(Modifier.width(8.dp))
+        }
+        Surface(
+            shape = if (isUser) RoundedCornerShape(20.dp, 6.dp, 20.dp, 20.dp)
+            else RoundedCornerShape(6.dp, 20.dp, 20.dp, 20.dp),
+            color = when {
+                isUser -> MaterialTheme.colorScheme.primary
+                glass -> MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)
+                else -> MaterialTheme.colorScheme.surfaceVariant
+            },
+            modifier = Modifier
+                .fillMaxWidth(0.78f)
+                .combinedClickable(
+                    onLongClick = {
+                        onLongPress(msg.content)
+                        onResend?.invoke()
+                    },
+                    onClick = {}
+                )
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                if (msg.toolCalls.isNotEmpty()) {
+                    msg.toolCalls.forEach { call ->
+                        Text(
+                            text = "⚡ 调用 ${call.name}(${call.argumentsJson.take(60)}${if (call.argumentsJson.length > 60) "..." else ""})",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    if (msg.content.isNotBlank()) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 6.dp),
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                        )
+                    }
+                }
+                if (msg.content.isNotBlank()) {
+                    Text(
+                        text = msg.content,
+                        color = if (isUser) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurface,
+                        fontSize = 15.sp
+                    )
+                }
+                if (streaming && !isUser && msg.content.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(width = 2.dp, height = 16.dp)
+                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), RoundedCornerShape(1.dp))
+                    )
+                }
+            }
+        }
+        if (isUser) {
+            Spacer(Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondary),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyHint(apiConfigured: Boolean) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("🤖", fontSize = 56.sp)
+        Spacer(Modifier.height(16.dp))
+        Text("你好，我是 AURA", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "配置 AI 服务后开始对话\n输入 / 查看可用命令",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            lineHeight = 22.sp
+        )
+        if (!apiConfigured) {
+            Spacer(Modifier.height(16.dp))
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            ) {
+                Text(
+                    text = "尚未配置 AI 服务\n前往设置添加 API 或下载本地模型",
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun FeedbackDialog(
     onFeedback: () -> Unit,
@@ -857,11 +764,11 @@ private fun FeedbackDialog(
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ModelSelectionDialog(
     app: AuraApp,
-    onDismiss: () -> Unit,
-    onOpenSettings: () -> Unit
+    onDismiss: () -> Unit
 ) {
     val settings by app.settings.settings.collectAsState()
     val scope = rememberCoroutineScope()
@@ -992,10 +899,7 @@ private fun ModelSelectionDialog(
                                         Text(model, fontWeight = FontWeight.Medium, fontSize = 13.sp)
                                         if (progress != null) {
                                             Spacer(Modifier.height(4.dp))
-                                            LinearProgressIndicator(
-                                                progress = { progress },
-                                                modifier = Modifier.fillMaxWidth().height(4.dp)
-                                            )
+                                            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(4.dp))
                                         }
                                     }
                                     if (model == settings.apiModel) {
@@ -1026,11 +930,12 @@ private fun ModelSelectionDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onOpenSettings) { Text("管理模型") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("管理模型") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ModelItem(
     name: String,

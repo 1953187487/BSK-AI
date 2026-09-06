@@ -22,8 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
@@ -33,7 +33,6 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.SystemUpdateAlt
-import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -92,9 +91,7 @@ import java.io.File
 
 @Composable
 fun SettingsScreen(
-    app: AuraApp,
-    onClose: () -> Unit,
-    onOpenTerminal: () -> Unit
+    app: AuraApp
 ) {
     val context = LocalContext.current
     val settings by app.settings.settings.collectAsState()
@@ -108,23 +105,6 @@ fun SettingsScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Top bar
-        Surface(
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-            shadowElevation = 4.dp
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, contentDescription = "关闭")
-                }
-                Spacer(Modifier.width(8.dp))
-                Text("设置", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            }
-        }
-
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
@@ -175,12 +155,6 @@ fun SettingsScreen(
 
             item {
                 SettingsSection(title = "工具") {
-                    SettingsItem(
-                        icon = Icons.Default.Terminal,
-                        title = "内置终端",
-                        subtitle = "打开终端执行命令",
-                        onClick = onOpenTerminal
-                    )
                     SettingsItem(
                         icon = Icons.Default.Folder,
                         title = "工作区",
@@ -703,7 +677,7 @@ fun CustomModelManagerDialog(app: AuraApp, onDismiss: () -> Unit) {
                         IconButton(onClick = {
                             app.settings.update { it.copy(customModelList = it.customModelList - model) }
                         }) {
-                            Icon(Icons.Default.Close, "移除", modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Delete, "移除", modifier = Modifier.size(18.dp))
                         }
                     }
                 }

@@ -64,8 +64,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun TerminalScreen(
     engine: TerminalEngine,
-    shizuku: ShizukuBridge?,
-    onClose: () -> Unit
+    shizuku: ShizukuBridge?
 ) {
     val backend by engine.backend.collectAsState()
     val shizukuState = shizuku?.state?.collectAsState()?.value ?: ShizukuBridge.State.UNAVAILABLE
@@ -90,7 +89,7 @@ fun TerminalScreen(
     }
 
     LaunchedEffect(history.size) {
-        if (history.isNotEmpty()) listState.animateScrollToItem(history.size - 1)
+        if (history.isNotEmpty()) listState.scrollToItem(history.size - 1)
     }
 
     Column(
@@ -116,8 +115,6 @@ fun TerminalScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "关闭") }
         }
 
         // Backend selector

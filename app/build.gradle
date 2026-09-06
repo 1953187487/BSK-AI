@@ -11,7 +11,7 @@ android {
         applicationId "com.bskai"
         minSdk 28
         targetSdk 34
-        versionCode 306
+        versionCode 307
         versionName "2.0.5"
 
         buildConfigField "String", "APP_NAME", '"AURA"'

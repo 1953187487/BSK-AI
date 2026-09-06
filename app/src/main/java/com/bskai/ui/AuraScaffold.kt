@@ -1,29 +1,31 @@
 package com.bskai.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
 import com.bskai.data.loadAnnouncements
@@ -31,14 +33,21 @@ import com.bskai.ui.chat.ChatScreen
 import com.bskai.ui.settings.SettingsScreen
 import com.bskai.ui.terminal.TerminalScreen
 
+private enum class Tab(val label: String, val icon: ImageVector) {
+    CHAT("对话", Icons.Default.Chat),
+    TERMINAL("终端", Icons.Default.Terminal),
+    SETTINGS("设置", Icons.Default.Settings)
+}
+
 @Composable
 fun AuraScaffold(app: AuraApp) {
     val allAnnouncements = remember { loadAnnouncements(app) }
     val lastSeen = app.settings.lastSeenVersion()
     val currentVersion = BuildConfig.APP_VERSION
     val snackbarHostState = remember { SnackbarHostState() }
+    var currentTab by rememberSaveable { mutableIntStateOf(0) }
 
-    var showAnnouncement by rememberSaveable(lastSeen) {
+    var showAnnouncement: Boolean by rememberSaveable(lastSeen) {
         mutableStateOf(lastSeen != currentVersion && allAnnouncements.isNotEmpty())
     }
 
@@ -46,13 +55,13 @@ fun AuraScaffold(app: AuraApp) {
         val target = allAnnouncements.firstOrNull { it.version == currentVersion }
             ?: allAnnouncements.firstOrNull()
         if (target != null) {
-            AlertDialog(
+            androidx.compose.material3.AlertDialog(
                 onDismissRequest = {
                     app.settings.setLastSeenVersion(currentVersion)
                     showAnnouncement = false
                 },
                 confirmButton = {
-                    TextButton(onClick = {
+                    androidx.compose.material3.TextButton(onClick = {
                         app.settings.setLastSeenVersion(currentVersion)
                         showAnnouncement = false
                     }) {
@@ -63,7 +72,7 @@ fun AuraScaffold(app: AuraApp) {
                 text = {
                     androidx.compose.foundation.layout.Column {
                         Text(target.content)
-                        target.changelog.forEach { line ->
+                        for (line in target.changelog) {
                             Text("• $line")
                         }
                     }
@@ -77,68 +86,36 @@ fun AuraScaffold(app: AuraApp) {
         }
     }
 
-    var showSettings by remember { mutableStateOf(false) }
-    var showTerminal by remember { mutableStateOf(false) }
-
     LaunchedEffect(Unit) {
         com.bskai.MainActivity.navRequests.collect { target ->
             when (target) {
-                "settings" -> showSettings = true
-                "terminal" -> showTerminal = true
+                "settings" -> currentTab = 2
+                "terminal" -> currentTab = 1
             }
         }
     }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            ChatScreen(
-                app = app,
-                onOpenSettings = { showSettings = true },
-                snackbarHostState = snackbarHostState
-            )
-
-            AnimatedVisibility(
-                visible = showSettings,
-                enter = slideInVertically(initialOffsetY = { it }),
-                exit = slideOutVertically(targetOffsetY = { it }),
-                modifier = Modifier.zIndex(10f)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
-                ) {
-                    SettingsScreen(
-                        app = app,
-                        onClose = { showSettings = false },
-                        onOpenTerminal = {
-                            showSettings = false
-                            showTerminal = true
-                        }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            NavigationBar {
+                Tab.entries.forEachIndexed { index, tab ->
+                    NavigationBarItem(
+                        selected = currentTab == index,
+                        onClick = { currentTab = index },
+                        icon = { Icon(tab.icon, contentDescription = tab.label) },
+                        label = { Text(tab.label) }
                     )
                 }
             }
-
-            AnimatedVisibility(
-                visible = showTerminal,
-                enter = slideInVertically(initialOffsetY = { it }),
-                exit = slideOutVertically(targetOffsetY = { it }),
-                modifier = Modifier.zIndex(10f)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
-                ) {
-                    TerminalScreen(
-                        engine = app.terminal,
-                        shizuku = app.shizuku,
-                        onClose = { showTerminal = false }
-                    )
-                }
+        }
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            when (currentTab) {
+                0 -> ChatScreen(app = app, snackbarHostState = snackbarHostState)
+                1 -> TerminalScreen(engine = app.terminal, shizuku = app.shizuku)
+                2 -> SettingsScreen(app = app)
             }
         }
     }
