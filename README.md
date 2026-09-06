@@ -1,40 +1,32 @@
-# AURA - 智能语音助手
+# AURA 2.0.5 — AI 智能助手
 
-AURA（Autonomous Utterance Response Assistant）是一款运行在 Android 设备上的智能语音助手应用。通过语音指令即可完成音乐控制、文件管理、系统设置切换、拨打电话等日常操作，取代传统语音助手的部分功能。
+AURA 是一款运行在 Android 设备上的 AI 智能助手应用，支持接入多种云端/本地 AI 模型，提供智能对话、工具调用、工作区管理、音乐播放等功能。
 
 ## 功能特性
 
-- **实时语音监听**：支持后台持续监听，语音唤醒指令响应
-- **智能意图识别**：基于规则的中文语音指令解析引擎
-- **文字转语音**：使用系统 TTS 引擎朗读回复内容
-- **文件管理**：通过语音指令移动、复制、删除手机文件
-- **媒体控制**：播放/暂停/下一首/上一首/调节音量
-- **系统操控**：蓝牙、WiFi、手电筒等快捷开关
-- **通讯功能**：拨打电话、发送消息
-- **自动更新**：启动时检查新版本并提示更新
-- **无障碍服务**：通过 AccessibilityService 捕获屏幕内容辅助操作
-- **开机自启**：系统重启后自动恢复监听服务
+- **多模型支持**：兼容 OpenAI / DeepSeek / Ollama / LM Studio / vLLM 等多种云端和本地 AI 提供商
+- **思考模式**：3 级深度推理，可调节 AI 思考强度
+- **应用开发模式**：AI 辅助开发 Android 应用，支持终端执行和文件读写
+- **工具调用**：AI 可调用终端命令、读写文件等工具完成任务
+- **斜杠命令**：`/ws` `/model` `/clear` `/help` 快速操作
+- **工作区管理**：内置文件浏览器，支持项目文件管理
+- **音乐播放器**：基于 Media3 ExoPlayer，支持播放/暂停/队列/随机/循环
+- **本地 AI 模型下载**：一键刷新并下载 Ollama、LM Studio 等本地模型
+- **应用内更新**：支持历史版本浏览、下载和安装
+- **Shizuku 集成**：通过 Shizuku 执行高权限 ADB 命令
+- **Material 3 主题**：动态颜色系统，支持 Dark/Light 模式
 
-## 技术架构
+## 技术规格
 
-- **语言**：Kotlin 100%
-- **UI 框架**：Jetpack Compose + Material Design 3
-- **架构模式**：MVVM（Model-View-ViewModel）
-- **语音引擎**：Android SpeechRecognizer + TextToSpeech
-- **后台服务**：Foreground Service + AccessibilityService
-- **数据持久化**：Android DataStore Preferences
-
-## 权限需求
-
-| 权限 | 用途 |
+| 项目 | 详情 |
 |------|------|
-| RECORD_AUDIO | 语音识别输入 |
-| FOREGROUND_SERVICE | 后台监听服务 |
-| POST_NOTIFICATIONS | 通知栏状态显示 |
-| READ/WRITE_EXTERNAL_STORAGE | 文件管理操作 |
-| SYSTEM_ALERT_WINDOW | 悬浮窗（可选） |
-| RECEIVE_BOOT_COMPLETED | 开机自启 |
-| QUERY_ALL_PACKAGES | 查询已安装应用列表 |
+| 语言 | Kotlin |
+| UI 框架 | Jetpack Compose + Material 3 |
+| 最低 SDK | Android 9 (API 28) |
+| 目标 SDK | Android 14 (API 34) |
+| 架构 | MVVM + 单例装配 |
+| 网络 | OkHttp + Streaming |
+| 媒体 | Media3 ExoPlayer 1.2.1 |
 
 ## 构建
 
@@ -42,47 +34,15 @@ AURA（Autonomous Utterance Response Assistant）是一款运行在 Android 设�
 # Debug 构建
 ./gradlew assembleDebug
 
-# Release 构建（需配置签名密钥环境变量）
-export BSK_KEYSTORE=/path/to/keystore.jks
-export BSK_KEYSTORE_PASSWORD=your_password
-export BSK_KEY_PASSWORD=your_key_password
+# Release 构建
+export BSK_KEYSTORE=/path/to/keystore
 ./gradlew assembleRelease
 ```
 
-## 版本历史
+## 更新日志
 
-### v2.0.1
-- 设置页全面重构：自定义服务商、工作区管理、语言选择、更新中心、关于页
-- 权限修复：录音/通知去授权
-- 移除顶栏检查更新/历史版本入口（已移入设置）
-- minSdk 31，仅支持 Android 12+
-- 修复工作区无法直接选择问题
+查看 [Releases](https://github.com/1953187487/BSK-AI/releases) 获取完整版本历史。
 
-### v2.0.0
-- 内置终端：LOCAL / Shizuku / ROOT 三后端
-- AI 工具调用：多轮工具调用历史完整保留
-- 工作区：默认内部 + SAF 外部导入
-- 斜杠命令：/ws、/model、/clear、/help
-- 自定义模型列表
+## 许可证
 
-### v2.0.0-beta.1
-- 全面重写为语音助手应用
-- 全新 AURA 品牌 UI/UX
-- 新增 VoiceService 后台监听
-- 新增 IntentRegistry 意图识别
-- 新增 FileController 文件管理
-- 新增 AudioController 媒体控制
-- 新增 VoiceAccessibilityService 无障碍服务
-- 新增 BootReceiver 开机自启
-- 新增完整权限管理系统
-
-### v1.0.9
-- 修复多工具调用历史不完整
-- 新增会话持久化
-- 新增可切换工作区
-
----
-
-**包名**：`com.bskai`  
-**最低 Android 版本**：Android 8.0 (API 26)  
-**目标 Android 版本**：Android 14 (API 34)
+本项目仅供学习和研究使用。
