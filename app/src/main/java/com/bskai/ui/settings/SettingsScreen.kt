@@ -213,7 +213,7 @@ fun SettingsScreen(
     }
 
     if (showLocalModelDialog) {
-        com.bskai.ui.chat.UnifiedModelDialog(app = app, onDismiss = { showLocalModelDialog = false })
+        com.bskai.ui.chat.UnifiedModelDialogV2(app = app, onDismiss = { showLocalModelDialog = false })
     }
 
     if (showAboutDialog) {
