@@ -164,7 +164,6 @@ fun AboutAuraDialog(onDismiss: () -> Unit) {
 @Composable
 fun CustomModelManagerDialog(app: AuraApp, onDismiss: () -> Unit) {
     val settings by app.settings.settings.collectAsState()
-    val scope = rememberCoroutineScope()
     var newModel by remember { mutableStateOf("") }
 
     AlertDialog(
@@ -345,6 +344,11 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
     var loading by remember { mutableStateOf(true) }
     var installing by remember { mutableStateOf<String?>(null) }
     var installOutput by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf("全部") }
+
+    val categories = listOf("全部", "基础", "Android", "语言", "编译", "网络", "编辑")
+    val filteredTools = if (selectedCategory == "全部") DevTools.commonTools
+    else DevTools.commonTools.filter { it.category == selectedCategory }
 
     LaunchedEffect(Unit) {
         loading = true
@@ -384,6 +388,27 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                         CircularProgressIndicator()
                     }
                 } else {
+                    // Category filter
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        categories.forEach { cat ->
+                            Surface(
+                                modifier = Modifier.clickable { selectedCategory = cat },
+                                shape = RoundedCornerShape(16.dp),
+                                color = if (selectedCategory == cat) MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            ) {
+                                Text(
+                                    cat,
+                                    fontSize = 10.sp,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         "管理终端环境中的开发工具",
                         style = MaterialTheme.typography.bodySmall,
@@ -391,7 +416,7 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                     )
                     Spacer(Modifier.height(8.dp))
                     LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
-                        items(DevTools.commonTools) { tool ->
+                        items(filteredTools) { tool ->
                             val installed = toolStatus[tool.command] == true
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),

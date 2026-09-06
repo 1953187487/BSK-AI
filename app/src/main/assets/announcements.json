@@ -1,6 +1,24 @@
 {
   "announcements": [
     {
+      "version": "2.0.7",
+      "title": "AURA 2.0.7 全面重写：横竖屏适配 + 终端升级 + 开发工具 + UI 设计",
+      "content": "AURA 2.0.7 重大更新。UI 全面重写，横竖屏自动适配（横屏按钮在左边），终端 GitHub Dark 主题，开发工具支持 Android 依赖一键安装，应用图标重绘，工作区支持导出，模型配置支持从服务商刷新模型列表，协议和 Shizuku 授权问题修复。",
+      "changelog": [
+        "UI 全面重写：横竖屏自动适配，横屏按钮在左边 NavigationRail",
+        "终端升级：GitHub Dark 配色方案，ASCII art 欢迎页，复制全部按钮",
+        "开发工具升级：支持 Android 开发依赖（aapt2/d8/apksigner/adb/java 等）一键安装",
+        "应用图标重绘：AI 神经网络图案",
+        "工作区支持导出为 ZIP",
+        "模型配置：从服务商刷新模型列表并选择下载",
+        "Shizuku 授权修复：增加 binder 接收监听器",
+        "协议对话框修复：完善权限请求流程",
+        "LlmClient 重写：支持 chat/stream/listModels/downloadModel",
+        "AgentEngine 重写：工具循环和流式回复优化",
+        "versionCode 309, versionName 2.0.7"
+      ]
+    },
+    {
       "version": "2.0.6",
       "title": "AURA 2.0.6 终端升级 + 开发工具管理 + 应用图标重绘 + 协议完善",
       "content": "AURA 2.0.6 发布。终端 UI 升级为 GitHub Dark 主题配色，新增开发工具管理（git/python3/node/clang/cmake 等），应用图标重绘为 AI 神经网络图案，协议内容全面更新，统一模型选择器完善，设置页增加开发工具入口。",

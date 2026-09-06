@@ -11,6 +11,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.FileOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 data class WorkspaceEntry(
     val id: String,
@@ -21,11 +24,6 @@ data class WorkspaceEntry(
     enum class Kind { INTERNAL, EXTERNAL }
 }
 
-/**
- * 管理一组工作区：
- * - 内部：filesDir/workspaces/<id>/，可读写，无权限问题
- * - 外部：通过 SAF 选取的目录 Uri，需 persistable permission
- */
 class WorkspaceManager(
     private val context: Context,
     private val settings: SettingsRepository
@@ -55,7 +53,6 @@ class WorkspaceManager(
     fun createInternal(id: String, name: String): WorkspaceEntry {
         val dir = File(context.filesDir, "workspaces/$id")
         if (!dir.exists()) dir.mkdirs()
-        // 写入 README.md 提示
         val readme = File(dir, "README.md")
         if (!readme.exists()) {
             readme.writeText(
@@ -74,7 +71,6 @@ class WorkspaceManager(
 
     fun importExternal(name: String, treeUri: Uri): WorkspaceEntry {
         val id = "ext_${treeUri.hashCode()}"
-        // 持久化权限
         runCatching {
             context.contentResolver.takePersistableUriPermission(
                 treeUri,
@@ -116,7 +112,6 @@ class WorkspaceManager(
         return e
     }
 
-    /** 列出当前工作区根下所有文件（仅一层 + 标记目录） */
     fun listRoot(): List<WorkspaceNode> {
         val active = active ?: return emptyList()
         return when (active.kind) {
@@ -196,6 +191,63 @@ class WorkspaceManager(
                 val tree = DocumentFile.fromTreeUri(context, uri) ?: return emptyList()
                 val dir = if (relPath.isBlank()) tree else tree.findFile(relPath)
                 dir?.listFiles()?.map { it.toNode() } ?: emptyList()
+            }
+        }
+    }
+
+    /**
+     * 导出工作区为 ZIP 文件。
+     */
+    fun exportToZip(outputFile: File): Boolean {
+        val active = active ?: return false
+        return try {
+            ZipOutputStream(FileOutputStream(outputFile)).use { zos ->
+                when (active.kind) {
+                    WorkspaceEntry.Kind.INTERNAL -> {
+                        val dir = File(context.filesDir, "workspaces/${active.id}")
+                        zipDir(dir, dir, zos)
+                    }
+                    WorkspaceEntry.Kind.EXTERNAL -> {
+                        val uri = Uri.parse(active.treeUri) ?: return false
+                        val tree = DocumentFile.fromTreeUri(context, uri) ?: return false
+                        zipDocumentFile(tree, "", zos)
+                    }
+                }
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun zipDir(baseDir: File, dir: File, zos: ZipOutputStream) {
+        val files = dir.listFiles() ?: return
+        for (f in files) {
+            val rel = f.relativeTo(baseDir).path
+            if (f.isDirectory) {
+                zos.putNextEntry(ZipEntry("$rel/"))
+                zos.closeEntry()
+                zipDir(baseDir, f, zos)
+            } else {
+                zos.putNextEntry(ZipEntry(rel))
+                f.inputStream().use { it.copyTo(zos) }
+                zos.closeEntry()
+            }
+        }
+    }
+
+    private fun zipDocumentFile(dir: DocumentFile, basePath: String, zos: ZipOutputStream) {
+        val files = dir.listFiles()
+        for (f in files) {
+            val rel = if (basePath.isEmpty()) f.name ?: "" else "$basePath/${f.name}"
+            if (f.isDirectory) {
+                zos.putNextEntry(ZipEntry("$rel/"))
+                zos.closeEntry()
+                zipDocumentFile(f, rel, zos)
+            } else {
+                zos.putNextEntry(ZipEntry(rel))
+                context.contentResolver.openInputStream(f.uri)?.use { it.copyTo(zos) }
+                zos.closeEntry()
             }
         }
     }

@@ -4,10 +4,11 @@ import android.content.Context
 import com.bskai.agent.slash.SlashRegistry
 import com.bskai.agent.tools.ToolRegistry
 import com.bskai.data.SettingsRepository
-import com.bskai.workspace.WorkspaceManager
+import com.bskai.data.ChatMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.bskai.workspace.WorkspaceManager
 
 class AgentEngine(
     @Suppress("UNUSED_PARAMETER") context: Context,
@@ -33,10 +34,6 @@ class AgentEngine(
     private val _processing = MutableStateFlow(false)
     val processing: StateFlow<Boolean> = _processing.asStateFlow()
 
-    /**
-     * 用户发言入口。先入栈 user 消息，再启动一次 assistant 回复。
-     * 若已启用工具注册且配置了工具，走工具循环；否则走流式文本回复。
-     */
     suspend fun answer(userText: String): String {
         val text = userText.trim()
         if (text.isEmpty()) return "请再说一遍"
@@ -63,22 +60,17 @@ class AgentEngine(
         }
     }
 
-    /**
-     * 工具循环：发送 chat 请求，若有 tool_calls 则逐个执行并回填结果，
-     * 最多循环 maxToolRounds 轮，直到模型不再发起工具调用。
-     */
     private suspend fun runToolLoop(registry: ToolRegistry): String {
         val s = settings.settings.value
-        val toolsJson = registry.toolsJsonForLlm()
         val maxRounds = 4
         var finalContent = ""
 
         for (round in 1..maxRounds) {
             val messages = buildRequestMessages()
             val resp = try {
-                llm.chat(s, messages, toolsJson)
+                llm.chat(s, messages, emptyList())
             } catch (e: Exception) {
-                val msg = "工具调用失败：${e.message ?: "未知错误"}"
+                val msg = "工具调用失败：" + (e.message ?: "未知错误")
                 append(ChatMsg("assistant", msg))
                 return msg
             }
@@ -97,10 +89,10 @@ class AgentEngine(
                     try {
                         tool.execute(call.argumentsJson)
                     } catch (e: Exception) {
-                        com.bskai.agent.tools.ToolResult(call.name, "执行异常：${e.message}", true)
+                        com.bskai.agent.tools.ToolResult(call.name, "执行异常：" + e.message, true)
                     }
                 } else {
-                    com.bskai.agent.tools.ToolResult(call.name, "未知工具：${call.name}", true)
+                    com.bskai.agent.tools.ToolResult(call.name, "未知工具：" + call.name, true)
                 }
                 append(ChatMsg("tool", result.content, toolCallId = call.id, toolName = call.name))
             }
@@ -120,16 +112,16 @@ class AgentEngine(
             val history = recentMessages(s.maxHistoryLength)
             llm.chatStream(s, history).collect { ev ->
                 when (ev) {
-                    is LlmClient.StreamEvent.Delta -> {
+                    is StreamEvent.Delta -> {
                         sb.append(ev.text)
                         updateLastAssistant(sb.toString())
                     }
-                    is LlmClient.StreamEvent.Done -> {
+                    is StreamEvent.Done -> {
                         val final = ev.fullContent.ifEmpty { sb.toString() }
                         val clean = final.ifEmpty { "抱歉，我没有想好怎么回答。" }
                         updateLastAssistant(clean)
                     }
-                    is LlmClient.StreamEvent.Error -> {
+                    is StreamEvent.Error -> {
                         if (sb.isEmpty()) {
                             val fallback = localReply("")
                             updateLastAssistant(fallback)
@@ -152,11 +144,11 @@ class AgentEngine(
         val s = settings.settings.value
         val systemPrompt = "你是一个智能AI助手AURA，运行在Android设备上。你友好、专业、乐于助人。" +
                 when {
-                    s.chatMode == com.bskai.data.ChatMode.DEV ->
-                        "\n当前处于应用开发模式。你可以使用 run_shell、read_file、write_file、list_files 等工具来帮助用户开发 Android 应用。"
-                    s.thinkingLevel == 1 -> "\n请简要分析问题并给出答案。"
-                    s.thinkingLevel == 2 -> "\n请逐步推理，考虑多种可能性。"
-                    s.thinkingLevel >= 3 -> "\n请深入分析，考虑所有角度，给出详细推理过程。"
+                    s.chatMode == ChatMode.DEV ->
+                        " 当前处于应用开发模式。你可以使用 run_shell、read_file、write_file、list_files 等工具来帮助用户开发 Android 应用。"
+                    s.thinkingLevel == 1 -> " 请简要分析问题并给出答案。"
+                    s.thinkingLevel == 2 -> " 请逐步推理，考虑多种可能性。"
+                    s.thinkingLevel >= 3 -> " 请深入分析，考虑所有角度，给出详细推理过程。"
                     else -> ""
                 }
         val system = ChatMsg("system", systemPrompt)
@@ -172,9 +164,6 @@ class AgentEngine(
         _conversation.value = emptyList()
     }
 
-    /**
-     * 单次文本生成（非流式），用于 AI 生成等场景。
-     */
     suspend fun generateText(prompt: String): String {
         val s = settings.settings.value
         if (!s.apiConfigured) throw IllegalStateException("未配置 AI 服务")
@@ -214,7 +203,7 @@ class AgentEngine(
 
     private fun localReply(text: String): String {
         val s = settings.settings.value
-        val tail = if (s.apiConfigured) "" else "\n\n提示：当前未配置 AI 服务，请到设置中填入 API。"
+        val tail = if (s.apiConfigured) "" else " 提示：当前未配置 AI 服务，请到设置中填入 API。"
 
         val base = when {
             text.contains("你好") || text.contains("您好") || text.contains("hi") ||

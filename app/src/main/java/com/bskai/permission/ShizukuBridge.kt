@@ -26,10 +26,15 @@ class ShizukuBridge(private val context: Context) {
         _state.value = detect()
     }
 
+    private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
+        _state.value = detect()
+    }
+
     init {
         try {
             Shizuku.addRequestPermissionResultListener(requestPermissionListener)
             Shizuku.addBinderDeadListener(binderDeathListener)
+            Shizuku.addBinderReceivedListener(binderReceivedListener)
         } catch (_: Throwable) {}
     }
 
@@ -78,6 +83,7 @@ class ShizukuBridge(private val context: Context) {
     fun shutdown() {
         try { Shizuku.removeRequestPermissionResultListener(requestPermissionListener) } catch (_: Throwable) {}
         try { Shizuku.removeBinderDeadListener(binderDeathListener) } catch (_: Throwable) {}
+        try { Shizuku.removeBinderReceivedListener(binderReceivedListener) } catch (_: Throwable) {}
     }
 
     companion object { private const val TAG = "ShizukuBridge" }

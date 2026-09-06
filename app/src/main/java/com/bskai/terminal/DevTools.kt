@@ -19,7 +19,8 @@ object DevTools {
         val installCmds: Map<String, List<String>> // backend -> commands
     )
 
-    val commonTools = listOf(
+    // 基础开发工具
+    val basicTools = listOf(
         ToolInfo("git", "git", "版本控制", "基础", mapOf(
             "local" to listOf("apt-get update && apt-get install -y git"),
             "shizuku" to listOf("apt-get update && apt-get install -y git"),
@@ -34,21 +35,6 @@ object DevTools {
             "local" to listOf("apt-get update && apt-get install -y nodejs npm"),
             "shizuku" to listOf("apt-get update && apt-get install -y nodejs npm"),
             "root" to listOf("apt-get update && apt-get install -y nodejs npm")
-        )),
-        ToolInfo("clang", "clang", "C/C++ 编译器", "编译", mapOf(
-            "local" to listOf("apt-get update && apt-get install -y clang"),
-            "shizuku" to listOf("apt-get update && apt-get install -y clang"),
-            "root" to listOf("apt-get update && apt-get install -y clang")
-        )),
-        ToolInfo("cmake", "cmake", "跨平台构建", "编译", mapOf(
-            "local" to listOf("apt-get update && apt-get install -y cmake"),
-            "shizuku" to listOf("apt-get update && apt-get install -y cmake"),
-            "root" to listOf("apt-get update && apt-get install -y cmake")
-        )),
-        ToolInfo("make", "make", "构建工具", "编译", mapOf(
-            "local" to listOf("apt-get update && apt-get install -y make"),
-            "shizuku" to listOf("apt-get update && apt-get install -y make"),
-            "root" to listOf("apt-get update && apt-get install -y make")
         )),
         ToolInfo("curl", "curl", "数据传输", "网络", mapOf(
             "local" to listOf("apt-get update && apt-get install -y curl"),
@@ -71,6 +57,63 @@ object DevTools {
             "root" to listOf("apt-get update && apt-get install -y nano")
         ))
     )
+
+    // Android 开发依赖
+    val androidTools = listOf(
+        ToolInfo("aapt2", "aapt2", "Android 资源打包工具", "Android", mapOf(
+            "local" to listOf(
+                "apt-get update && apt-get install -y aapt2"
+            ),
+            "shizuku" to listOf(
+                "apt-get update && apt-get install -y aapt2"
+            ),
+            "root" to listOf(
+                "apt-get update && apt-get install -y aapt2"
+            )
+        )),
+        ToolInfo("d8", "d8", "DEX 编译器", "Android", mapOf(
+            "local" to listOf("apt-get update && apt-get install -y d8"),
+            "shizuku" to listOf("apt-get update && apt-get install -y d8"),
+            "root" to listOf("apt-get update && apt-get install -y d8")
+        )),
+        ToolInfo("apksigner", "apksigner", "APK 签名工具", "Android", mapOf(
+            "local" to listOf("apt-get update && apt-get install -y apksigner"),
+            "shizuku" to listOf("apt-get update && apt-get install -y apksigner"),
+            "root" to listOf("apt-get update && apt-get install -y apksigner")
+        )),
+        ToolInfo("zipalign", "zipalign", "APK 对齐工具", "Android", mapOf(
+            "local" to listOf("apt-get update && apt-get install -y zipalign"),
+            "shizuku" to listOf("apt-get update && apt-get install -y zipalign"),
+            "root" to listOf("apt-get update && apt-get install -y zipalign")
+        )),
+        ToolInfo("adb", "adb", "Android 调试桥", "Android", mapOf(
+            "local" to listOf("apt-get update && apt-get install -y adb"),
+            "shizuku" to listOf("apt-get update && apt-get install -y adb"),
+            "root" to listOf("apt-get update && apt-get install -y adb")
+        )),
+        ToolInfo("clang", "clang", "C/C++ 编译器", "编译", mapOf(
+            "local" to listOf("apt-get update && apt-get install -y clang"),
+            "shizuku" to listOf("apt-get update && apt-get install -y clang"),
+            "root" to listOf("apt-get update && apt-get install -y clang")
+        )),
+        ToolInfo("cmake", "cmake", "跨平台构建", "编译", mapOf(
+            "local" to listOf("apt-get update && apt-get install -y cmake"),
+            "shizuku" to listOf("apt-get update && apt-get install -y cmake"),
+            "root" to listOf("apt-get update && apt-get install -y cmake")
+        )),
+        ToolInfo("make", "make", "构建工具", "编译", mapOf(
+            "local" to listOf("apt-get update && apt-get install -y make"),
+            "shizuku" to listOf("apt-get update && apt-get install -y make"),
+            "root" to listOf("apt-get update && apt-get install -y make")
+        )),
+        ToolInfo("openjdk-17", "java", "Java 17 运行时", "语言", mapOf(
+            "local" to listOf("apt-get update && apt-get install -y openjdk-17-jdk"),
+            "shizuku" to listOf("apt-get update && apt-get install -y openjdk-17-jdk"),
+            "root" to listOf("apt-get update && apt-get install -y openjdk-17-jdk")
+        ))
+    )
+
+    val commonTools: List<ToolInfo> = basicTools + androidTools
 
     /**
      * 检查工具是否已安装。
@@ -100,5 +143,26 @@ object DevTools {
      */
     fun getInstallCommand(tool: ToolInfo, backend: String): List<String> {
         return tool.installCmds[backend] ?: tool.installCmds["local"] ?: emptyList()
+    }
+
+    /**
+     * 一键安装所有 Android 开发依赖。
+     */
+    suspend fun installAllAndroid(engine: TerminalEngine, onProgress: (String, Int, Int) -> Unit): Boolean {
+        val backend = engine.backend.value.name.lowercase()
+        val total = androidTools.size
+        var success = true
+        for ((index, tool) in androidTools.withIndex()) {
+            onProgress(tool.name, index, total)
+            val cmds = getInstallCommand(tool, backend)
+            for (cmd in cmds) {
+                val r = engine.execute(cmd)
+                if (r.exitCode != 0) {
+                    success = false
+                    break
+                }
+            }
+        }
+        return success
     }
 }

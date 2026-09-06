@@ -1,91 +1,88 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 背景 -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="135"
+                android:startColor="#0D0D1A"
+                android:centerColor="#1A1340"
+                android:endColor="#0D0D1A" />
+        </shape>
+    </item>
 
-    <!-- 背景渐变 -->
-    <path
-        android:fillColor="#1a1a2e"
-        android:pathData="M0,0h108v108h-108z" />
+    <!-- 中心发光球体 -->
+    <item
+        android:left="20dp"
+        android:top="20dp"
+        android:right="20dp"
+        android:bottom="20dp">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:centerX="50%"
+                android:centerY="50%"
+                android:gradientRadius="50%"
+                android:startColor="#8E7CFF"
+                android:centerColor="#6C5CE7"
+                android:endColor="#3B2F8F" />
+        </shape>
+    </item>
 
-    <!-- AI 大脑主体：中心发光球 -->
-    <path
-        android:fillColor="#6366F1"
-        android:pathData="M54,32c12,0 22,10 22,22s-10,22 -22,22s-22,-10 -22,-22s10,-22 22,-22z" />
-    <path
-        android:fillColor="#818CF8"
-        android:fillAlpha="0.6"
-        android:pathData="M54,36c10,0 18,8 18,18s-8,18 -18,18s-18,-8 -18,-18s8,-18 18,-18z" />
-    <path
-        android:fillColor="#C7D2FE"
-        android:fillAlpha="0.4"
-        android:pathData="M54,40c8,0 14,6 14,14s-6,14 -14,14s-14,-6 -14,-14s6,-14 14,-14z" />
+    <!-- 四个神经网络节点 -->
+    <!-- 左上节点 -->
+    <item
+        android:left="12dp"
+        android:top="12dp"
+        android:width="12dp"
+        android:height="12dp">
+        <shape android:shape="oval">
+            <solid android:color="#00CED1" />
+        </shape>
+    </item>
 
-    <!-- 神经网络节点 -->
-    <path
-        android:fillColor="#34D399"
-        android:pathData="M30,42a4,4 0 1 0 0,8a4,4 0 0 0 0,-8z" />
-    <path
-        android:fillColor="#FBBF24"
-        android:pathData="M78,42a4,4 0 1 0 0,8a4,4 0 0 0 0,-8z" />
-    <path
-        android:fillColor="#F472B6"
-        android:pathData="M30,68a4,4 0 1 0 0,8a4,4 0 0 0 0,-8z" />
-    <path
-        android:fillColor="#60A5FA"
-        android:pathData="M78,68a4,4 0 1 0 0,8a4,4 0 0 0 0,-8z" />
-    <path
-        android:fillColor="#A78BFA"
-        android:pathData="M54,78a4,4 0 1 0 0,8a4,4 0 0 0 0,-8z" />
+    <!-- 右上节点 -->
+    <item
+        android:right="12dp"
+        android:top="12dp"
+        android:width="12dp"
+        android:height="12dp">
+        <shape android:shape="oval">
+            <solid android:color="#FF6B9D" />
+        </shape>
+    </item>
 
-    <!-- 连接线 -->
-    <path
-        android:strokeColor="#818CF8"
-        android:strokeWidth="1.5"
-        android:strokeAlpha="0.5"
-        android:pathData="M34,46l16,8" />
-    <path
-        android:strokeColor="#818CF8"
-        android:strokeWidth="1.5"
-        android:strokeAlpha="0.5"
-        android:pathData="M74,46l-16,8" />
-    <path
-        android:strokeColor="#818CF8"
-        android:strokeWidth="1.5"
-        android:strokeAlpha="0.5"
-        android:pathData="M34,72l16,-8" />
-    <path
-        android:strokeColor="#818CF8"
-        android:strokeWidth="1.5"
-        android:strokeAlpha="0.5"
-        android:pathData="M74,72l-16,-8" />
-    <path
-        android:strokeColor="#818CF8"
-        android:strokeWidth="1.5"
-        android:strokeAlpha="0.5"
-        android:pathData="M54,74v-8" />
+    <!-- 左下节点 -->
+    <item
+        android:left="12dp"
+        android:bottom="12dp"
+        android:width="12dp"
+        android:height="12dp">
+        <shape android:shape="oval">
+            <solid android:color="#3FB950" />
+        </shape>
+    </item>
 
-    <!-- 终端提示符 -->
-    <path
-        android:fillColor="#22D3EE"
-        android:pathData="M44,48l6,4l-6,4"
-        android:strokeWidth="1.5"
-        android:strokeColor="#22D3EE"
-        android:strokeLineJoin="round" />
+    <!-- 右下节点 -->
+    <item
+        android:right="12dp"
+        android:bottom="12dp"
+        android:width="12dp"
+        android:height="12dp">
+        <shape android:shape="oval">
+            <solid android:color="#58A6FF" />
+        </shape>
+    </item>
 
-    <!-- 中心 AI 标识 -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.9"
-        android:pathData="M48,48h2v8h-2z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.9"
-        android:pathData="M58,48h2v8h-2z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.7"
-        android:pathData="M52,50h4v2h-4z" />
-</vector>
+    <!-- 中心小圆点（终端提示符） -->
+    <item
+        android:left="36dp"
+        android:top="36dp"
+        android:right="36dp"
+        android:bottom="36dp">
+        <shape android:shape="oval">
+            <solid android:color="#FFFFFF" />
+        </shape>
+    </item>
+</layer-list>
