@@ -2,6 +2,7 @@ package com.bskai.ui.settings
 
 import android.Manifest
 import android.content.Context
+import java.io.File
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.InstallMobile
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
@@ -49,6 +51,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -405,6 +408,7 @@ fun LocalModelDownloadDialog(app: AuraApp, onDismiss: () -> Unit) {
     var downloading by remember { mutableStateOf("") }
     var downloadProgress by remember { mutableStateOf(0f) }
     var downloadSpeed by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val providers = listOf(
         "Ollama" to "http://localhost:11434/v1",
@@ -414,9 +418,26 @@ fun LocalModelDownloadDialog(app: AuraApp, onDismiss: () -> Unit) {
         "Custom" to ""
     )
 
+    // Auto-load models when provider is selected
+    LaunchedEffect(selectedProvider, providerUrl) {
+        if (selectedProvider.isNotEmpty() && providerUrl.isNotBlank() && selectedProvider != "Custom") {
+            isLoadingModels = true
+            errorMessage = null
+            try {
+                val models = LlmClient(app).listModels(providerUrl, providerKey)
+                availableModels = models.map { ModelDownloadInfo(it, 0f, "") }
+                app.settings.update { it.copy(apiProviderUrl = providerUrl, apiProviderKey = providerKey, modelSource = "local") }
+            } catch (e: Exception) {
+                errorMessage = "加载失败: ${e.message}"
+                availableModels = emptyList()
+            }
+            isLoadingModels = false
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("本地模型 AI 下载提供商", fontWeight = FontWeight.Bold) },
+        title = { Text("本地模型 AI", fontWeight = FontWeight.Bold) },
         text = {
             LazyColumn {
                 item {
@@ -432,6 +453,7 @@ fun LocalModelDownloadDialog(app: AuraApp, onDismiss: () -> Unit) {
                                                 selectedProvider = name
                                                 providerUrl = url
                                                 availableModels = emptyList()
+                                                errorMessage = null
                                             },
                                         shape = RoundedCornerShape(12.dp),
                                         color = if (selectedProvider == name) MaterialTheme.colorScheme.primaryContainer
@@ -450,26 +472,62 @@ fun LocalModelDownloadDialog(app: AuraApp, onDismiss: () -> Unit) {
                 }
                 if (selectedProvider.isNotEmpty()) {
                     item {
-                        OutlinedTextField(value = providerUrl, onValueChange = { providerUrl = it }, label = { Text("API 地址") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(
+                            value = providerUrl,
+                            onValueChange = { providerUrl = it },
+                            label = { Text("API 地址") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                         Spacer(Modifier.height(6.dp))
-                        OutlinedTextField(value = providerKey, onValueChange = { providerKey = it }, label = { Text("API Key (可选)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(
+                            value = providerKey,
+                            onValueChange = { providerKey = it },
+                            label = { Text("API Key (可选)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                         Spacer(Modifier.height(8.dp))
                         Button(
                             onClick = {
                                 scope.launch {
                                     isLoadingModels = true
+                                    errorMessage = null
                                     try {
                                         val models = LlmClient(app).listModels(providerUrl, providerKey)
                                         availableModels = models.map { ModelDownloadInfo(it, 0f, "") }
                                         app.settings.update { it.copy(apiProviderUrl = providerUrl, apiProviderKey = providerKey, modelSource = "local") }
-                                    } catch (_: Exception) { availableModels = emptyList() }
+                                    } catch (e: Exception) {
+                                        errorMessage = "加载失败: ${e.message}"
+                                        availableModels = emptyList()
+                                    }
                                     isLoadingModels = false
                                 }
                             },
                             enabled = providerUrl.isNotBlank() && !isLoadingModels,
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text(if (isLoadingModels) "加载中…" else "加载模型列表") }
+                        ) {
+                            Text(if (isLoadingModels) "加载中…" else "刷新模型列表")
+                        }
+                        if (errorMessage != null) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = errorMessage!!,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
                         Spacer(Modifier.height(8.dp))
+                    }
+                    if (isLoadingModels) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(80.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
                     }
                     items(availableModels) { modelInfo ->
                         Surface(
@@ -515,7 +573,7 @@ fun LocalModelDownloadDialog(app: AuraApp, onDismiss: () -> Unit) {
                                             }
                                         }) {
                                             Text("下载", fontSize = 12.sp)
-                                    }
+                                        }
                                     }
                                 }
                                 if (downloading == modelInfo.name) {
@@ -551,6 +609,12 @@ private fun formatSpeed(bytesRead: Long): String {
     if (bytesRead < 1024) return "$bytesRead B/s"
     if (bytesRead < 1024 * 1024) return "${bytesRead / 1024} KB/s"
     return "%.1f MB/s".format(bytesRead / (1024.0 * 1024.0))
+}
+
+private fun formatSize(bytes: Long): String {
+    if (bytes <= 0L) return "?"
+    val mb = bytes.toDouble() / (1024 * 1024)
+    return "%.2f MB".format(mb)
 }
 
 @Composable
@@ -641,14 +705,16 @@ fun UpdateCenterDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var releases by remember { mutableStateOf<List<RemoteRelease>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
     var downloading by remember { mutableStateOf<String?>(null) }
-    var downloadStatus by remember { mutableStateOf<DownloadStatus?>(null) }
+    var downloadStatus by remember { mutableStateOf<Map<String, DownloadStatus>>(emptyMap()) }
 
     LaunchedEffect(Unit) {
         scope.launch {
             withContext(Dispatchers.IO) {
                 releases = GitHubApi.listReleases()
             }
+            loading = false
         }
     }
 
@@ -656,35 +722,121 @@ fun UpdateCenterDialog(onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text("更新中心", fontWeight = FontWeight.Bold) },
         text = {
-            LazyColumn {
-                items(releases) { release ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(release.tagName, fontWeight = FontWeight.Medium)
-                            Text(release.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(Modifier.height(6.dp))
-                            val apkUrl = release.apkUrl
-                            val isDownloading = downloading == release.tagName
-                            TextButton(
-                                onClick = {
-                                    scope.launch {
-                                        downloading = release.tagName
-                                        val targetFile = java.io.File(context.cacheDir, "aura-${release.tagName}.apk")
-                                        GitHubApi.downloadApk(apkUrl, targetFile).collect { status ->
-                                            downloadStatus = status
-                                            if (status is DownloadStatus.Done) {
-                                                downloading = null
-                                                UpdateInstaller.install(context, targetFile)
-                                            }
+            if (loading) {
+                Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                LazyColumn {
+                    item {
+                        Text(
+                            text = "当前版本: ${BuildConfig.APP_VERSION}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                    items(releases) { release ->
+                        val status = downloadStatus[release.tagName]
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = release.tagName,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    if (release.isPrerelease) {
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
+                                        ) {
+                                            Text(
+                                                text = "测试版",
+                                                fontSize = 10.sp,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
                                         }
                                     }
-                                },
-                                enabled = !isDownloading
-                            ) {
-                                Text(if (isDownloading) "下载中…" else "下载 APK")
+                                }
+                                Text(
+                                    text = release.name,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "${release.publishedAtLabel()} · ${formatSize(release.sizeBytes)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                when (val s = status) {
+                                    is DownloadStatus.Downloading -> {
+                                        LinearProgressIndicator(
+                                            progress = { s.percent.coerceIn(0, 100) / 100f },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        Text("${s.percent}%", style = MaterialTheme.typography.labelSmall)
+                                    }
+                                    is DownloadStatus.Done -> {
+                                        OutlinedButton(onClick = {
+                                            UpdateInstaller.install(context, File(s.localPath))
+                                        }) {
+                                            Icon(Icons.Default.InstallMobile, contentDescription = null, modifier = Modifier.size(14.dp))
+                                            Spacer(Modifier.width(4.dp))
+                                            Text("安装")
+                                        }
+                                    }
+                                    is DownloadStatus.Failed -> {
+                                        Text(
+                                            text = "下载失败: ${s.message}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        TextButton(onClick = {
+                                            if (release.apkUrl.isBlank()) return@TextButton
+                                            downloading = release.tagName
+                                            scope.launch {
+                                                val targetFile = File(context.cacheDir, "aura-${release.tagName}.apk")
+                                                GitHubApi.downloadApk(release.apkUrl, targetFile).collect { status ->
+                                                    downloadStatus = downloadStatus + (release.tagName to status)
+                                                    if (status is DownloadStatus.Done || status is DownloadStatus.Failed) {
+                                                        downloading = null
+                                                    }
+                                                }
+                                            }
+                                        }) {
+                                            Text("重试")
+                                        }
+                                    }
+                                    else -> {
+                                        TextButton(
+                                            onClick = {
+                                                if (release.apkUrl.isBlank()) return@TextButton
+                                                downloading = release.tagName
+                                                scope.launch {
+                                                    val targetFile = File(context.cacheDir, "aura-${release.tagName}.apk")
+                                                    GitHubApi.downloadApk(release.apkUrl, targetFile).collect { status ->
+                                                        downloadStatus = downloadStatus + (release.tagName to status)
+                                                        if (status is DownloadStatus.Done || status is DownloadStatus.Failed) {
+                                                            downloading = null
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            enabled = downloading != release.tagName
+                                        ) {
+                                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(14.dp))
+                                            Spacer(Modifier.width(4.dp))
+                                            Text(if (downloading == release.tagName) "下载中…" else "下载 APK")
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -693,6 +845,26 @@ fun UpdateCenterDialog(onDismiss: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
     )
+}
+
+private fun startDownload(
+    context: Context,
+    scope: kotlinx.coroutines.CoroutineScope,
+    release: RemoteRelease,
+    downloading: androidx.compose.runtime.MutableState<String?>,
+    downloadStatus: androidx.compose.runtime.MutableState<Map<String, DownloadStatus>>
+) {
+    if (release.apkUrl.isBlank()) return
+    downloading.value = release.tagName
+    scope.launch {
+        val targetFile = File(context.cacheDir, "aura-${release.tagName}.apk")
+        GitHubApi.downloadApk(release.apkUrl, targetFile).collect { status ->
+            downloadStatus.value = downloadStatus.value + (release.tagName to status)
+            if (status is DownloadStatus.Done || status is DownloadStatus.Failed) {
+                downloading.value = null
+            }
+        }
+    }
 }
 
 @Composable

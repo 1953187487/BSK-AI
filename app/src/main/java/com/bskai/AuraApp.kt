@@ -16,6 +16,7 @@ import com.bskai.agent.tools.ToolRegistry
 import com.bskai.agent.tools.WriteFileTool
 import com.bskai.data.SettingsRepository
 import com.bskai.i18n.LocaleManager
+import com.bskai.music.MusicEngine
 import com.bskai.permission.ShizukuBridge
 import com.bskai.terminal.TerminalEngine
 import com.bskai.workspace.WorkspaceManager
@@ -38,6 +39,8 @@ class AuraApp : Application() {
         private set
     lateinit var slashRegistry: SlashRegistry
         private set
+    lateinit var music: MusicEngine
+        private set
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
@@ -51,6 +54,7 @@ class AuraApp : Application() {
         terminal = TerminalEngine(shizuku)
         workspace = WorkspaceManager(this, settings)
         workspace.ensureDefault()
+        music = MusicEngine(this)
 
         // 注册 AI 工具
         toolRegistry = ToolRegistry().apply {
