@@ -1,6 +1,5 @@
 package com.bskai.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.Icon
@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
 import com.bskai.data.loadAnnouncements
+import com.bskai.ui.account.AccountScreen
 import com.bskai.ui.chat.ChatScreen
 import com.bskai.ui.ide.IdeScreen
 import com.bskai.ui.settings.SettingsScreen
@@ -43,7 +44,8 @@ private enum class AuraTab(val label: String, val icon: ImageVector) {
     CHAT("对话", Icons.Default.Chat),
     TERMINAL("终端", Icons.Default.Terminal),
     IDE("IDE", Icons.Default.Build),
-    SETTINGS("设置", Icons.Default.Settings)
+    SETTINGS("设置", Icons.Default.Settings),
+    ACCOUNT("账户", Icons.Default.Person)
 }
 
 @Composable
@@ -102,6 +104,7 @@ fun AuraScaffold(app: AuraApp) {
                 "settings" -> currentTab = 3
                 "terminal" -> currentTab = 1
                 "ide" -> currentTab = 2
+                "account" -> currentTab = 4
             }
         }
     }
@@ -128,6 +131,7 @@ fun AuraScaffold(app: AuraApp) {
                         1 -> TerminalScreen(engine = app.terminal, shizuku = app.shizuku)
                         2 -> IdeScreen(app = app)
                         3 -> SettingsScreen(app = app)
+                        4 -> AccountScreen(app = app)
                     }
                 }
             }
@@ -155,6 +159,7 @@ fun AuraScaffold(app: AuraApp) {
                     1 -> TerminalScreen(engine = app.terminal, shizuku = app.shizuku)
                     2 -> IdeScreen(app = app)
                     3 -> SettingsScreen(app = app)
+                    4 -> AccountScreen(app = app)
                 }
             }
         }

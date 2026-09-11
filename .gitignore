@@ -8,3 +8,7 @@ captures/
 .externalNativeBuild/
 .cxx/
 .trash/
+dump.rdb
+*.rdb
+server/sandbox/data/
+
