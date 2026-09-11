@@ -11,6 +11,7 @@
 - 多方式互斥(微信已绑 X 尝试绑 Y → PROVIDER_ALREADY_BOUND)
 """
 import json
+import os
 import subprocess
 import time
 import uuid
@@ -18,7 +19,12 @@ import uuid
 import httpx
 
 BASE = "http://127.0.0.1:18080"
-OFFICIAL = {"id": "0001", "account_name": "aura_official", "password": "changeme-official-Initial!"}
+# 官方账号密码由部署者通过环境变量注入(策划书 13.9:明文不入仓/不入测试)
+OFFICIAL = {
+    "id": os.environ.get("AURA_OFFICIAL_ID", "0001"),
+    "account_name": os.environ.get("AURA_OFFICIAL_ACCOUNT_NAME", "aura_official"),
+    "password": os.environ.get("AURA_OFFICIAL_PASSWORD", ""),
+}
 
 PASS = 0
 FAIL = 0
