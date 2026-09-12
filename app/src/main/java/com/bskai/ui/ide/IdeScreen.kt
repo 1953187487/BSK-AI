@@ -434,6 +434,7 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
     var installing by remember { mutableStateOf(false) }
     var installOutput by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("全部") }
+    val currentBackend = app.terminal.backend.value.name.lowercase()
 
     val categories = listOf("全部", "基础", "Android", "语言", "编译", "网络", "编辑")
     val filteredDeps = if (selectedCategory == "全部") AndroidDependencyManager.allDependencies
@@ -475,6 +476,20 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
                         )
                     }
                 } else {
+                    if (currentBackend == "local") {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().background(OUT_BG, RoundedCornerShape(8.dp)).padding(8.dp)
+                        ) {
+                            Text(
+                                "本地模式仅检测。安装需授权 Shizuku/ROOT（终端权限），请授权后回到此页重试。",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                color = OUT_TEXT,
+                                modifier = Modifier.padding(8.dp).heightIn(max = 100.dp)
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
                     LazyColumn {
                         item {
                             Button(
@@ -482,8 +497,8 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
                                     installing = true
                                     installOutput = ""
                                     scope.launch {
-                                        val backend = app.terminal.backend.value.name.lowercase()
-                                        val cmds = AndroidDependencyManager.getInstallAllCommands(backend)
+                                        val target = if (currentBackend == "local") "shizuku" else currentBackend
+                                        val cmds = AndroidDependencyManager.getInstallAllCommands(target)
                                         for (cmd in cmds) {
                                             val r = app.terminal.execute(cmd)
                                             installOutput += r.stdout + "\n" + r.stderr
@@ -492,6 +507,7 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
                                         installing = false
                                     }
                                 },
+                                enabled = currentBackend != "local",
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -517,12 +533,13 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
                                         Text(dep.description + " · " + dep.category, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                                     }
                                     OutlinedButton(
+                                        enabled = currentBackend != "local",
                                         onClick = {
                                             installing = true
                                             installOutput = ""
                                             scope.launch {
-                                                val backend = app.terminal.backend.value.name.lowercase()
-                                                val cmds = AndroidDependencyManager.getInstallCommands(dep, backend)
+                                                val target = if (currentBackend == "local") "shizuku" else currentBackend
+                                                val cmds = AndroidDependencyManager.getInstallCommands(dep, target)
                                                 for (cmd in cmds) {
                                                     val r = app.terminal.execute(cmd)
                                                     installOutput += r.stdout + "\n" + r.stderr

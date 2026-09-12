@@ -30,6 +30,24 @@ data class LocalModelEntry(
     val downloadedAt: Long = System.currentTimeMillis()
 )
 
+/** 双模型视频生成的产物。 */
+data class VideoArtifact(
+    val script: String,
+    val videoPath: String,
+    val scriptModel: String,
+    val videoModel: String,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+/** 双模型视频生成设置。 */
+data class VideoGenSettings(
+    val enabled: Boolean = false,
+    /** 写脚本的模型：由已配置的 API 服务商或自定义 API 模型提供。 */
+    val scriptModel: String = "",
+    /** 生成视频的模型：本地已下载模型。 */
+    val videoModel: String = ""
+)
+
 data class AppSettings(
     val darkTheme: Boolean = true,
     val autoStartService: Boolean = false,
@@ -50,7 +68,8 @@ data class AppSettings(
     val chatMode: ChatMode = ChatMode.THINK,
     val devDependenciesDownloaded: Boolean = false,
     val lastFeedbackDismissTime: Long = 0,
-    val feedbackDismissedThisSession: Boolean = false
+    val feedbackDismissedThisSession: Boolean = false,
+    val videoGen: VideoGenSettings = VideoGenSettings()
 ) {
     val apiConfigured: Boolean
         get() = apiProviderUrl.isNotBlank() && apiModel.isNotBlank() &&

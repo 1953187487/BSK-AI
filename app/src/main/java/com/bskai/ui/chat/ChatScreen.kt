@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -43,6 +44,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +67,7 @@ import com.bskai.agent.ChatMsg
 import com.bskai.agent.LlmClient
 import com.bskai.agent.ModelInfo
 import com.bskai.data.ChatMode
+import com.bskai.data.LocalModelEntry
 import com.bskai.ui.glass.GlassBubble
 import com.bskai.ui.glass.GlassCardRow
 import com.bskai.ui.glass.GlassChip
@@ -95,6 +98,8 @@ fun ChatScreen(
     var input by remember { mutableStateOf("") }
     var showModelDialog by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
+    var showVideoDialog by remember { mutableStateOf(false) }
+    val generating by app.videoGen.generating.collectAsState()
 
     androidx.compose.runtime.LaunchedEffect(conversation.size) {
         if (conversation.isNotEmpty()) {
@@ -125,6 +130,12 @@ fun ChatScreen(
                         val next = (settings.thinkingLevel % 3) + 1
                         app.settings.update { it.copy(thinkingLevel = next) }
                     }
+                )
+                Spacer(Modifier.width(8.dp))
+                GlassChip(
+                    text = if (generating) "生成中" else "生成视频",
+                    selected = generating,
+                    onClick = { showVideoDialog = true }
                 )
                 Spacer(Modifier.weight(1f))
                 Box {
@@ -217,6 +228,73 @@ fun ChatScreen(
     if (showModelDialog) {
         UnifiedModelDialogV2(app = app, onDismiss = { showModelDialog = false })
     }
+    if (showVideoDialog) {
+        VideoGenDialog(app = app, onDismiss = { showVideoDialog = false })
+    }
+}
+
+@Composable
+private fun VideoGenDialog(app: AuraApp, onDismiss: () -> Unit) {
+    val settings by app.settings.settings.collectAsState()
+    val vg = settings.videoGen
+    var prompt by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("双模型视频生成", fontWeight = FontWeight.SemiBold) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "脚本模型：${vg.scriptModel.ifBlank { settings.apiModel.ifEmpty { "(未配置)" } }}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "视频模型：${vg.videoModel.ifEmpty { "(未选择本地模型)" }}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = prompt,
+                    onValueChange = { prompt = it },
+                    label = { Text("描述你想生成的视频") },
+                    minLines = 2,
+                    maxLines = 4,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (vg.videoModel.isBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "提示：请先在「模型配置」中选择一个本地视频模型，再进行生成。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val p = prompt.trim()
+                    if (p.isNotEmpty()) {
+                        app.videoGen.generateVideo(p)
+                        onDismiss()
+                    }
+                },
+                enabled = prompt.isNotBlank() && vg.videoModel.isNotBlank()
+            ) {
+                Text("生成")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }
 
 @Composable
@@ -267,6 +345,9 @@ private fun ChatBubble(msg: ChatMsg, streaming: Boolean) {
                 )
             }
         }
+        msg.role == "video" -> {
+            VideoResultCard(path = msg.toolName ?: "", summary = msg.content)
+        }
         else -> {
             Row(modifier = Modifier.fillMaxWidth()) {
                 GlassBubble(
@@ -284,6 +365,43 @@ private fun ChatBubble(msg: ChatMsg, streaming: Boolean) {
         }
     }
 }
+
+@Composable
+private fun VideoResultCard(path: String, summary: String) {
+    val glass = rememberGlassColors()
+    Row(modifier = Modifier.fillMaxWidth()) {
+        GlassCardRow {
+            Icon(
+                Icons.Default.Download,
+                contentDescription = null,
+                tint = glass.accent,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("视频产物", color = glass.accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = summary,
+                    color = glass.contentMuted,
+                    fontSize = 11.sp,
+                    maxLines = 2,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+                if (path.isNotBlank()) {
+                    Text(
+                        text = path,
+                        color = glass.contentMuted,
+                        fontSize = 9.sp,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun EmptyHint(apiConfigured: Boolean) {
@@ -334,6 +452,7 @@ val localModelSources = listOf(
 fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val settings by app.settings.settings.collectAsState()
     var selectedTab by remember { mutableStateOf(0) }
 
     var downloadProgress by remember { mutableStateOf(mapOf<String, DownloadStatus>()) }
@@ -346,6 +465,26 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
     var isLoadingModels by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<String?>(null) }
     var selectedSource by remember { mutableStateOf<ModelSource?>(null) }
+    var scannedLocalModels by remember { mutableStateOf<List<ModelInfo>>(emptyList()) }
+
+    suspend fun rescanLocalModels() {
+        scannedLocalModels = withContext(Dispatchers.IO) {
+            val dir = File(context.filesDir, "models")
+            (dir.listFiles() ?: emptyArray())
+                .filter { f -> f.isFile && !f.name.startsWith(".") }
+                .map { f ->
+                    val mb = String.format("%.1f", f.length() / 1048576.0)
+                    ModelInfo(
+                        id = f.name,
+                        name = f.name,
+                        description = "本地已下载 · $mb MB"
+                    )
+                }
+                .sortedByDescending { it.name }
+        }
+    }
+
+    LaunchedEffect(Unit) { rescanLocalModels() }
 
     val providers = listOf(
         "Ollama" to "http://localhost:11434/v1",
@@ -490,6 +629,7 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                                                     downloadProgress = downloadProgress + (model.id to status)
                                                     if (status is DownloadStatus.Done || status is DownloadStatus.Failed) {
                                                         downloading = null
+                                                        if (status is DownloadStatus.Done) rescanLocalModels()
                                                     }
                                                 }
                                             }
@@ -637,6 +777,163 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                                 }
                             }
                         }
+                    }
+
+                    if (scannedLocalModels.isNotEmpty()) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "本地已下载 (${scannedLocalModels.size})",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        LazyColumn(modifier = Modifier.fillMaxWidth().height(150.dp)) {
+                            items(scannedLocalModels, key = { it.id }) { model ->
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                        .clickable {
+                                            app.settings.update {
+                                                it.copy(
+                                                    apiModel = model.id,
+                                                    modelSource = "local",
+                                                    localModels = it.localModels + LocalModelEntry(
+                                                        id = model.id,
+                                                        name = model.name,
+                                                        path = File(context.filesDir, "models/${model.id}").absolutePath,
+                                                        sizeBytes = 0L,
+                                                        source = "local"
+                                                    )
+                                                )
+                                            }
+                                        },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(model.name, modifier = Modifier.weight(1f))
+                                            Text(
+                                                model.description,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 双模型视频生成：指定脚本模型（API/自定义模型）
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "脚本模型（API / 自定义）",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "用于写视频分镜脚本，默认为当前主对话模型。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    if (availableModels.isNotEmpty()) {
+                        LazyColumn(modifier = Modifier.fillMaxWidth().height(120.dp)) {
+                            items(availableModels, key = { "sm_" + it.id }) { model ->
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                        .clickable {
+                                            app.settings.update {
+                                                it.copy(videoGen = it.videoGen.copy(scriptModel = model.id))
+                                            }
+                                        },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (settings.videoGen.scriptModel == model.id ||
+                                        (settings.videoGen.scriptModel.isBlank() && settings.apiModel == model.id)
+                                    ) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(model.name, modifier = Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 双模型视频生成：指定本地视频模型（默认即当前选中本地模型）
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "视频生成模型（本地）",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "双模型视频生成：由脚本模型写分镜，本地视频模型生成视频。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    if (scannedLocalModels.isNotEmpty()) {
+                        LazyColumn(modifier = Modifier.fillMaxWidth().height(120.dp)) {
+                            items(scannedLocalModels, key = { "vm_" + it.id }) { model ->
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                        .clickable {
+                                            app.settings.update {
+                                                it.copy(
+                                                    videoGen = it.videoGen.copy(
+                                                        enabled = true,
+                                                        videoModel = model.id,
+                                                        scriptModel = it.videoGen.scriptModel.ifBlank { model.id }
+                                                    )
+                                                )
+                                            }
+                                        },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (settings.videoGen.videoModel == model.id)
+                                        MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(model.name, modifier = Modifier.weight(1f))
+                                            Text(
+                                                "用作视频生成模型",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Text(
+                            "尚未下载本地模型，请先从上方下载源选择并下载一个视频生成模型。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp
+                        )
                     }
                 }
             }

@@ -48,9 +48,31 @@ class SettingsRepository(context: Context) {
             chatMode = ChatMode.fromKey(prefs.getString(KEY_CHAT_MODE, ChatMode.THINK.key)),
             devDependenciesDownloaded = prefs.getBoolean(KEY_DEV_DEPS_DOWNLOADED, false),
             lastFeedbackDismissTime = prefs.getLong(KEY_LAST_FEEDBACK_DISMISS, 0),
-            feedbackDismissedThisSession = prefs.getBoolean(KEY_FEEDBACK_SESSION, false)
+            feedbackDismissedThisSession = prefs.getBoolean(KEY_FEEDBACK_SESSION, false),
+            videoGen = parseVideoGen(prefs.getString(KEY_VIDEO_GEN, null))
         )
     }
+
+    private fun parseVideoGen(json: String?): VideoGenSettings {
+        if (json.isNullOrBlank()) return VideoGenSettings()
+        return try {
+            val o = org.json.JSONObject(json)
+            VideoGenSettings(
+                enabled = o.optBoolean("enabled", false),
+                scriptModel = o.optString("scriptModel", ""),
+                videoModel = o.optString("videoModel", "")
+            )
+        } catch (_: Exception) {
+            VideoGenSettings()
+        }
+    }
+
+    private fun serializeVideoGen(v: VideoGenSettings): String =
+        org.json.JSONObject().apply {
+            put("enabled", v.enabled)
+            put("scriptModel", v.scriptModel)
+            put("videoModel", v.videoModel)
+        }.toString()
 
     private fun parseLocalModels(json: String): List<LocalModelEntry> {
         if (json == "[]") return emptyList()
@@ -107,6 +129,7 @@ class SettingsRepository(context: Context) {
             .putBoolean(KEY_DEV_DEPS_DOWNLOADED, s.devDependenciesDownloaded)
             .putLong(KEY_LAST_FEEDBACK_DISMISS, s.lastFeedbackDismissTime)
             .putBoolean(KEY_FEEDBACK_SESSION, s.feedbackDismissedThisSession)
+            .putString(KEY_VIDEO_GEN, serializeVideoGen(s.videoGen))
             .apply()
     }
 
@@ -171,5 +194,6 @@ class SettingsRepository(context: Context) {
         private const val KEY_DEV_DEPS_DOWNLOADED = "dev_deps_downloaded"
         private const val KEY_LAST_FEEDBACK_DISMISS = "last_feedback_dismiss"
         private const val KEY_FEEDBACK_SESSION = "feedback_session"
+        private const val KEY_VIDEO_GEN = "video_gen"
     }
 }

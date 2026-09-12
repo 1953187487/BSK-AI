@@ -12,3 +12,6 @@ dump.rdb
 *.rdb
 server/sandbox/data/
 
+
+# 本地构建产物，CI 负责重新构建签名
+AURA-*.apk

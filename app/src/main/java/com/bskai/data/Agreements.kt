@@ -19,6 +19,7 @@ object Agreements {
 • AndroidX / Lifecycle / Navigation（Apache-2.0）
 • OkHttp（Apache-2.0）
 • Media3 ExoPlayer（Apache-2.0）
+• AndroidLiquidGlass by Kyant0（Apache-2.0，https://github.com/Kyant0/AndroidLiquidGlass ，本版本 2.1.1 的液态玻璃折射与高光渲染基于该项目移植实现）
 • Shizuku / Sui（MIT）
 • org.json（JSON.org License）
 
@@ -36,7 +37,7 @@ object Agreements {
         body = """欢迎使用 AURA {VERSION}。请在使用前仔细阅读以下条款：
 
 1. 版本说明
-   当前版本为 AURA {VERSION}（build {BUILD}）。本版本采用全链路液态玻璃 UI，导航结构更新为顶部导航（AI 聊天 / 设置），终端与 IDE 集成于顶部导航区内，系统公告已并入本用户须知，不再单独弹出。
+   当前版本为 AURA {VERSION}（build {BUILD}）。本版本采用全链路液态玻璃 UI（基于开源项目 AndroidLiquidGlass 移植实现），导航结构更新为底部导航栏（AI 聊天 / 设置），系统公告已并入本用户须知，不再单独弹出。
 
 2. AI 对话与模型服务
    AURA 本身不采集、上传或存储你的对话内容。当你主动配置并连接第三方 AI 服务（OpenAI、DeepSeek、Ollama 等）时，你输入的对话文本会发送至该服务提供商。请仅在信任的服务商处填写 API 地址与密钥。

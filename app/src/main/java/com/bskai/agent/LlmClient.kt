@@ -191,6 +191,47 @@ class LlmClient(private val context: Context) {
         return LlmResponse(content, toolCalls)
     }
 
+    /**
+     * 使用指定的模型与端点发起一次对话（用于双模型视频生成的"脚本模型"环节，
+     * 允许脚本模型与主对话模型不同）。
+     */
+    suspend fun chatWithModel(
+        providerUrl: String,
+        apiKey: String?,
+        model: String,
+        messages: List<ChatMsg>
+    ): LlmResponse = withContext(Dispatchers.IO) {
+        val messagesJson = JSONArray()
+        messages.filter { it.toolCalls.isEmpty() && it.toolCallId == null }.forEach { msg ->
+            val obj = JSONObject()
+            obj.put("role", msg.role)
+            obj.put("content", msg.content)
+            messagesJson.put(obj)
+        }
+
+        val body = JSONObject()
+        body.put("model", model)
+        body.put("messages", messagesJson)
+        body.put("stream", false)
+
+        val requestBuilder = Request.Builder()
+            .url(providerUrl.trimEnd('/') + "/chat/completions")
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Accept", "application/json")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+
+        if (!apiKey.isNullOrBlank()) {
+            requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+        }
+
+        val response = client.newCall(requestBuilder.build()).execute()
+        if (!response.isSuccessful) {
+            throw RuntimeException("HTTP ${response.code}")
+        }
+        val responseBody = response.body?.string() ?: throw RuntimeException("Empty response")
+        parseResponse(responseBody)
+    }
+
     fun chatStream(s: com.bskai.data.AppSettings, messages: List<ChatMsg>): Flow<StreamEvent> = flow {
         val messagesJson = JSONArray()
         messages.filter { it.toolCalls.isEmpty() && it.toolCallId == null }.forEach { msg ->

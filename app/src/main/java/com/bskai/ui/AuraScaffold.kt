@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -33,8 +34,8 @@ import androidx.compose.ui.unit.sp
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
 import com.bskai.ui.chat.ChatScreen
+import com.bskai.ui.glass.GlassBottomNav
 import com.bskai.ui.glass.GlassSegmented
-import com.bskai.ui.glass.GlassTopNav
 import com.bskai.ui.ide.IdeScreen
 import com.bskai.ui.settings.SettingsScreen
 import com.bskai.ui.terminal.TerminalScreen
@@ -86,10 +87,6 @@ fun AuraScaffold(app: AuraApp) {
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.45f)
                 )
                 Spacer(Modifier.weight(1f))
-                GlassTopNav(
-                    selected = currentTab,
-                    onSelect = { currentTab = it }
-                )
             }
 
             if (currentTab == 0) {
@@ -115,13 +112,21 @@ fun AuraScaffold(app: AuraApp) {
                 }
             }
 
+            Spacer(Modifier.height(10.dp))
+
+            GlassBottomNav(
+                selected = currentTab,
+                onSelect = { currentTab = it },
+                modifier = Modifier.navigationBarsPadding()
+            )
+
             Spacer(Modifier.height(12.dp))
         }
 
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 24.dp)
+                .padding(bottom = 96.dp)
         ) {
             SnackbarHost(hostState = snackbarHostState)
         }

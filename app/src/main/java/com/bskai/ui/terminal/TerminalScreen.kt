@@ -73,6 +73,7 @@ fun TerminalScreen(
 ) {
     val backend by engine.backend.collectAsState()
     val shizukuState = shizuku?.state?.collectAsState()?.value ?: ShizukuBridge.State.UNAVAILABLE
+    val locked = shizukuState != ShizukuBridge.State.GRANTED
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val history = remember { mutableStateListOf<HistoryLine>() }
@@ -115,6 +116,11 @@ fun TerminalScreen(
         if (history.isNotEmpty()) listState.scrollToItem(history.size - 1)
     }
 
+    if (locked) {
+        TerminalLockedView(state = shizukuState, shizuku = shizuku)
+        return
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -131,9 +137,9 @@ fun TerminalScreen(
             ) {
                 TerminalEngine.Backend.entries.forEach { b ->
                     val enabled = when (b) {
-                        TerminalEngine.Backend.LOCAL -> true
+                        TerminalEngine.Backend.LOCAL -> !locked
                         TerminalEngine.Backend.SHIZUKU -> shizukuState == ShizukuBridge.State.GRANTED
-                        TerminalEngine.Backend.ROOT -> true
+                        TerminalEngine.Backend.ROOT -> shizukuState == ShizukuBridge.State.GRANTED
                     }
                     GlassChip(
                         text = b.name,
@@ -259,6 +265,69 @@ fun TerminalScreen(
                     onClick = { run() }
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun TerminalLockedView(
+    state: ShizukuBridge.State,
+    shizuku: ShizukuBridge?
+) {
+    val glass = rememberGlassColors()
+    val accent = MaterialTheme.colorScheme.primary
+
+    GlassPanel(
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Security,
+                contentDescription = null,
+                tint = accent.copy(alpha = 0.7f),
+                modifier = Modifier.size(44.dp)
+            )
+            Spacer(Modifier.height(14.dp))
+            Text(
+                text = "终端暂未开放",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = glass.content
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = when (state) {
+                    ShizukuBridge.State.NEED_PERMISSION ->
+                        "授权 Shizuku / Dhizuku 后即可解锁 root 级终端能力"
+                    ShizukuBridge.State.UNAVAILABLE ->
+                        "未检测到 Shizuku / Dhizuku，请先安装并启动相关应用"
+                    else -> "授权 Shizuku / Dhizuku 后即可使用终端"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = glass.contentMuted,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(Modifier.height(16.dp))
+
+            GlassChip(
+                text = when (state) {
+                    ShizukuBridge.State.UNAVAILABLE -> "重新检测"
+                    else -> "去授权"
+                },
+                selected = false,
+                accent = accent,
+                onClick = {
+                    when (state) {
+                        ShizukuBridge.State.UNAVAILABLE -> shizuku?.refresh()
+                        else -> shizuku?.requestPermission()
+                    }
+                }
+            )
         }
     }
 }

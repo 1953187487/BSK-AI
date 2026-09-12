@@ -350,17 +350,38 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
         loading = false
     }
 
+    val currentBackend = engine.backend.value.name.lowercase()
+
     AlertDialog(
         onDismissRequest = { if (installing == null) onDismiss() },
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Terminal, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
-                Text("开发工具", fontWeight = FontWeight.SemiBold)
+                Text("开发工具与依赖", fontWeight = FontWeight.SemiBold)
             }
         },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                if (currentBackend == "local") {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "本地模式仅检测，安装需授权 Shizuku/ROOT。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 if (installing != null) {
                     Text("正在安装: $installing", fontWeight = FontWeight.Medium)
                     Spacer(Modifier.height(8.dp))
@@ -404,11 +425,38 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "管理终端环境中的开发工具",
+                        "管理终端环境中的开发工具与 IDE 依赖",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(8.dp))
+                    if (currentBackend != "local") {
+                        Button(
+                            onClick = {
+                                installing = "全部"
+                                installOutput = ""
+                                scope.launch {
+                                    val target = currentBackend
+                                    for (tool in DevTools.commonTools) {
+                                        val cmds = DevTools.getInstallCommand(tool, target)
+                                        for (cmd in cmds) {
+                                            val r = engine.execute(cmd)
+                                            installOutput += r.stdout + "\n" + r.stderr
+                                            if (r.exitCode != 0) break
+                                        }
+                                    }
+                                    installing = null
+                                    toolStatus = DevTools.checkAll(engine)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("一键安装全部依赖")
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
                     LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
                         items(filteredTools) { tool ->
                             val installed = toolStatus[tool.command] == true
@@ -434,14 +482,22 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                                         Text(tool.name + " (" + tool.command + ")", fontWeight = FontWeight.Medium, fontSize = 12.sp)
                                         Text(tool.description + " · " + tool.category, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                                     }
-                                    if (!installed) {
+                                    if (installed) {
+                                        OutlinedButton(onClick = { }, enabled = false) {
+                                            Text("已安装", fontSize = 10.sp)
+                                        }
+                                    } else {
                                         OutlinedButton(
+                                            enabled = currentBackend != "local",
                                             onClick = {
                                                 installing = tool.name
                                                 installOutput = ""
                                                 scope.launch {
-                                                    val backend = engine.backend.value.name.lowercase()
-                                                    val cmds = DevTools.getInstallCommand(tool, backend)
+                                                    val target = currentBackend
+                                                    val cmds = DevTools.getInstallCommand(tool, target)
+                                                    if (cmds.isEmpty()) {
+                                                        installOutput = "本地模式不支持安装，请授权 Shizuku/ROOT 后重试。"
+                                                    }
                                                     for (cmd in cmds) {
                                                         val r = engine.execute(cmd)
                                                         installOutput += r.stdout + "\n" + r.stderr

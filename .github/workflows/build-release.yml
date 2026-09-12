@@ -100,18 +100,24 @@ jobs:
             ## AURA v${{ steps.version.outputs.version }} 正式版
 
             ### 本版本亮点
-            - 全链路液态玻璃 UI 重写：自研 Liquid Glass 组件库（玻璃面板 / 胶囊导航 / 分段控件 / 玻璃气泡 / 玻璃按钮 / 玻璃输入框）
-            - 全新顶部小导航栏：仅「AI 聊天 / 设置」两入口，终端与 IDE 集成至顶部子导航（对话 / 终端 / IDE）
-            - 聊天界面接入 AgentEngine 真实流式对话，工具调用过程可视化
-            - 终端 / IDE 界面全面换装液态玻璃
+            - 底部横向导航：移除顶部导航栏，「AI 聊天 / 设置」移至底部玻璃导航
+            - 全新引导流程：移除旧的进入弹层核验，Shizuku(Dhizuku) 可授权，重写"已进入"版本更新引导
+            - 本地模型刷新：已下载本地模型自动重新扫描并显示在模型列表
+            - 终端权限门控：终端在 Shizuku(Dhizuku) 授予 root 级权限前保持锁定，授权后以 root 级可用
+            - 设置界面背景重写；「开发工具」与「IDE」依赖下载合并为统一入口并修复安装失败
+            - 双模型视频生成：已配置的 API/自定义模型写分镜脚本，本地模型生成视频
+            - 集成 AndroidLiquidGlass（Kyant0，Apache-2.0）液态玻璃效果，2.1.1 标注致谢
             - 协议精简：仅保留《开源软件许可协议》与《用户须知》，系统公告并入《用户须知》
             - 二改归属：README / NOTICE / CONTRIBUTING 保留原作者署名与原仓库链接
 
             ### 安装说明
             1. 下载下方 APK 文件
             2. 安装到手机（允许未知来源）
-            3. 首次启动完成语言 / API / 权限 / 协议 四步引导
+            3. 首次启动完成 API 配置 / Shizuku(Dhizuku) 授权 / 协议 三步引导
             4. 开始与 AURA 对话
+
+            ### 致谢
+            - AndroidLiquidGlass：https://github.com/Kyant0/AndroidLiquidGlass（Apache-2.0）
 
             ### 原作者
             - 原作者主页：https://github.com/1953187487

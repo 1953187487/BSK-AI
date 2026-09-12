@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.SystemUpdateAlt
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
@@ -83,6 +84,8 @@ import com.bskai.update.RemoteRelease
 import com.bskai.update.UpdateInstaller
 import com.bskai.util.Permissions
 import com.bskai.workspace.WorkspaceEntry
+import com.bskai.ui.glass.GlassPanel
+import com.bskai.ui.glass.rememberGlassColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -104,6 +107,7 @@ fun SettingsScreen(
     var showDevToolsDialog by remember { mutableStateOf(false) }
     var showWorkspaceDialog by remember { mutableStateOf(false) }
 
+    val glass = rememberGlassColors()
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -171,6 +175,18 @@ fun SettingsScreen(
                     title = "开发工具",
                     subtitle = "管理终端环境中的开发工具",
                     onClick = { showDevToolsDialog = true }
+                )
+            }
+        }
+
+        item {
+            SettingsSection(title = "视频生成") {
+                SettingsItem(
+                    icon = Icons.Default.VideoLibrary,
+                    title = "双模型视频生成",
+                    subtitle = if (settings.videoGen.enabled) "已启用 · 脚本:${settings.videoGen.scriptModel.ifBlank { settings.apiModel.ifEmpty { "未选" } }} / 视频:${settings.videoGen.videoModel.ifEmpty { "未选" }}"
+                    else "已关闭 · 在模型配置中选择脚本模型与本地视频模型",
+                    onClick = { app.settings.update { it.copy(videoGen = it.videoGen.copy(enabled = !it.videoGen.enabled)) } }
                 )
             }
         }
@@ -260,18 +276,16 @@ fun SettingsScreen(
 
 @Composable
 private fun SettingsSection(title: String, content: @Composable () -> Unit) {
+    val glass = rememberGlassColors()
     Column {
         Text(
             text = title,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary,
+            color = glass.accent,
             modifier = Modifier.padding(bottom = 8.dp)
         )
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        ) {
+        GlassPanel(shape = RoundedCornerShape(18.dp)) {
             Column(modifier = Modifier.padding(vertical = 4.dp)) {
                 content()
             }
@@ -286,32 +300,28 @@ private fun SettingsItem(
     subtitle: String,
     onClick: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.01f)
+    val glass = rememberGlassColors()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(22.dp)
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = glass.accent,
+            modifier = Modifier.size(22.dp)
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.Medium, color = glass.content)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = glass.contentMuted
             )
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.Medium)
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
     }
 }

@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import com.bskai.agent.AgentEngine
 import com.bskai.agent.Coordinator
+import com.bskai.agent.VideoGenCoordinator
 import com.bskai.agent.slash.ClearCommand
 import com.bskai.agent.slash.HelpCommand
 import com.bskai.agent.slash.ModelPickCommand
@@ -28,6 +29,8 @@ class AuraApp : Application() {
     lateinit var agent: AgentEngine
         private set
     lateinit var coordinator: Coordinator
+        private set
+    lateinit var videoGen: VideoGenCoordinator
         private set
     lateinit var shizuku: ShizukuBridge
         private set
@@ -84,6 +87,14 @@ class AuraApp : Application() {
             it.slashRegistry = slashRegistry
         }
         coordinator = Coordinator(settings, agent)
+        videoGen = VideoGenCoordinator(this, settings, agent)
+
+        // /video 斜杠命令（依赖 videoGen，注册在 slashRegistry 上供 UI 使用）
+        slashRegistry.register(
+            com.bskai.agent.slash.VideoGenCommand(
+                generate = { prompt -> videoGen.generateVideo(prompt) }
+            )
+        )
     }
 
     fun applyLocale() {

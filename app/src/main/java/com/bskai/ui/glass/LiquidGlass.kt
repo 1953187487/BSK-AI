@@ -50,6 +50,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kyant.backdrop.liquidGlassBackdrop
+import com.kyant.backdrop.liquidGlassRim
+import com.kyant.backdrop.effects.LensStyle
 
 data class GlassColors(
     val fillTop: Color,
@@ -89,10 +92,13 @@ fun rememberGlassColors(accent: Color = MaterialTheme.colorScheme.primary): Glas
     }
 }
 
-fun Modifier.liquidGlass(
+/**
+ * Core glass surface visual: translucent gradient fill, AGSL rim highlight
+ * (AndroidLiquidGlass highlight shader, API 33+) and gradient border.
+ */
+fun Modifier.glassSurface(
     shape: Shape,
     colors: GlassColors,
-    alpha: Float = 1f,
     borderWidth: Dp = 1.dp
 ): Modifier = this
     .clip(shape)
@@ -113,7 +119,21 @@ fun Modifier.liquidGlass(
             )
         )
     }
+    .liquidGlassRim(
+        shape = shape,
+        color = colors.highlight.copy(alpha = colors.highlight.alpha * 0.45f),
+        angleDegrees = -45f,
+        falloff = 1.5f
+    )
     .border(borderWidth, Brush.verticalGradient(listOf(colors.border, colors.border.copy(alpha = colors.border.alpha * 0.4f))), shape)
+
+fun Modifier.liquidGlass(
+    shape: Shape,
+    colors: GlassColors,
+    alpha: Float = 1f,
+    borderWidth: Dp = 1.dp
+): Modifier = this
+    .glassSurface(shape, colors, borderWidth)
     .graphicsLayer(alpha = alpha)
 
 @Composable
@@ -123,11 +143,21 @@ fun GlassPanel(
     colors: GlassColors = rememberGlassColors(),
     content: @Composable () -> Unit
 ) {
-    Box(
-        modifier = modifier
-            .liquidGlass(shape, colors)
-            .then(Modifier)
-    ) {
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .liquidGlassBackdrop(
+                    shape = shape,
+                    lens = LensStyle(
+                        refractionHeight = 24.dp,
+                        refractionAmount = 0.08f,
+                        depthEffect = 0.02f,
+                        chromaticAberration = 0.3f
+                    )
+                )
+                .glassSurface(shape, colors)
+        )
         content()
     }
 }
@@ -183,6 +213,63 @@ fun GlassTopNav(
                 Text(
                     text = item.label,
                     modifier = Modifier.padding(start = 7.dp),
+                    color = if (isSelected) colors.onAccent else colors.contentMuted,
+                    fontSize = 13.sp,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GlassBottomNav(
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    items: List<GlassNavItem> = GlassNavItem.entries.toList()
+) {
+    val colors = rememberGlassColors()
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .liquidGlass(RoundedCornerShape(26.dp), colors)
+            .padding(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        items.forEachIndexed { index, item ->
+            val isSelected = selected == index
+            val bgAlpha by animateFloatAsState(
+                targetValue = if (isSelected) 1f else 0f,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                label = "glassBottomNavBg"
+            )
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(21.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(colors.accent.copy(alpha = 0.90f * bgAlpha), colors.accent.copy(alpha = 0.65f * bgAlpha))
+                        )
+                    )
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onSelect(index) }
+                    .padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = item.icon,
+                    contentDescription = item.label,
+                    tint = if (isSelected) colors.onAccent else colors.contentMuted,
+                    modifier = Modifier.size(19.dp)
+                )
+                Text(
+                    text = item.label,
+                    modifier = Modifier.padding(start = 8.dp),
                     color = if (isSelected) colors.onAccent else colors.contentMuted,
                     fontSize = 13.sp,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium

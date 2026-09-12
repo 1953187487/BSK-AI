@@ -160,6 +160,19 @@ class AgentEngine(
         append(ChatMsg("assistant", text))
     }
 
+    /**
+     * 输出一个视频产物消息（双模型视频生成结果），由 UI 渲染为可播放卡片。
+     */
+    fun emitVideo(artifact: com.bskai.data.VideoArtifact) {
+        append(
+            ChatMsg(
+                role = "video",
+                content = "已生成视频：${artifact.videoModel}（脚本：${artifact.scriptModel}）",
+                toolName = artifact.videoPath
+            )
+        )
+    }
+
     fun clearConversation() {
         _conversation.value = emptyList()
     }

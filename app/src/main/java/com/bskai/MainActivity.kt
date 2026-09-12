@@ -15,8 +15,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import com.bskai.ui.AuraScaffold
-import com.bskai.ui.legal.FourStepAgreementDialog
+import com.bskai.ui.legal.OnboardingDialog
 import com.bskai.ui.theme.AuraTheme
+import com.bskai.ui.welcome.WhatsNewScreen
 import com.bskai.data.Agreements
 
 class MainActivity : ComponentActivity() {
@@ -64,15 +65,29 @@ private fun AppRoot(app: AuraApp) {
     var showMain by rememberSaveable { mutableStateOf(initialAgreed && !needsResign) }
 
     if (showAgreement) {
-        FourStepAgreementDialog(
-            onComplete = {
-                app.settings.setAgreed()
-                app.settings.setAgreementVersion(currentVersion)
-                app.settings.markSessionAgreement(currentVersion)
-                showAgreement = false
-                showMain = true
-            }
-        )
+        if (!initialAgreed) {
+            OnboardingDialog(
+                app = app,
+                onComplete = {
+                    app.settings.setAgreed()
+                    app.settings.setAgreementVersion(currentVersion)
+                    app.settings.markSessionAgreement(currentVersion)
+                    app.settings.setLastSeenVersion(currentVersion)
+                    showAgreement = false
+                    showMain = true
+                }
+            )
+        } else {
+            WhatsNewScreen(
+                onDone = {
+                    app.settings.setAgreementVersion(currentVersion)
+                    app.settings.markSessionAgreement(currentVersion)
+                    app.settings.setLastSeenVersion(currentVersion)
+                    showAgreement = false
+                    showMain = true
+                }
+            )
+        }
     }
     if (showMain) {
         AuraScaffold(app = app)
