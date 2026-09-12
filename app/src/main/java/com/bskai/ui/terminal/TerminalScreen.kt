@@ -21,19 +21,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -55,20 +49,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bskai.BuildConfig
 import com.bskai.permission.ShizukuBridge
 import com.bskai.terminal.TerminalEngine
+import com.bskai.ui.glass.GlassChip
+import com.bskai.ui.glass.GlassIconButton
+import com.bskai.ui.glass.GlassPanel
+import com.bskai.ui.glass.GlassTextField
+import com.bskai.ui.glass.rememberGlassColors
 import kotlinx.coroutines.launch
 
-private val COLOR_BG = Color(0xFF0D1117)
-private val COLOR_SURFACE = Color(0xFF161B22)
-private val COLOR_DIVIDER = Color(0xFF21262D)
-private val COLOR_TEXT = Color(0xFFE6EDF3)
-private val COLOR_MUTED = Color(0xFF8B949E)
-private val COLOR_GREEN = Color(0xFF3FB950)
-private val COLOR_BLUE = Color(0xFF58A6FF)
-private val COLOR_RED = Color(0xFFF85149)
-private val COLOR_INPUT_BORDER = Color(0xFF30363D)
-private val COLOR_PLACEHOLDER = Color(0xFF484F58)
+private val TERM_BG = Color(0xCC0A0E18)
+private val TERM_TEXT = Color(0xFFE6EDF3)
+private val TERM_MUTED = Color(0xFF8B949E)
+private val TERM_GREEN = Color(0xFF3FB950)
+private val TERM_BLUE = Color(0xFF58A6FF)
+private val TERM_RED = Color(0xFFF85149)
 
 @Composable
 fun TerminalScreen(
@@ -122,159 +118,146 @@ fun TerminalScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(COLOR_BG)
             .imePadding()
-            .navigationBarsPadding()
     ) {
-        Surface(
-            color = COLOR_SURFACE,
-            shadowElevation = 4.dp
+        GlassPanel(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                TerminalEngine.Backend.entries.forEach { b ->
+                    val enabled = when (b) {
+                        TerminalEngine.Backend.LOCAL -> true
+                        TerminalEngine.Backend.SHIZUKU -> shizukuState == ShizukuBridge.State.GRANTED
+                        TerminalEngine.Backend.ROOT -> true
+                    }
+                    GlassChip(
+                        text = b.name,
+                        selected = backend == b,
+                        enabled = enabled,
+                        onClick = { engine.setBackend(b) }
+                    )
+                }
+                if (shizukuState == ShizukuBridge.State.NEED_PERMISSION) {
+                    GlassChip(
+                        text = "授权 Shizuku",
+                        selected = false,
+                        onClick = { shizuku?.requestPermission() }
+                    )
+                } else if (shizukuState == ShizukuBridge.State.UNAVAILABLE) {
+                    Text(
+                        text = "Shizuku 未安装",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TERM_MUTED
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                GlassIconButton(
+                    icon = Icons.Default.ContentCopy,
+                    contentDescription = "复制全部",
+                    size = 34.dp,
+                    onClick = { copyAll() }
+                )
+                GlassIconButton(
+                    icon = Icons.Default.ClearAll,
+                    contentDescription = "清空",
+                    size = 34.dp,
+                    onClick = { clearHistory() }
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        GlassPanel(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(listOf(TERM_BG, Color(0xE60A0E18))),
+                        RoundedCornerShape(20.dp)
+                    )
+            ) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().padding(14.dp)
+                ) {
+                    if (history.isEmpty()) {
+                        item {
+                            Column {
+                                Text(
+                                    text = "AURA Terminal v${BuildConfig.APP_VERSION}",
+                                    style = TextStyle(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 13.sp,
+                                        color = TERM_GREEN,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = "LOCAL     应用沙盒权限\nSHIZUKU   Shizuku 提权（免 root）\nROOT      直接 root 执行\n\n危险命令自动拦截\nAI 可通过 run_shell 工具调用",
+                                    style = TextStyle(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 11.sp,
+                                        color = TERM_MUTED,
+                                        lineHeight = 17.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+                    items(history) { line -> HistoryLineView(line) }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        GlassPanel(
+            shape = RoundedCornerShape(24.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "AURA Terminal",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = COLOR_TEXT,
-                    fontFamily = FontFamily.Monospace
+                    text = "$",
+                    color = TERM_GREEN,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 15.sp
                 )
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    text = backend.name.lowercase(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = when (backend) {
-                        TerminalEngine.Backend.LOCAL -> COLOR_GREEN
-                        TerminalEngine.Backend.SHIZUKU -> COLOR_BLUE
-                        TerminalEngine.Backend.ROOT -> COLOR_RED
-                    },
-                    fontFamily = FontFamily.Monospace
+                GlassTextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = "输入命令…",
+                    textStyle = TextStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = { run() })
                 )
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = { copyAll() }) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = "复制全部", modifier = Modifier.size(18.dp), tint = COLOR_MUTED)
-                }
-                IconButton(onClick = { clearHistory() }) {
-                    Icon(Icons.Default.ClearAll, contentDescription = "清空", modifier = Modifier.size(18.dp), tint = COLOR_MUTED)
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            TerminalEngine.Backend.entries.forEach { b ->
-                val enabled = when (b) {
-                    TerminalEngine.Backend.LOCAL -> true
-                    TerminalEngine.Backend.SHIZUKU -> shizukuState == ShizukuBridge.State.GRANTED
-                    TerminalEngine.Backend.ROOT -> true
-                }
-                FilterChip(
-                    selected = backend == b,
-                    onClick = { engine.setBackend(b) },
-                    enabled = enabled,
-                    label = { Text(b.name, fontSize = 11.sp) }
+                Spacer(Modifier.width(8.dp))
+                GlassIconButton(
+                    icon = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = "执行",
+                    size = 40.dp,
+                    tint = TERM_GREEN,
+                    onClick = { run() }
                 )
-            }
-            if (shizukuState == ShizukuBridge.State.NEED_PERMISSION) {
-                AssistChip(
-                    onClick = { shizuku?.requestPermission() },
-                    label = { Text("授权 Shizuku", fontSize = 11.sp) },
-                    leadingIcon = { Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                )
-            } else if (shizukuState == ShizukuBridge.State.UNAVAILABLE) {
-                Text(
-                    text = "Shizuku 未安装",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = COLOR_MUTED
-                )
-            }
-        }
-
-        HorizontalDivider(color = COLOR_DIVIDER)
-
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().padding(12.dp)
-            ) {
-                if (history.isEmpty()) {
-                    item {
-                        Column {
-                            Text(
-                                text = "╭──────────────────────────────────────╮",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace,
-                                color = COLOR_GREEN
-                            )
-                            Text(
-                                text = "│  Welcome to AURA Terminal v2.0.9     │",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace,
-                                color = COLOR_GREEN
-                            )
-                            Text(
-                                text = "╰──────────────────────────────────────╯",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace,
-                                color = COLOR_GREEN
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = "  • LOCAL  — 应用沙盒权限\n  • SHIZUKU — Shizuku 提权（免 root）\n  • ROOT   — 直接 root 执行\n\n  危险命令自动拦截\n  AI 可通过 run_shell 工具调用",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace,
-                                color = COLOR_MUTED,
-                                lineHeight = 18.sp
-                            )
-                        }
-                    }
-                }
-                items(history) { line -> HistoryLineView(line) }
-            }
-        }
-
-        HorizontalDivider(color = COLOR_DIVIDER)
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "$ ",
-                color = COLOR_GREEN,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 14.sp
-            )
-            OutlinedTextField(
-                value = input,
-                onValueChange = { input = it },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("输入命令...", color = COLOR_PLACEHOLDER) },
-                singleLine = true,
-                shape = RoundedCornerShape(8.dp),
-                textStyle = TextStyle(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 14.sp,
-                    color = COLOR_TEXT
-                ),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = COLOR_GREEN,
-                    unfocusedBorderColor = COLOR_INPUT_BORDER,
-                    cursorColor = COLOR_GREEN,
-                    focusedContainerColor = COLOR_BG,
-                    unfocusedContainerColor = COLOR_BG
-                ),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { run() })
-            )
-            Spacer(Modifier.width(8.dp))
-            IconButton(onClick = { run() }) {
-                Icon(Icons.Default.PlayArrow, contentDescription = "执行", tint = COLOR_GREEN)
             }
         }
     }
@@ -286,21 +269,23 @@ private fun HistoryLineView(line: HistoryLine) {
         if (line.command.isNotEmpty()) {
             Text(
                 text = line.prompt + " " + line.command,
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace,
-                color = COLOR_BLUE,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp
+                style = TextStyle(
+                    fontFamily = FontFamily.Monospace,
+                    color = TERM_BLUE,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp
+                )
             )
         }
         if (line.output.isNotEmpty()) {
             Text(
                 text = line.output,
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace,
-                color = if (line.isError) COLOR_RED else COLOR_TEXT,
-                fontSize = 12.sp,
-                lineHeight = 16.sp
+                style = TextStyle(
+                    fontFamily = FontFamily.Monospace,
+                    color = if (line.isError) TERM_RED else TERM_TEXT,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp
+                )
             )
         }
     }

@@ -1,12 +1,11 @@
 package com.bskai.ui.legal
 
 import android.Manifest
-import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,16 +24,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -56,15 +50,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.bskai.BuildConfig
 import com.bskai.data.AgreementSection
 import com.bskai.data.Agreements
 import com.bskai.data.DefaultApiUrlPresets
 import com.bskai.data.Language
 import com.bskai.data.loadLanguages
+import com.bskai.ui.glass.GlassButton
+import com.bskai.ui.glass.GlassPanel
+import com.bskai.ui.glass.rememberGlassColors
 
 @Composable
 fun FourStepAgreementDialog(onComplete: () -> Unit) {
@@ -73,16 +68,16 @@ fun FourStepAgreementDialog(onComplete: () -> Unit) {
     var apiUrl by rememberSaveable { mutableStateOf("") }
     var apiKey by rememberSaveable { mutableStateOf("") }
     var agreedOpenSource by rememberSaveable { mutableStateOf(false) }
-    var agreedPrivacy by rememberSaveable { mutableStateOf(false) }
+    var agreedUserNotice by rememberSaveable { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val languages = remember { loadLanguages(context) }
+    val glass = rememberGlassColors()
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
             Spacer(Modifier.height(16.dp))
 
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -95,15 +90,15 @@ fun FourStepAgreementDialog(onComplete: () -> Unit) {
                     color = MaterialTheme.colorScheme.primary
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    repeat(5) { i ->
+                    repeat(4) { i ->
                         Box(
                             modifier = Modifier
                                 .padding(horizontal = 2.dp)
                                 .size(8.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(
-                                    if (i <= step) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.surfaceVariant
+                                .androidClip(RoundedCornerShape(4.dp))
+                                .then(
+                                    if (i <= step) Modifier.background(glass.accent, RoundedCornerShape(4.dp))
+                                    else Modifier.background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp))
                                 )
                         )
                     }
@@ -112,7 +107,6 @@ fun FourStepAgreementDialog(onComplete: () -> Unit) {
 
             Spacer(Modifier.height(12.dp))
 
-            // Content
             Box(modifier = Modifier.weight(1f)) {
                 when (step) {
                     0 -> LanguageStepContent(
@@ -122,18 +116,17 @@ fun FourStepAgreementDialog(onComplete: () -> Unit) {
                         apiUrl = apiUrl, apiKey = apiKey,
                         onUrlChange = { apiUrl = it }, onKeyChange = { apiKey = it }
                     )
-                    2 -> PermissionStepContent()
-                    3 -> BuildToolsStepContent()
-                    4 -> AgreementStepContent(
-                        agreedOpenSource = agreedOpenSource, agreedPrivacy = agreedPrivacy,
-                        onToggleOpenSource = { agreedOpenSource = it }, onTogglePrivacy = { agreedPrivacy = it }
+                    2 -> PermissionAndToolsStepContent()
+                    3 -> AgreementStepContent(
+                        agreedOpenSource = agreedOpenSource, agreedUserNotice = agreedUserNotice,
+                        onToggleOpenSource = { agreedOpenSource = it },
+                        onToggleUserNotice = { agreedUserNotice = it }
                     )
                 }
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
 
-            // Bottom buttons
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -142,13 +135,17 @@ fun FourStepAgreementDialog(onComplete: () -> Unit) {
                 TextButton(onClick = { if (step > 0) step -= 1 }, enabled = step > 0) {
                     Text(if (step == 0) "退出" else "上一步")
                 }
-                Button(
+                GlassButton(
+                    text = when (step) {
+                        0 -> "下一步"
+                        1 -> "下一步"
+                        2 -> "跳过"
+                        3 -> "同意并开始使用"
+                        else -> "下一步"
+                    },
                     enabled = when (step) {
                         0 -> languageCode.isNotBlank()
-                        1 -> true
-                        2 -> true
-                        3 -> true
-                        4 -> agreedOpenSource && agreedPrivacy
+                        3 -> agreedOpenSource && agreedUserNotice
                         else -> true
                     },
                     onClick = {
@@ -156,22 +153,10 @@ fun FourStepAgreementDialog(onComplete: () -> Unit) {
                             0 -> step = 1
                             1 -> step = 2
                             2 -> step = 3
-                            3 -> step = 4
-                            4 -> onComplete()
+                            3 -> onComplete()
                         }
                     }
-                ) {
-                    Text(
-                        when (step) {
-                            0 -> "下一步"
-                            1 -> "下一步"
-                            2 -> "跳过"
-                            3 -> "跳过"
-                            4 -> "同意并开始使用"
-                            else -> "下一步"
-                        }
-                    )
-                }
+                )
             }
         }
     }
@@ -188,6 +173,7 @@ private fun LanguageStepContent(
         if (search.isBlank()) languages
         else languages.filter { it.name.contains(search, true) || it.nativeName.contains(search, true) }
     }
+    val glass = rememberGlassColors()
 
     Column(modifier = Modifier.fillMaxSize()) {
         Text("选择界面语言", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
@@ -221,22 +207,29 @@ private fun LanguageStepContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            if (selected == lang.code) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                            else Color.Transparent
+                        .androidClip(RoundedCornerShape(12.dp))
+                        .then(
+                            if (selected == lang.code) Modifier.background(
+                                glass.accent.copy(alpha = 0.18f),
+                                RoundedCornerShape(12.dp)
+                            ) else Modifier
                         )
-                        .clickable { onSelect(lang.code) }
+                        .androidClickable { onSelect(lang.code) }
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
                             .size(18.dp)
-                            .clip(RoundedCornerShape(9.dp))
-                            .background(
-                                if (selected == lang.code) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant
+                            .androidClip(RoundedCornerShape(9.dp))
+                            .then(
+                                if (selected == lang.code) androidx.compose.ui.Modifier.background(
+                                    glass.accent,
+                                    RoundedCornerShape(9.dp)
+                                ) else androidx.compose.ui.Modifier.background(
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    RoundedCornerShape(9.dp)
+                                )
                             ),
                         contentAlignment = Alignment.Center
                     ) {
@@ -282,7 +275,7 @@ private fun ApiConfigStepContent(
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             DefaultApiUrlPresets.forEach { preset ->
                 Surface(
-                    modifier = Modifier.clickable { onUrlChange(preset) },
+                    modifier = Modifier.androidClickable { onUrlChange(preset) },
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                 ) {
@@ -299,88 +292,59 @@ private fun ApiConfigStepContent(
 }
 
 @Composable
-private fun PermissionStepContent() {
+private fun PermissionAndToolsStepContent() {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
-
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Text("授权权限", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-        Text(
-            "应用需要以下权限以提供完整功能。您可以跳过此步骤，稍后在系统设置中授权。",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(16.dp))
-
-        PermissionCard(
-            title = "通知权限",
-            description = "用于显示后台通知",
-            onGrant = { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }
-        )
-        Spacer(Modifier.height(12.dp))
-        PermissionCard(
-            title = "存储权限",
-            description = "用于读写工作区文件",
-            onGrant = { notifLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE) }
-        )
-    }
-}
-
-@Composable
-private fun PermissionCard(title: String, description: String, onGrant: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-    ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.Medium)
-                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            TextButton(onClick = onGrant) { Text("授权") }
-        }
-    }
-}
-
-@Composable
-private fun BuildToolsStepContent() {
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     var downloading by remember { mutableStateOf(false) }
     var downloaded by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Text("开发工具", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        Text("权限与开发工具", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(
-            "下载构建工具以在应用内开发 Android 应用。您可以跳过此步骤，稍后在设置中下载。",
+            "授权基础权限并准备构建工具，均为可选步骤，稍后可在设置中完成。",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(14.dp))
 
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+        GlassPanel(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("通知权限", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                    Text("用于显示后台通知", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                TextButton(onClick = { permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }) { Text("授权") }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        GlassPanel(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("存储权限", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                    Text("用于读写工作区文件", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                TextButton(onClick = { permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE) }) { Text("授权") }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        GlassPanel(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Build, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("APK 构建工具", fontWeight = FontWeight.Medium)
-                        Text(
-                            "包含 aapt2、d8、apksigner 等 Android 构建工具链",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Text("APK 构建工具", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                        Text("包含 aapt2、d8、apksigner 等构建工具链", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 if (downloading || downloaded) {
-                    Spacer(Modifier.height(12.dp))
-                    LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(6.dp))
+                    Spacer(Modifier.height(10.dp))
+                    LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = if (downloaded) "下载完成" else "${(progress * 100).toInt()}%",
@@ -389,24 +353,17 @@ private fun BuildToolsStepContent() {
                     )
                 }
                 if (!downloading && !downloaded) {
-                    Spacer(Modifier.height(12.dp))
-                    Button(
+                    Spacer(Modifier.height(10.dp))
+                    GlassButton(
+                        text = "下载构建工具",
+                        modifier = Modifier.fillMaxWidth(),
                         onClick = {
                             downloading = true
                             progress = 0.3f
                             downloaded = true
                             downloading = false
                             progress = 1f
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("下载构建工具") }
-                }
-                if (downloaded) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "✓ 已就绪，可以在应用开发模式中构建 APK",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
+                        }
                     )
                 }
             }
@@ -416,13 +373,13 @@ private fun BuildToolsStepContent() {
 
 @Composable
 private fun AgreementStepContent(
-    agreedOpenSource: Boolean, agreedPrivacy: Boolean,
-    onToggleOpenSource: (Boolean) -> Unit, onTogglePrivacy: (Boolean) -> Unit
+    agreedOpenSource: Boolean, agreedUserNotice: Boolean,
+    onToggleOpenSource: (Boolean) -> Unit, onToggleUserNotice: (Boolean) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Text("开源协议与用户须知", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(
-            "请阅读并同意以下条款后继续使用 AURA。",
+            "请阅读并同意以下两份协议后继续使用 AURA。",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -430,47 +387,50 @@ private fun AgreementStepContent(
 
         AgreementCard(section = Agreements.openSource, checked = agreedOpenSource, onCheckedChange = onToggleOpenSource)
         Spacer(Modifier.height(12.dp))
-        AgreementCard(
-            section = Agreements.privacy.copy(body = Agreements.renderPrivacy(BuildConfig.APP_VERSION)),
-            checked = agreedPrivacy,
-            onCheckedChange = onTogglePrivacy
-        )
+        AgreementCard(section = Agreements.userNotice.copy(body = Agreements.renderUserNotice()), checked = agreedUserNotice, onCheckedChange = onToggleUserNotice)
         Spacer(Modifier.height(12.dp))
     }
 }
 
 @Composable
 private fun AgreementCard(section: AgreementSection, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    val glass = rememberGlassColors()
+    GlassPanel(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp)) {
-            Text(section.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(section.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = glass.content)
             Spacer(Modifier.height(8.dp))
             Text(
                 section.body,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = glass.contentMuted,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(4.dp))
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable { onCheckedChange(!checked) }
-                    .padding(vertical = 2.dp),
+                modifier = Modifier.fillMaxWidth().androidClickable { onCheckedChange(!checked) },
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Checkbox(checked = checked, onCheckedChange = onCheckedChange)
+                Checkbox(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange,
+                    colors = CheckboxDefaults.colors(checkedColor = glass.accent)
+                )
                 Text(
                     "我已阅读并同意",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    color = if (checked) glass.accent else glass.content
                 )
             }
         }
     }
 }
+
+private fun Modifier.androidClickable(onClick: () -> Unit): Modifier =
+    this.clickable(
+        interactionSource = MutableInteractionSource(),
+        indication = null,
+        onClick = onClick
+    )
+
+private fun Modifier.androidClip(shape: RoundedCornerShape): Modifier =
+    this.clip(shape)

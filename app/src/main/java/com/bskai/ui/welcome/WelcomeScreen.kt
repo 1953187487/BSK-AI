@@ -241,7 +241,7 @@ private fun AgreementStep(
         AgreementCard(section = Agreements.openSource, checked = agreedOpenSource, onCheckedChange = onToggleOpenSource)
         Spacer(Modifier.height(12.dp))
         AgreementCard(
-            section = Agreements.privacy.copy(body = Agreements.renderPrivacy(com.bskai.BuildConfig.APP_VERSION)),
+            section = Agreements.userNotice.copy(body = Agreements.renderUserNotice()),
             checked = agreedPrivacy,
             onCheckedChange = onTogglePrivacy
         )

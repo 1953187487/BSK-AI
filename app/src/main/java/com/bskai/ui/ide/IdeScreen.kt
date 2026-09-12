@@ -17,36 +17,30 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,33 +48,44 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bskai.AuraApp
 import com.bskai.terminal.AndroidDependencyManager
+import com.bskai.ui.glass.GlassButton
+import com.bskai.ui.glass.GlassChip
+import com.bskai.ui.glass.GlassIconButton
+import com.bskai.ui.glass.GlassPanel
+import com.bskai.ui.glass.GlassSegmented
+import com.bskai.ui.glass.rememberGlassColors
 import com.bskai.workspace.WorkspaceEntry
-import com.bskai.workspace.WorkspaceManager
 import com.bskai.workspace.WorkspaceNode
 import kotlinx.coroutines.launch
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class)
+private val OUT_BG = Color(0xCC0A0E18)
+private val OUT_TEXT = Color(0xFFE6EDF3)
+private val OUT_MUTED = Color(0xFF8B949E)
+private val OUT_GREEN = Color(0xFF3FB950)
+
 @Composable
 fun IdeScreen(app: AuraApp) {
-    val settings by app.settings.settings.collectAsState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val glass = rememberGlassColors()
 
     var currentProject by remember { mutableStateOf<WorkspaceEntry?>(null) }
     var projectFiles by remember { mutableStateOf<List<WorkspaceNode>>(emptyList()) }
     var selectedFile by remember { mutableStateOf<String?>(null) }
     var fileContent by remember { mutableStateOf("") }
+    var fileDirty by remember { mutableStateOf(false) }
     var outputLog by remember { mutableStateOf("") }
     var isBuilding by remember { mutableStateOf(false) }
     var showNewProjectDialog by remember { mutableStateOf(false) }
@@ -96,112 +101,132 @@ fun IdeScreen(app: AuraApp) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Code, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(8.dp))
-                        Column {
-                            Text("AURA IDE", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text(
-                                currentProject?.name ?: "未选择项目",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+    Column(modifier = Modifier.fillMaxSize()) {
+        GlassPanel(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "AURA IDE",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = glass.content
+                    )
+                    Text(
+                        currentProject?.name ?: "未选择项目",
+                        fontSize = 11.sp,
+                        color = glass.contentMuted
+                    )
+                }
+                GlassIconButton(
+                    icon = Icons.Default.Add,
+                    contentDescription = "新建项目",
+                    size = 34.dp,
+                    onClick = { showNewProjectDialog = true }
+                )
+                Spacer(Modifier.width(6.dp))
+                GlassIconButton(
+                    icon = Icons.Default.Download,
+                    contentDescription = "依赖管理",
+                    size = 34.dp,
+                    onClick = { showDependencyDialog = true }
+                )
+                Spacer(Modifier.width(6.dp))
+                GlassIconButton(
+                    icon = Icons.Default.Refresh,
+                    contentDescription = "刷新",
+                    size = 34.dp,
+                    onClick = {
+                        if (currentProject != null) {
+                            scope.launch { projectFiles = app.workspace.listRoot() }
                         }
                     }
-                },
-                actions = {
-                    IconButton(onClick = { showNewProjectDialog = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "新建项目")
-                    }
-                    IconButton(onClick = { showDependencyDialog = true }) {
-                        Icon(Icons.Default.Download, contentDescription = "依赖管理")
-                    }
-                    IconButton(onClick = {
-                        if (currentProject != null) {
+                )
+                Spacer(Modifier.width(6.dp))
+                Box(contentAlignment = Alignment.Center) {
+                    GlassIconButton(
+                        icon = if (isBuilding) Icons.Default.Build else Icons.Default.PlayArrow,
+                        contentDescription = "构建 APK",
+                        size = 40.dp,
+                        onClick = {
+                            if (isBuilding) return@GlassIconButton
                             scope.launch {
-                                projectFiles = app.workspace.listRoot()
+                                isBuilding = true
+                                outputLog = ""
+                                currentTab = 1
+                                val projectDir = app.workspace.active?.let { ws ->
+                                    if (ws.kind == WorkspaceEntry.Kind.INTERNAL) {
+                                        File(context.filesDir, "workspaces/${ws.id}").absolutePath
+                                    } else null
+                                }
+                                if (projectDir != null) {
+                                    outputLog += "开始构建...\n"
+                                    val result = app.terminal.execute("cd $projectDir && ./gradlew assembleDebug 2>&1")
+                                    outputLog += result.stdout + "\n" + result.stderr
+                                    outputLog += "\n构建完成，退出码: ${result.exitCode}\n"
+                                } else {
+                                    outputLog = "请先选择或创建一个内部工作区项目。"
+                                }
+                                isBuilding = false
                             }
                         }
-                    }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    )
+                    if (isBuilding) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(40.dp).padding(8.dp),
+                            strokeWidth = 2.dp
+                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
+                }
+            }
+        }
 
+        Spacer(Modifier.height(8.dp))
+
+        GlassSegmented(
+            options = listOf("文件", "输出"),
+            selected = currentTab,
+            onSelect = { currentTab = it },
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when (currentTab) {
                 0 -> IdeFileBrowserTab(
                     app = app,
                     projectFiles = projectFiles,
+                    selectedFile = selectedFile,
                     onFileSelected = { node ->
                         selectedFile = node.path
+                        fileDirty = false
                         if (!node.isDirectory) {
                             scope.launch {
-                                val content = app.workspace.readRelative(node.path)
-                                fileContent = content ?: ""
+                                fileContent = app.workspace.readRelative(node.path) ?: ""
                             }
                         }
                     },
                     fileContent = fileContent,
-                    onFileContentChange = { fileContent = it },
+                    fileDirty = fileDirty,
+                    onFileContentChange = {
+                        fileContent = it
+                        fileDirty = true
+                    },
                     onFileSave = { path, content ->
                         scope.launch {
                             app.workspace.writeRelative(path, content)
+                            fileDirty = false
                             projectFiles = app.workspace.listRoot()
                         }
                     }
                 )
-                1 -> IdeOutputTab(outputLog = outputLog)
-            }
-        }
-
-        // Floating Build Button - Top Right Corner
-        FloatingActionButton(
-            onClick = {
-                scope.launch {
-                    isBuilding = true
-                    outputLog = ""
-                    val projectDir = app.workspace.active?.let { ws ->
-                        if (ws.kind == WorkspaceEntry.Kind.INTERNAL) {
-                            File(context.filesDir, "workspaces/${ws.id}").absolutePath
-                        } else null
-                    }
-                    if (projectDir != null) {
-                        outputLog += "开始构建...\n"
-                        val result = app.terminal.execute("cd $projectDir && ./gradlew assembleDebug 2>&1")
-                        outputLog += result.stdout + "\n" + result.stderr
-                        outputLog += "\n构建完成，退出码: ${result.exitCode}\n"
-                    } else {
-                        outputLog = "请先选择或创建一个内部工作区项目。"
-                    }
-                    isBuilding = false
-                    currentTab = 1
-                }
-            },
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 72.dp, end = 16.dp)
-                .size(56.dp),
-            shape = CircleShape,
-            containerColor = MaterialTheme.colorScheme.primary
-        ) {
-            if (isBuilding) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-            } else {
-                Icon(
-                    Icons.Default.PlayArrow,
-                    contentDescription = "构建",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
+                else -> IdeOutputTab(outputLog = outputLog)
             }
         }
     }
@@ -232,80 +257,99 @@ fun IdeScreen(app: AuraApp) {
 private fun IdeFileBrowserTab(
     app: AuraApp,
     projectFiles: List<WorkspaceNode>,
+    selectedFile: String?,
     onFileSelected: (WorkspaceNode) -> Unit,
     fileContent: String,
+    fileDirty: Boolean,
     onFileContentChange: (String) -> Unit,
     onFileSave: (String, String) -> Unit
 ) {
+    val glass = rememberGlassColors()
     Row(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier.weight(0.4f).fillMaxSize().padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        GlassPanel(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.weight(0.42f).fillMaxSize()
         ) {
-            items(projectFiles) { node ->
-                Surface(
-                    modifier = Modifier.fillMaxWidth()
-                        .clickable { onFileSelected(node) },
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                contentPadding = PaddingValues(vertical = 4.dp)
+            ) {
+                items(projectFiles) { node ->
+                    val isSelected = selectedFile == node.path
                     Row(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                if (isSelected) glass.accent.copy(alpha = 0.18f) else Color.Transparent,
+                                RoundedCornerShape(12.dp)
+                            )
+                            .clickable { onFileSelected(node) }
+                            .padding(horizontal = 10.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             if (node.isDirectory) Icons.Default.Folder else Icons.Default.Code,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = if (node.isDirectory) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
+                            modifier = Modifier.size(16.dp),
+                            tint = if (node.isDirectory) glass.accent else glass.contentMuted
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
                             node.name,
-                            modifier = Modifier.weight(1f),
-                            fontSize = 13.sp
+                            fontSize = 12.sp,
+                            color = glass.content,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
             }
         }
 
-        Surface(
-            modifier = Modifier.weight(0.6f).fillMaxSize().padding(8.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        Spacer(Modifier.width(8.dp))
+
+        GlassPanel(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.weight(0.58f).fillMaxSize()
         ) {
-            Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
-                if (fileContent.isNotEmpty()) {
+            Column(modifier = Modifier.fillMaxSize().padding(10.dp)) {
+                if (selectedFile != null && selectedFile!!.isNotEmpty()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("编辑器", fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                        Button(onClick = {
-                            // Save handled by parent
-                        }) {
-                            Text("保存")
-                        }
+                        Text(
+                            selectedFile!!.substringAfterLast('/') + if (fileDirty) " •" else "",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = glass.content
+                        )
+                        GlassButton(
+                            text = "保存",
+                            onClick = { onFileSave(selectedFile!!, fileContent) }
+                        )
                     }
                     Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
+                    androidx.compose.foundation.text.BasicTextField(
                         value = fileContent,
                         onValueChange = onFileContentChange,
                         modifier = Modifier.fillMaxSize(),
                         textStyle = TextStyle(
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp
-                        )
+                            fontSize = 11.sp,
+                            color = glass.content,
+                            lineHeight = 16.sp
+                        ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
                     )
                 } else {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            "从左侧选择文件进行编辑",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 13.sp
+                            "选择文件开始编辑",
+                            color = glass.contentMuted,
+                            fontSize = 12.sp
                         )
                     }
                 }
@@ -316,26 +360,34 @@ private fun IdeFileBrowserTab(
 
 @Composable
 private fun IdeOutputTab(outputLog: String) {
-    Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
-        Text("构建输出", fontWeight = FontWeight.Medium, fontSize = 14.sp)
-        Spacer(Modifier.height(8.dp))
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            shape = RoundedCornerShape(8.dp),
-            color = Color(0xFF0D1117)
+    GlassPanel(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(listOf(OUT_BG, Color(0xE60A0E18))),
+                    RoundedCornerShape(20.dp)
+                )
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(12.dp),
-                contentPadding = PaddingValues(8.dp)
-            ) {
-                item {
-                    Text(
-                        outputLog.ifEmpty { "暂无输出" },
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
-                        color = Color(0xFFE6EDF3),
-                        lineHeight = 16.sp
-                    )
+            Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+                Text(
+                    "构建输出",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = OUT_GREEN,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(Modifier.height(8.dp))
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    item {
+                        Text(
+                            outputLog.ifEmpty { "暂无输出" },
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            color = if (outputLog.isEmpty()) OUT_MUTED else OUT_TEXT,
+                            lineHeight = 16.sp
+                        )
+                    }
                 }
             }
         }
@@ -397,18 +449,11 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     categories.forEach { cat ->
-                        Surface(
-                            modifier = Modifier.clickable { selectedCategory = cat },
-                            shape = RoundedCornerShape(16.dp),
-                            color = if (selectedCategory == cat) MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                        ) {
-                            Text(
-                                cat,
-                                fontSize = 10.sp,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
+                        GlassChip(
+                            text = cat,
+                            selected = selectedCategory == cat,
+                            onClick = { selectedCategory = cat }
+                        )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -416,15 +461,16 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
                 if (installing) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFF0D1117)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(OUT_BG, RoundedCornerShape(8.dp))
                     ) {
                         Text(
                             installOutput.ifEmpty { "安装中..." },
                             fontFamily = FontFamily.Monospace,
                             fontSize = 10.sp,
-                            color = Color(0xFFE6EDF3),
+                            color = OUT_TEXT,
                             modifier = Modifier.padding(8.dp).heightIn(max = 100.dp)
                         )
                     }
@@ -455,7 +501,7 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
                             Spacer(Modifier.height(8.dp))
                         }
                         items(filteredDeps) { dep ->
-                            Surface(
+                            androidx.compose.material3.Surface(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                                 shape = RoundedCornerShape(8.dp),
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)

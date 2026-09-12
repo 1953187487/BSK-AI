@@ -142,7 +142,7 @@ fun AboutAuraDialog(onDismiss: () -> Unit) {
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    Agreements.renderPrivacy(BuildConfig.APP_VERSION),
+                    Agreements.renderUserNotice(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 18.sp

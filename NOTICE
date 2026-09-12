@@ -1,0 +1,23 @@
+AURA
+Copyright 2026 1953187487 (AURA 原作者)
+
+原作者主页: https://github.com/1953187487
+原仓库地址: https://github.com/1953187487/BSK-AI
+联系邮箱: 1953187487@qq.com
+
+本项目基于 Apache-2.0 许可证开源（详见 LICENSE）。
+
+二次开发（二改）声明：
+任何基于本项目的衍生作品，必须：
+1. 保留本 NOTICE 文件或同等内容的原作者署名；
+2. 在二改项目的 README（仓库介绍）中保留原作者主页与原仓库链接；
+3. 在二改应用内保留原作者归属信息（应用关于页或开源协议页）；
+4. 遵循 Apache-2.0 许可证的全部条款，保留版权声明与许可证文本。
+
+本产品使用的第三方开源组件：
+- Kotlin / Kotlin Coroutines (Apache-2.0)
+- Jetpack Compose / Material 3 / AndroidX (Apache-2.0)
+- OkHttp (Apache-2.0)
+- Media3 ExoPlayer (Apache-2.0)
+- Shizuku / Sui (MIT)
+- org.json (JSON.org License)
