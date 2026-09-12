@@ -84,9 +84,15 @@ private fun buildRenderEffect(
         } else {
             null
         }
+        val runtimeShadersOk = try {
+            RuntimeShader("half4 main(float2 c) { return half4(0.0); }")
+            true
+        } catch (_: Throwable) {
+            false
+        }
         val refraction = if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            isRuntimeShaderSupported() &&
+            runtimeShadersOk &&
             lens.refractionAmount != 0f
         ) {
             createRefractionShader(
@@ -150,9 +156,11 @@ fun Modifier.liquidGlassBackdrop(
             this.shape = shape
             this.clip = clipToShape
             androidEffect?.let { effect ->
-                try {
-                    this.renderEffect = effect.asComposeRenderEffect()
-                } catch (_: Throwable) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    try {
+                        this.renderEffect = effect.asComposeRenderEffect()
+                    } catch (_: Throwable) {
+                    }
                 }
             }
         }
