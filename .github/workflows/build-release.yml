@@ -91,36 +91,30 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: AURA v${{ steps.version.outputs.version }} 预测试版
+          name: AURA v${{ steps.version.outputs.version }} 正式版
           body: |
-            ## AURA v${{ steps.version.outputs.version }} 预测试版
+            ## AURA v${{ steps.version.outputs.version }} 正式版
 
-            ### 核心功能
-            - 实时后台语音监听服务（前台通知持续运行）
-            - 中文语音指令意图识别引擎
-            - 文件管理：移动/复制/删除/搜索手机文件
-            - 媒体控制：播放/暂停/下一首/音量调节
-            - 系统设置切换：蓝牙/WiFi/手电筒/飞行模式等
-            - 无障碍服务辅助屏幕操作
-            - 开机自启 + 自动更新检查
-            - 全新深色紫蓝渐变 UI（Material 3）
+            ### 本版本亮点
+            - 全链路液态玻璃 UI 重写：自研 Liquid Glass 组件库（玻璃面板 / 胶囊导航 / 分段控件 / 玻璃气泡 / 玻璃按钮 / 玻璃输入框）
+            - 全新顶部小导航栏：仅「AI 聊天 / 设置」两入口，终端与 IDE 集成至顶部子导航（对话 / 终端 / IDE）
+            - 聊天界面接入 AgentEngine 真实流式对话，工具调用过程可视化
+            - 终端 / IDE 界面全面换装液态玻璃
+            - 协议精简：仅保留《开源软件许可协议》与《用户须知》，系统公告并入《用户须知》
+            - 二改归属：README / NOTICE / CONTRIBUTING 保留原作者署名与原仓库链接
 
             ### 安装说明
             1. 下载下方 APK 文件
             2. 安装到手机（允许未知来源）
-            3. 首次启动授予录音、存储、通知等权限
-            4. 点击麦克风按钮开始语音对话
+            3. 首次启动完成语言 / API / 权限 / 协议 四步引导
+            4. 开始与 AURA 对话
 
-            ### 支持的语音指令
-            - "播放音乐" / "停止播放" / "下一首" / "音量调到50%"
-            - "移动XX到XX" / "复制XX到XX" / "删除XX"
-            - "打开微信" / "打开设置"
-            - "打开蓝牙" / "关闭WiFi" / "打开手电筒"
-            - "打电话给张三" / "发信息给李四说你好"
-            - "截个图" / "现在几点了" / "今天几号"
+            ### 原作者
+            - 原作者主页：https://github.com/1953187487
+            - 原仓库：https://github.com/1953187487/BSK-AI
           files: |
             app/build/outputs/apk/debug/*.apk
-          prerelease: true
-          generate_release_notes: true
+            app/build/outputs/apk/release/*.apk
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
