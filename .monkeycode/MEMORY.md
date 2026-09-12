@@ -62,3 +62,12 @@ Entries discovered by the Agent during task execution should follow this format:
   - Android SDK:下载 cmdline-tools 9477386 解压到 /opt/android-sdk/cmdline-tools/latest,执行 sdkmanager "platforms;android-34" "build-tools;34.0.0"
   - 需 echo "sdk.dir=/opt/android-sdk" 写入 /workspace/local.properties
   - 依赖 retrofit:com.squareup.retrofit2:retrofit:2.11.0 + converter-gson:2.11.0 + gson:2.10.1(已加到 app/build.gradle)
+
+[Project Knowledge Summary]
+- Date: 2026-09-12
+- Context: 排查 AURA 2.1.1 进入引导(OnboardingDialog) API 配置步点"下一步"闪退
+- Category: Troubleshooting & Debugging
+- Instructions:
+  - 闪退根因:引导 step0→step1 切换时首帧挂载 ShizukuStepContent 的 GlassPanel,触发液态玻璃 AGSL RuntimeShader(折射/色散)在 API31-33 部分设备渲染失败崩溃
+  - 修复点(app/src/main/java/com/kyant/backdrop/LiquidGlassBackdrop.kt):buildRenderEffect 加 runtimeShadersOk 探针(RuntimeShader 构造+build 验证),API<31 不设置 renderEffect,液面/边缘高光 shader 全部 try/catch(Throwable) 兜底
+  - Compose 1.5.4 中 androidx.compose.ui.graphics.asComposeRenderEffect/android.graphics.RenderEffect.isSupported 可用(javap 验证),RenderEffect.isSupported() 在 API<31 返回 false
