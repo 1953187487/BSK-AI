@@ -3,7 +3,7 @@ name: Build and Release AURA v2.0 Beta
 on:
   push:
     tags:
-      - 'v2.0.*'
+      - 'v2.*'
   workflow_dispatch:
 
 jobs:
