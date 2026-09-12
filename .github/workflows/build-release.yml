@@ -6,6 +6,10 @@ on:
       - 'v2.*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+  actions: write
+
 jobs:
   build:
     name: Build AURA APK
