@@ -9,17 +9,17 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
     <application
-        android:name=".AuraApp"
+        android:name=".LingXiApp"
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
-        android:theme="@style/Theme.Aura"
+        android:theme="@style/Theme.LingXi"
         android:usesCleartextTraffic="true"
         android:allowBackup="true">
 
         <activity
             android:name=".SplashActivity"
             android:exported="true"
-            android:theme="@style/Theme.Aura.Splash">
+            android:theme="@style/Theme.LingXi.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

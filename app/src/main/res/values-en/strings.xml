@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">AURA</string>
+    <string name="app_name">LingXi</string>
     <string name="app_tagline">AI Assistant</string>
 
     <!-- Navigation and tabs -->
@@ -51,7 +51,7 @@
     <string name="terminal_backend_shizuku">Shizuku</string>
     <string name="terminal_backend_dhizuku">Dhizuku</string>
     <string name="terminal_backend_root">Root</string>
-    <string name="terminal_banner_title">AURA Terminal v%1$s</string>
+    <string name="terminal_banner_title">LingXi Terminal v%1$s</string>
     <string name="terminal_banner_help">LOCAL     App sandbox permissions\nSHIZUKU   Shizuku privilege (no root)\nDHIZUKU   Dhizuku privilege (DeviceOwner)\nROOT      Direct root execution\n\nDangerous commands are auto-blocked\nAI can call the run_shell tool</string>
     <string name="terminal_input_hint">Enter a command…</string>
     <string name="terminal_run">Run</string>
@@ -67,7 +67,7 @@
     <string name="terminal_timeout">Command timed out</string>
 
     <!-- IDE -->
-    <string name="ide_title">IDE</string>
+    <string name="ide_title">LingXi IDE</string>
     <string name="ide_files">Files</string>
     <string name="ide_new_file">New file</string>
     <string name="ide_console">Console</string>
@@ -87,13 +87,13 @@
     <string name="ide_file_name_hint">File name</string>
 
     <!-- Chat -->
-    <string name="chat_input_hint">Message AURA, / for commands</string>
+    <string name="chat_input_hint">Message LingXi, / for commands</string>
     <string name="chat_send">Send</string>
     <string name="chat_stop">Stop</string>
     <string name="chat_thinking">Thinking…</string>
     <string name="chat_generating">Generating…</string>
     <string name="chat_tool_running">Running tool…</string>
-    <string name="chat_empty_title">Hello, I am AURA</string>
+    <string name="chat_empty_title">Hello, I am LingXi</string>
     <string name="chat_empty_subtitle">LLM-powered assistant with terminal, IDE and workspace support</string>
     <string name="chat_conversation_cleared">Conversation cleared</string>
     <string name="chat_copy_copied">Copied to clipboard</string>
@@ -190,19 +190,17 @@
     <string name="whatsnew_title">What\'s new</string>
     <string name="whatsnew_updated">Updated to v%1$s</string>
     <string name="whatsnew_start">Get started</string>
-    <string name="whatsnew_item_nav">Bottom navigation</string>
-    <string name="whatsnew_item_nav_desc">AI chat and settings moved to the bottom navigation bar. The top navigation is gone for easier reach.</string>
-    <string name="whatsnew_item_glass">Liquid glass rendering engine</string>
-    <string name="whatsnew_item_glass_desc">Refraction and highlight rendering ported from the open source AndroidLiquidGlass (Kyant0), upgrading the glass look app-wide.</string>
-    <string name="whatsnew_item_privilege">Shizuku / Dhizuku authorization</string>
-    <string name="whatsnew_item_privilege_desc">Dual privilege authorization flow. Either one unlocks system-level terminal and IDE features.</string>
-    <string name="whatsnew_item_models">Model list refresh fix</string>
-    <string name="whatsnew_item_models_desc">Downloaded local models now refresh correctly and show up in the model list.</string>
-    <string name="whatsnew_item_deps">Merged dependency download</string>
-    <string name="whatsnew_item_deps_desc">Dev tool and IDE dependency downloads are now one flow, improving install success rate.</string>
-    <string name="whatsnew_item_video">Video generation (Beta)</string>
-    <string name="whatsnew_item_video_desc">Chat can generate video: the configured model writes the script, the local model renders it.</string>
-    <string name="whatsnew_item_i18n">Multi-language UI</string>
+    <string name="whatsnew_item_brand">New brand: LingXi</string>
+    <string name="whatsnew_item_brand_desc">Renamed with a redesigned icon and palette. The package is now com.lingxi.ai, so uninstall the previous version first.</string>
+    <string name="whatsnew_item_privilege">Shizuku / Dhizuku dual privilege</string>
+    <string name="whatsnew_item_privilege_desc">Added Dhizuku (DeviceOwner shared privilege) alongside Shizuku. The terminal auto-dispatches over LOCAL, SHIZUKU, DHIZUKU and ROOT.</string>
+    <string name="whatsnew_item_ai">Stronger AI kernel</string>
+    <string name="whatsnew_item_ai_desc">Token-budgeted context, per-tool timeouts and output truncation, cancellation support, plus new system_info and current_time tools.</string>
+    <string name="whatsnew_item_slash">New slash commands</string>
+    <string name="whatsnew_item_slash_desc">Added /compact to trim the conversation and /history for statistics. Tool failures are fed back to the model.</string>
+    <string name="whatsnew_item_stability">Stability and rendering fixes</string>
+    <string name="whatsnew_item_stability_desc">Glass panels are now drawn with pure Compose, removing per-panel shader dependency, and fixes the onboarding first-frame crash plus overlapping layouts.</string>
+    <string name="whatsnew_item_i18n">Localized UI</string>
     <string name="whatsnew_item_i18n_desc">Main UI now supports Chinese and English and follows the system language.</string>
 
     <!-- Update check -->
@@ -225,7 +223,7 @@
     <string name="account_local_only">Local account, stored on this device only</string>
 
     <!-- Service -->
-    <string name="service_running">AURA running in background</string>
+    <string name="service_running">LingXi is running in the background</string>
     <string name="service_channel_name">Background service</string>
     <string name="permission_required">Permission required for this feature</string>
 
@@ -247,7 +245,8 @@
     <string name="settings_video_off_desc">Disabled · pick a script model and a local video model in the model settings</string>
     <string name="settings_section_update">Updates</string>
     <string name="settings_current_version">Current: %1$s</string>
-    <string name="settings_about_aura">About AURA</string>
+    <string name="settings_about_lingxi">About LingXi</string>
+    <string name="about_version_line">LingXi v%1$s</string>
     <string name="settings_version_label">Version %1$s</string>
     <string name="workspace_manage">Workspace manager</string>
     <string name="workspace_list">Workspace list</string>
@@ -264,7 +263,7 @@
     <string name="update_check">Check for updates</string>
     <string name="common_add">Add</string>
     <string name="common_installed">Installed</string>
-    <string name="about_description">AURA is an Android app that combines AI chat, a terminal, an IDE and a music player.</string>
+    <string name="about_description">LingXi is an Android app that combines AI chat, a terminal, an IDE and a music player.</string>
     <string name="about_feedback">Feedback: 1953187487@qq.com</string>
     <string name="custom_model_title">Custom models</string>
     <string name="custom_model_name">Model name</string>
@@ -336,7 +335,7 @@
     <string name="settings_enabled">Enabled</string>
     <string name="settings_disabled">Disabled</string>
     <!-- Account -->
-    <string name="account_title">AURA account</string>
+    <string name="account_title">LingXi account</string>
     <string name="account_official_login">Official login (built-in identity)</string>
     <string name="account_official_login_fields">Official login (all three are required)</string>
     <string name="account_oauth_hint">QQ/WeChat login is finished through the SDK on a real device. This screen is only the entry point.</string>
@@ -407,7 +406,7 @@
     <string name="privilege_dhizuku_desc">DeviceOwner-based elevation shared after the Dhizuku app activates</string>
     <string name="privilege_open_settings">Open settings</string>
     <string name="onboarding_agreement_title">Open source license and user notice</string>
-    <string name="onboarding_agreement_desc">Please read and accept the two documents below to keep using AURA.</string>
+    <string name="onboarding_agreement_desc">Please read and accept the two documents below to keep using LingXi.</string>
 
     <!-- IDE -->
     <string name="ide_no_project">No project selected</string>

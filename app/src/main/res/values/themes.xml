@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Aura" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">@color/aura_background</item>
-        <item name="android:windowBackground">@color/aura_background</item>
-        <item name="android:navigationBarColor">@color/aura_background</item>
+    <style name="Theme.LingXi" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/lingxi_background</item>
+        <item name="android:windowBackground">@color/lingxi_background</item>
+        <item name="android:navigationBarColor">@color/lingxi_background</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
     </style>
 
-    <style name="Theme.Aura.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/aura_background</item>
+    <style name="Theme.LingXi.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/lingxi_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-        <item name="postSplashScreenTheme">@style/Theme.Aura</item>
+        <item name="postSplashScreenTheme">@style/Theme.LingXi</item>
     </style>
 
-    <style name="Theme.Aura.Overlay" parent="Theme.Aura">
+    <style name="Theme.LingXi.Overlay" parent="Theme.LingXi">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowFullscreen">true</item>

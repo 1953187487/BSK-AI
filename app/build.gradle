@@ -4,27 +4,28 @@ plugins {
 }
 
 android {
-    namespace 'com.bskai'
+    namespace 'com.lingxi.ai'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.bskai"
+        applicationId "com.lingxi.ai"
         minSdk 28
         targetSdk 34
-        versionCode 321
-        versionName "2.1.1"
+        versionCode 322
+        versionName "3.0.0"
 
-        buildConfigField "String", "APP_NAME", '"AURA"'
-        buildConfigField "String", "APP_VERSION", '"2.1.1"'
-        buildConfigField "int", "BUILD_NUMBER", "321"
+        buildConfigField "String", "APP_NAME", '"LingXi"'
+        buildConfigField "String", "APP_NAME_ZH", '"灵犀"'
+        buildConfigField "String", "APP_VERSION", '"3.0.0"'
+        buildConfigField "int", "BUILD_NUMBER", "322"
     }
 
     signingConfigs {
         release {
-            storeFile file(System.getenv("BSK_KEYSTORE") ?: "${System.getProperty("user.home")}/aura-release.keystore")
-            storePassword System.getenv("BSK_KEYSTORE_PASSWORD") ?: "aura2026"
-            keyAlias "aura"
-            keyPassword System.getenv("BSK_KEY_PASSWORD") ?: "aura2026"
+            storeFile file(System.getenv("LINGXI_KEYSTORE") ?: "${project.rootDir}/lingxi-release.keystore")
+            storePassword System.getenv("LINGXI_KEYSTORE_PASSWORD") ?: "lingxi2026"
+            keyAlias "lingxi"
+            keyPassword System.getenv("LINGXI_KEY_PASSWORD") ?: "lingxi2026"
         }
     }
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">AURA</string>
+    <string name="app_name">灵犀</string>
     <string name="app_tagline">AI 助手</string>
 
     <!-- 导航与标签 -->
@@ -51,7 +51,7 @@
     <string name="terminal_backend_shizuku">Shizuku</string>
     <string name="terminal_backend_dhizuku">Dhizuku</string>
     <string name="terminal_backend_root">Root</string>
-    <string name="terminal_banner_title">AURA Terminal v%1$s</string>
+    <string name="terminal_banner_title">灵犀终端 v%1$s</string>
     <string name="terminal_banner_help">LOCAL     应用沙盒权限\nSHIZUKU   Shizuku 提权（免 root）\nDHIZUKU   Dhizuku 提权（DeviceOwner）\nROOT      直接 root 执行\n\n危险命令自动拦截\nAI 可通过 run_shell 工具调用</string>
     <string name="terminal_input_hint">输入命令…</string>
     <string name="terminal_run">执行</string>
@@ -67,7 +67,7 @@
     <string name="terminal_timeout">命令执行超时</string>
 
     <!-- IDE -->
-    <string name="ide_title">IDE</string>
+    <string name="ide_title">灵犀 IDE</string>
     <string name="ide_files">文件</string>
     <string name="ide_new_file">新建文件</string>
     <string name="ide_console">控制台</string>
@@ -87,13 +87,13 @@
     <string name="ide_file_name_hint">文件名</string>
 
     <!-- 对话 -->
-    <string name="chat_input_hint">向 AURA 发送消息，输入 / 使用命令</string>
+    <string name="chat_input_hint">向灵犀发送消息，输入 / 使用命令</string>
     <string name="chat_send">发送</string>
     <string name="chat_stop">停止</string>
     <string name="chat_thinking">思考中…</string>
     <string name="chat_generating">正在生成…</string>
     <string name="chat_tool_running">正在执行工具…</string>
-    <string name="chat_empty_title">你好，我是 AURA</string>
+    <string name="chat_empty_title">你好，我是灵犀</string>
     <string name="chat_empty_subtitle">基于大模型的智能助手，支持终端、IDE 与工作区协作</string>
     <string name="chat_conversation_cleared">会话已清空</string>
     <string name="chat_copy_copied">已复制到剪贴板</string>
@@ -190,18 +190,16 @@
     <string name="whatsnew_title">本次更新</string>
     <string name="whatsnew_updated">已更新至 v%1$s</string>
     <string name="whatsnew_start">开始体验</string>
-    <string name="whatsnew_item_nav">底部导航栏</string>
-    <string name="whatsnew_item_nav_desc">AI 聊天与设置移动至底部导航栏，顶部导航已移除，操作更顺手。</string>
-    <string name="whatsnew_item_glass">液态玻璃渲染引擎</string>
-    <string name="whatsnew_item_glass_desc">基于开源项目 AndroidLiquidGlass（Kyant0）移植的折射与高光渲染，全局液态玻璃质感全面升级。</string>
-    <string name="whatsnew_item_privilege">Shizuku / Dhizuku 授权</string>
-    <string name="whatsnew_item_privilege_desc">新增 Shizuku 与 Dhizuku 双提权授权流程，终端与 IDE 可任选其一解锁系统级能力。</string>
-    <string name="whatsnew_item_models">模型列表刷新修复</string>
-    <string name="whatsnew_item_models_desc">已下载的本地模型现在会正确刷新并显示在模型列表中。</string>
-    <string name="whatsnew_item_deps">依赖下载合并</string>
-    <string name="whatsnew_item_deps_desc">开发工具与 IDE 的依赖下载已合并为同一流程，安装成功率提升。</string>
-    <string name="whatsnew_item_video">视频生成（Beta）</string>
-    <string name="whatsnew_item_video_desc">AI 聊天新增视频生成模式：配置模型负责撰写脚本，本地模型负责生成视频。</string>
+    <string name="whatsnew_item_brand">全新品牌：灵犀 LingXi</string>
+    <string name="whatsnew_item_brand_desc">应用更名并重新设计图标与主色板，包名升级为 com.lingxi.ai，需卸载旧版本后安装。</string>
+    <string name="whatsnew_item_privilege">Shizuku / Dhizuku 双提权</string>
+    <string name="whatsnew_item_privilege_desc">新增 Dhizuku（DeviceOwner 共享提权），与 Shizuku 并存；终端支持 LOCAL、SHIZUKU、DHIZUKU、ROOT 四后端自动分发。</string>
+    <string name="whatsnew_item_ai">AI 内核增强</string>
+    <string name="whatsnew_item_ai_desc">上下文按 token 预算管理、工具调用超时与输出截断、支持停止生成，新增 system_info 与 current_time 工具。</string>
+    <string name="whatsnew_item_slash">斜杠命令新增</string>
+    <string name="whatsnew_item_slash_desc">新增 /compact 精简对话与 /history 对话统计，工具执行失败会回填给模型自动调整。</string>
+    <string name="whatsnew_item_stability">稳定性与渲染修复</string>
+    <string name="whatsnew_item_stability_desc">液态玻璃面板改为纯 Compose 绘制，移除逐面板着色器依赖，修复引导页首帧崩溃与多处界面重叠。</string>
     <string name="whatsnew_item_i18n">多语言界面</string>
     <string name="whatsnew_item_i18n_desc">主界面全面支持中英文切换，跟随系统语言自动适配。</string>
 
@@ -225,7 +223,7 @@
     <string name="account_local_only">本地账号，仅在本机存储</string>
 
     <!-- 服务 -->
-    <string name="service_running">AURA 后台运行中</string>
+    <string name="service_running">灵犀后台运行中</string>
     <string name="service_channel_name">后台服务</string>
     <string name="permission_required">需要权限才能使用此功能</string>
 
@@ -247,7 +245,8 @@
     <string name="settings_video_off_desc">已关闭 · 在模型配置中选择脚本模型与本地视频模型</string>
     <string name="settings_section_update">更新</string>
     <string name="settings_current_version">当前: %1$s</string>
-    <string name="settings_about_aura">关于 AURA</string>
+    <string name="settings_about_lingxi">关于灵犀</string>
+    <string name="about_version_line">灵犀 v%1$s</string>
     <string name="settings_version_label">版本 %1$s</string>
     <string name="workspace_manage">工作区管理</string>
     <string name="workspace_list">工作区列表</string>
@@ -264,7 +263,7 @@
     <string name="update_check">检查更新</string>
     <string name="common_add">添加</string>
     <string name="common_installed">已安装</string>
-    <string name="about_description">AURA 是一款集成 AI 对话、终端、IDE、音乐播放的 Android 应用。</string>
+    <string name="about_description">灵犀是一款集成 AI 对话、终端、IDE、音乐播放的 Android 应用。</string>
     <string name="about_feedback">反馈邮箱: 1953187487@qq.com</string>
     <string name="custom_model_title">自定义模型</string>
     <string name="custom_model_name">模型名称</string>
@@ -336,7 +335,7 @@
     <string name="settings_enabled">已启用</string>
     <string name="settings_disabled">已关闭</string>
     <!-- Account -->
-    <string name="account_title">AURA 账户</string>
+    <string name="account_title">灵犀账户</string>
     <string name="account_official_login">官方登录（系统预置身份）</string>
     <string name="account_official_login_fields">官方登录（三者缺一不可）</string>
     <string name="account_oauth_hint">QQ/微信 登录请在真实设备经 SDK 完成，此处仅做入口示意。</string>
@@ -407,7 +406,7 @@
     <string name="privilege_dhizuku_desc">基于 DeviceOwner 的提权方案，由 Dhizuku 应用激活后共享</string>
     <string name="privilege_open_settings">打开设置</string>
     <string name="onboarding_agreement_title">开源协议与用户须知</string>
-    <string name="onboarding_agreement_desc">请阅读并同意以下两份协议后继续使用 AURA。</string>
+    <string name="onboarding_agreement_desc">请阅读并同意以下两份协议后继续使用灵犀。</string>
 
     <!-- IDE -->
     <string name="ide_no_project">未选择项目</string>

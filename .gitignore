@@ -15,3 +15,7 @@ server/sandbox/data/
 
 # 本地构建产物，CI 负责重新构建签名
 AURA-*.apk
+
+# 签名密钥，严禁入库
+*.keystore
+*.jks

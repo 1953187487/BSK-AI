@@ -8,4 +8,4 @@
     android:canRequestTouchExplorationMode="true"
     android:description="@string/app_tagline"
     android:notificationTimeout="100"
-    android:settingsActivity="com.bskai.MainActivity" />
+    android:settingsActivity="com.lingxi.ai.MainActivity" />

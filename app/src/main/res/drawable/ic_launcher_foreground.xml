@@ -1,88 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- 背景 -->
-    <item>
-        <shape android:shape="rectangle">
-            <gradient
-                android:type="linear"
-                android:angle="135"
-                android:startColor="#0D0D1A"
-                android:centerColor="#1A1340"
-                android:endColor="#0D0D1A" />
-        </shape>
-    </item>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
 
-    <!-- 中心发光球体 -->
-    <item
-        android:left="20dp"
-        android:top="20dp"
-        android:right="20dp"
-        android:bottom="20dp">
-        <shape android:shape="oval">
-            <gradient
-                android:type="radial"
-                android:centerX="50%"
-                android:centerY="50%"
-                android:gradientRadius="50%"
-                android:startColor="#8E7CFF"
-                android:centerColor="#6C5CE7"
-                android:endColor="#3B2F8F" />
-        </shape>
-    </item>
+    <!-- 右侧叶片：深紫，构成犀角右半 -->
+    <path
+        android:pathData="M54,20
+            C70,30 78,44 78,58
+            C78,70 70,79 54,86
+            C63,74 66,64 64,54
+            C62,43 58,31 54,20 Z"
+        android:fillColor="#5B45D6" />
 
-    <!-- 四个神经网络节点 -->
-    <!-- 左上节点 -->
-    <item
-        android:left="12dp"
-        android:top="12dp"
-        android:width="12dp"
-        android:height="12dp">
-        <shape android:shape="oval">
-            <solid android:color="#00CED1" />
-        </shape>
-    </item>
+    <!-- 左侧叶片：亮紫蓝，构成犀角左半 -->
+    <path
+        android:pathData="M54,20
+            C38,30 30,44 30,58
+            C30,70 38,79 54,86
+            C45,74 42,64 44,54
+            C46,43 50,31 54,20 Z"
+        android:fillColor="#8E7CFF" />
 
-    <!-- 右上节点 -->
-    <item
-        android:right="12dp"
-        android:top="12dp"
-        android:width="12dp"
-        android:height="12dp">
-        <shape android:shape="oval">
-            <solid android:color="#FF6B9D" />
-        </shape>
-    </item>
+    <!-- 顶部高光：让刃口发亮 -->
+    <path
+        android:pathData="M54,20
+            C48,28 45,36 44,44
+            C48,38 51,31 54,20 Z"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.55" />
 
-    <!-- 左下节点 -->
-    <item
-        android:left="12dp"
-        android:bottom="12dp"
-        android:width="12dp"
-        android:height="12dp">
-        <shape android:shape="oval">
-            <solid android:color="#3FB950" />
-        </shape>
-    </item>
+    <!-- 核心：灵犀之光 -->
+    <path
+        android:pathData="M54,52
+            m-8,0
+            a8,8 0 1,0 16,0
+            a8,8 0 1,0 -16,0 Z"
+        android:fillColor="#FFFFFF" />
 
-    <!-- 右下节点 -->
-    <item
-        android:right="12dp"
-        android:bottom="12dp"
-        android:width="12dp"
-        android:height="12dp">
-        <shape android:shape="oval">
-            <solid android:color="#58A6FF" />
-        </shape>
-    </item>
+    <path
+        android:pathData="M54,52
+            m-3.5,0
+            a3.5,3.5 0 1,0 7,0
+            a3.5,3.5 0 1,0 -7,0 Z"
+        android:fillColor="#6C5CE7" />
 
-    <!-- 中心小圆点（终端提示符） -->
-    <item
-        android:left="36dp"
-        android:top="36dp"
-        android:right="36dp"
-        android:bottom="36dp">
-        <shape android:shape="oval">
-            <solid android:color="#FFFFFF" />
-        </shape>
-    </item>
-</layer-list>
+    <!-- 底部分叉尾：呼应犀角分叉 -->
+    <path
+        android:pathData="M54,86
+            C50,90 46,92 42,92
+            C46,88 49,84 54,80
+            C59,84 62,88 66,92
+            C62,92 58,90 54,86 Z"
+        android:fillColor="#00CED1"
+        android:fillAlpha="0.9" />
+</vector>

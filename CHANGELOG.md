@@ -1,4 +1,25 @@
-# AURA 更新记录
+# 灵犀 LingXi 更新记录
+
+## v3.0.0
+- **品牌**：全新更名 AURA → 灵犀 LingXi，包名 com.bskai → com.lingxi.ai；应用图标全新设计（犀角之光标记 + 全新紫色主色板）；协议与关于页全部更名
+- **品牌**：全新签名密钥（因包名变更无法覆盖升级，需先卸载旧版本后再安装）
+- **提权**：新增 Dhizuku 提权（Dhizuku API 2.5.4），与 Shizuku 并存的第二种高权限方案，DeviceOwner 共享提权，无需 ADB 调试通道
+- **提权**：终端引擎升级为四后端 LOCAL / SHIZUKU / DHIZUKU / ROOT，按已授权后端自动分发命令，含本地权限逃生（可降级为普通用户权限执行）
+- **AI 内核**：上下文按 token 预算截取（估算 chars/3，总预算 8000）
+- **AI 内核**：永不拆散 assistant(toolCalls) 与 tool 结果配对，多轮工具历史保持完整
+- **AI 内核**：历史超出预算时自动插入早期对话摘要，保证关键上下文不丢失
+- **AI 内核**：工具执行 60 秒超时；工具输出 6000 字符截断
+- **AI 内核**：支持协作式取消（停止生成），中断即时生效
+- **AI 内核**：新增 `/compact` 与 `/history` 斜杠命令，用于主动压缩与查看历史
+- **AI 内核**：新增 system_info 与 current_time 工具
+- **AI 内核**：run_shell 危险命令拦截与输出截断，降低误操作风险
+- **聊天**：生成中发送按钮切换为「停止」按钮，一键中断当前回复
+- **UI**：液态玻璃渲染重写，面板高光与描边改为纯 Compose 绘制，移除每个面板上的 RuntimeShader/RenderEffect 依赖
+- **UI**：消除引导页首帧挂载面板时的崩溃风险
+- **UI**：布局重叠修复，引导页、版本更新页、底部导航页重新划分固定区/滚动区，新增系统栏与导航栏内边距
+- **国际化**：界面全量国际化，内置简体中文与英文，语言运行时切换；主界面所有用户可见文案全部走字符串资源
+- **协议**：协议与关于页全部更名；开源协议新增 Dhizuku 归属
+- **其他**：minSdk 28，targetSdk 34，compileSdk 34，versionCode 322，versionName 3.0.0
 
 ## v2.1.1
 - 导航结构回退：移除顶部小导航栏，改为底部导航栏，AI 聊天与设置为一等入口，终端与 IDE 从设置页进入
@@ -41,7 +62,7 @@
 ## v2.0.3
 - 移除所有后台服务（VoiceService/BootReceiver/MediaButtonReceiver）
 - 彻底删除语音引擎（VoiceEngine/VoiceCoordinator/AudioController）
-- 简化为单角色 AURA + 思考模式（3 级深度）
+- 简化为单角色灵犀 LingXi + 思考模式（3 级深度）
 - iOS 27 液态玻璃 UI：新增 LIQUID 主题风格
 - 本地 AI 提供商选择：Ollama/LM Studio/vLLM/Jan/Custom，自动拉取模型列表
 - 模型选择后自动替换到聊天框
@@ -53,7 +74,7 @@
 - versionCode 303
 
 ## v2.0.2
-- 角色系统：聊天框顶部圆形头像+名字，支持 5 个默认角色（AURA/代码专家/写作助手/数据分析师/知识导师），可自建角色并支持 AI 自动生成 prompt
+- 角色系统：聊天框顶部圆形头像+名字，支持 5 个默认角色（灵犀 LingXi/代码专家/写作助手/数据分析师/知识导师），可自建角色并支持 AI 自动生成 prompt
 - 模式切换：8 种内置模式（聊天/思考/分析/开发/创意/编程/翻译/教学），思考模式支持 3 级深度调节
 - 模型选择器：半宽长方形 Surface，分本地模型/API 模型两类展示
 - 聊天输入栏重设计：圆角输入框 + 圆形发送按钮，带流式光标动画
@@ -88,7 +109,7 @@
 - 修复 WorkspaceTools ListFilesTool parametersSchema
 
 ## v2.0.0-beta.1（预测试版）
-- 应用全面转型为手机语音助手「AURA」
+- 应用全面转型为手机语音助手「灵犀 LingXi」
 - 全新深色紫蓝渐变 UI，Material 3 设计语言
 - 新增 VoiceService 后台语音监听服务（前台通知）
 - 新增 VoiceEngine：Android SpeechRecognizer + TTS 双引擎

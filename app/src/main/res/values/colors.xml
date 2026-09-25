@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="aura_primary">#6C5CE7</color>
-    <color name="aura_on_primary">#FFFFFF</color>
-    <color name="bsk_primary_container">#EAD6FF</color>
-    <color name="aura_primary_container">#EAD6FF</color>
-    <color name="aura_secondary">#00CED1</color>
-    <color name="aura_tertiary">#FF6B9D</color>
-    <color name="aura_error">#FF4757</color>
-    <color name="aura_background">#0D0D1A</color>
-    <color name="aura_on_background">#F0EEFF</color>
-    <color name="aura_surface">#16162A</color>
-    <color name="aura_on_surface">#F0EEFF</color>
-    <color name="aura_surface_variant">#1E1E3A</color>
-    <color name="aura_outline">#3D3C68</color>
-    <color name="aura_glow">#6C5CE740</color>
+    <color name="lingxi_primary">#6C5CE7</color>
+    <color name="lingxi_on_primary">#FFFFFF</color>
+    <color name="lingxi_icon_background">#160F3D</color>
+    <color name="lingxi_primary_container">#EAD6FF</color>
+    <color name="lingxi_secondary">#00CED1</color>
+    <color name="lingxi_tertiary">#FF6B9D</color>
+    <color name="lingxi_error">#FF4757</color>
+    <color name="lingxi_background">#0D0D1A</color>
+    <color name="lingxi_on_background">#F0EEFF</color>
+    <color name="lingxi_surface">#16162A</color>
+    <color name="lingxi_on_surface">#F0EEFF</color>
+    <color name="lingxi_surface_variant">#1E1E3A</color>
+    <color name="lingxi_outline">#3D3C68</color>
+    <color name="lingxi_glow">#6C5CE740</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
 </resources>
