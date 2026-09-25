@@ -32,6 +32,19 @@ Entries discovered by the Agent during task execution should follow this format:
 ## Entries
 
 [Project Knowledge Summary]
+- Date: 2026-09-25
+- Context: Discovered by Agent while performing v2.1.1 签名 release 构建与 GitHub Release 发布
+- Category: Build Methods
+- Instructions:
+  - release 构建签名密钥位于 /workspace/aura-release.keystore(非 gradle 默认的 $HOME/aura-release.keystore),必须 `export BSK_KEYSTORE=/workspace/aura-release.keystore`,否则 validateSigningRelease 报 Keystore file not found;alias=aura,storePassword/keyPassword=aura2026
+  - APK 名 AURA-<version>-release.apk;APK 与构建产物已被 .gitignore 排除,发布前 `cp app/build/outputs/apk/release/app-release.apk AURA-2.1.1-release.apk`
+  - 本环境 cgroup 内存受限,gradle.properties 的 -Xmx3500m 会导致 assembleRelease 在 optimizeReleaseResources 卡死(RSS 顶满内存上限后 CPU 跌到个位数百分比)。改用 `./gradlew assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx2880m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"`,35 秒内完成
+  - 编译校验:`./gradlew :app:compileReleaseKotlin` 约 1.5 分钟;资源问题(重复字符串键)在 :app:mergeReleaseResources 才暴露
+  - GitHub 凭据来自 git credential helper: `TOK=$(printf "protocol=https\nhost=github.com\n" | git credential fill | sed -n 's/^password=//p')`,export GH_TOKEN 后即可用 gh api/gh release
+  - 发布流程:`gh release create v<version> --repo 1953187487/BSK-AI --title "AURA v<version> 正式版" --notes-file <body.md> <apk>`;上传完成判定为 assets[].upload_state 为 null 且 download_url 非空(约需 1-2 分钟)
+  - 发版前需确认 tag 指向最新 commit:若 tag 已存在但指向旧 commit,需 `git tag -d v<ver> && git tag -a v<ver> -m "..." HEAD && git push --force origin v<ver>`(仅在 tag 尚未绑定任何 release 时)
+
+[Project Knowledge Summary]
 - Date: 2026-08-24
 - Context: Discovered by Agent while performing v1.0.8 构建验证
 - Category: Build Methods
