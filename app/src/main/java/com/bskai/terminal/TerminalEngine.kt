@@ -1,5 +1,6 @@
 package com.bskai.terminal
 
+import com.bskai.permission.DhizukuBridge
 import com.bskai.permission.ShizukuBridge
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -8,33 +9,57 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
 import java.io.BufferedReader
-import java.io.DataOutputStream
 import java.io.File
 import java.io.InputStreamReader
 import java.util.concurrent.TimeUnit
 
 /**
- * 内置终端引擎。支持三种执行后端：
- * 1. LOCAL: 当前应用权限下可执行的命令（受限）
- * 2. SHIZUKU: 通过 Shizuku binder IPC 提权（无需 root）
- * 3. ROOT: 通过 /system/xbin/su 或 /system/bin/su 执行（需 root 设备）
+ * Built-in terminal engine supporting four execution backends:
+ * 1. LOCAL: commands under the app's own permissions (restricted)
+ * 2. SHIZUKU: privileged execution via Shizuku binder IPC (no root needed)
+ * 3. DHIZUKU: privileged execution via Dhizuku DeviceOwner sharing (no root needed)
+ * 4. ROOT: execution via /system/xbin/su or /system/bin/su (root device required)
  *
- * 默认 LOCAL。Shizuku/ROOT 在用户授权后启用。
+ * Defaults to LOCAL. SHIZUKU/DHIZUKU/ROOT are enabled after user authorization.
  */
-class TerminalEngine(private val shizuku: ShizukuBridge?) {
+class TerminalEngine(
+    private val shizuku: ShizukuBridge?,
+    private val dhizuku: DhizukuBridge? = null
+) {
 
-    enum class Backend { LOCAL, SHIZUKU, ROOT }
+    /** Execution backend selector. */
+    enum class Backend { LOCAL, SHIZUKU, DHIZUKU, ROOT }
 
     private val _backend = MutableStateFlow(Backend.LOCAL)
+    /** Currently selected backend. */
     val backend: StateFlow<Backend> = _backend.asStateFlow()
 
+    /**
+     * Sets the desired execution backend.
+     *
+     * @param b the backend to switch to
+     */
     fun setBackend(b: Backend) { _backend.value = b }
 
+    /**
+     * Resolves the effective backend, downgrading to LOCAL when Shizuku is
+     * requested but not granted.
+     *
+     * @return the backend that will actually be used
+     */
     fun resolveBackend(): Backend {
         if (_backend.value == Backend.SHIZUKU && shizuku?.isGranted() != true) return Backend.LOCAL
+        if (_backend.value == Backend.DHIZUKU && dhizuku?.isGranted() != true) return Backend.LOCAL
         return _backend.value
     }
 
+    /**
+     * Executes a command on the effective backend and returns the result.
+     *
+     * @param command shell command to run
+     * @param workingDir optional working directory
+     * @return [ExecutionResult] with stdout/stderr/exitCode/duration/backend
+     */
     suspend fun execute(command: String, workingDir: String? = null): ExecutionResult =
         withContext(Dispatchers.IO) {
             val effective = resolveBackend()
@@ -43,12 +68,15 @@ class TerminalEngine(private val shizuku: ShizukuBridge?) {
                 when (effective) {
                     Backend.LOCAL -> runLocal(command, workingDir)
                     Backend.SHIZUKU -> runShizuku(command, workingDir)
+                    Backend.DHIZUKU -> runDhizuku(command, workingDir)
                     Backend.ROOT -> runRoot(command, workingDir)
                 }
             } catch (e: Exception) {
                 ExecutionResult(
-                    stdout = "", stderr = "执行失败：${e.javaClass.simpleName}: ${e.message}",
-                    exitCode = -1, durationMs = System.currentTimeMillis() - startedAt,
+                    stdout = "",
+                    stderr = "执行失败：${e.javaClass.simpleName}: ${e.message}",
+                    exitCode = -1,
+                    durationMs = System.currentTimeMillis() - startedAt,
                     backend = effective
                 )
             }
@@ -88,6 +116,21 @@ class TerminalEngine(private val shizuku: ShizukuBridge?) {
         }
     }
 
+    private fun runDhizuku(command: String, workingDir: String?): ExecutionResult {
+        if (dhizuku == null || !dhizuku.isGranted()) {
+            return ExecutionResult("", "Dhizuku 未授权", -1, 0L, Backend.DHIZUKU)
+        }
+        return try {
+            val process = dhizuku.newProcess(
+                arrayOf("/system/bin/sh", "-c", command),
+                workingDir
+            )
+            readResult(process, Backend.DHIZUKU)
+        } catch (e: Exception) {
+            ExecutionResult("", "Dhizuku 执行失败：${e.message}", -1, 0L, Backend.DHIZUKU)
+        }
+    }
+
     private fun runRoot(command: String, workingDir: String?): ExecutionResult {
         val su = findSu() ?: return ExecutionResult(
             "", "未找到 su，未 root 或未授权", -1, 0L, Backend.ROOT
@@ -103,6 +146,9 @@ class TerminalEngine(private val shizuku: ShizukuBridge?) {
         }
     }
 
+    /**
+     * Reads stdout/stderr from a [proc] and waits up to 30 seconds for it to finish.
+     */
     private fun readResult(proc: Process, backend: Backend): ExecutionResult {
         val stdout = StringBuilder()
         val stderr = StringBuilder()
@@ -120,7 +166,9 @@ class TerminalEngine(private val shizuku: ShizukuBridge?) {
             return ExecutionResult(
                 stdout = stdout.toString(),
                 stderr = stderr.toString() + "\n[超时，已强制终止]",
-                exitCode = -1, durationMs = 0L, backend = backend
+                exitCode = -1,
+                durationMs = 0L,
+                backend = backend
             )
         }
         outThread.join(500)
@@ -129,18 +177,30 @@ class TerminalEngine(private val shizuku: ShizukuBridge?) {
             stdout = stdout.toString().trimEnd(),
             stderr = stderr.toString().trimEnd(),
             exitCode = proc.exitValue(),
-            durationMs = 0L, backend = backend
+            durationMs = 0L,
+            backend = backend
         )
     }
 
+    /** Locates an executable `su` binary among the common root locations. */
     private fun findSu(): File? {
         listOf("/system/xbin/su", "/system/bin/su", "/su/bin/su", "/magisk/.core/bin/su")
             .forEach { val f = File(it); if (f.exists() && f.canExecute()) return f }
         return null
     }
 
+    /** Releases engine resources (nothing to release currently). */
     fun shutdown() { /* nothing to release */ }
 
+    /**
+     * The outcome of a terminal execution.
+     *
+     * @property stdout captured standard output
+     * @property stderr captured standard error
+     * @property exitCode process exit code (-1 on timeout / failure)
+     * @property durationMs wall-clock duration in milliseconds
+     * @property backend the backend that actually ran the command
+     */
     data class ExecutionResult(
         val stdout: String,
         val stderr: String,

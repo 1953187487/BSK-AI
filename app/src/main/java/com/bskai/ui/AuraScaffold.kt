@@ -28,11 +28,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
+import com.bskai.R
 import com.bskai.ui.chat.ChatScreen
 import com.bskai.ui.glass.GlassBottomNav
 import com.bskai.ui.glass.GlassSegmented
@@ -92,7 +94,11 @@ fun AuraScaffold(app: AuraApp) {
             if (currentTab == 0) {
                 Spacer(Modifier.height(10.dp))
                 GlassSegmented(
-                    options = listOf("对话", "终端", "IDE"),
+                    options = listOf(
+                        stringResource(R.string.tab_dialogs),
+                        stringResource(R.string.tab_terminal),
+                        stringResource(R.string.tab_ide)
+                    ),
                     selected = devTab,
                     onSelect = { devTab = it },
                     modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -105,7 +111,7 @@ fun AuraScaffold(app: AuraApp) {
                 when (currentTab) {
                     0 -> when (devTab) {
                         0 -> ChatScreen(app = app, snackbarHostState = snackbarHostState)
-                        1 -> TerminalScreen(engine = app.terminal, shizuku = app.shizuku)
+                        1 -> TerminalScreen(engine = app.terminal, shizuku = app.shizuku, dhizuku = app.dhizuku)
                         else -> IdeScreen(app = app)
                     }
                     else -> SettingsScreen(app = app)

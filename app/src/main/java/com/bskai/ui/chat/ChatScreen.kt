@@ -2,6 +2,7 @@ package com.bskai.ui.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -63,12 +65,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bskai.AuraApp
+import com.bskai.R
 import com.bskai.agent.ChatMsg
 import com.bskai.agent.LlmClient
 import com.bskai.agent.ModelInfo
 import com.bskai.data.ChatMode
 import com.bskai.data.LocalModelEntry
 import com.bskai.ui.glass.GlassBubble
+import com.bskai.ui.str
 import com.bskai.ui.glass.GlassCardRow
 import com.bskai.ui.glass.GlassChip
 import com.bskai.ui.glass.GlassIconButton
@@ -117,14 +121,15 @@ fun ChatScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 GlassChip(
-                    text = settings.apiModel.ifEmpty { "选择模型" },
+                    text = settings.apiModel.ifEmpty { stringResource(R.string.chat_select_model) },
                     selected = false,
                     onClick = { showModelDialog = true }
                 )
                 Spacer(Modifier.width(8.dp))
                 GlassChip(
-                    text = if (settings.chatMode == ChatMode.DEV) "开发模式"
-                    else "深度 ${settings.thinkingLevel}/3",
+                    text = if (settings.chatMode == ChatMode.DEV)
+                        stringResource(R.string.chat_mode_dev)
+                    else stringResource(R.string.chat_thinking_level, settings.thinkingLevel),
                     selected = false,
                     onClick = {
                         val next = (settings.thinkingLevel % 3) + 1
@@ -133,7 +138,8 @@ fun ChatScreen(
                 )
                 Spacer(Modifier.width(8.dp))
                 GlassChip(
-                    text = if (generating) "生成中" else "生成视频",
+                    text = if (generating) stringResource(R.string.chat_generating)
+                    else stringResource(R.string.chat_video_generate),
                     selected = generating,
                     onClick = { showVideoDialog = true }
                 )
@@ -141,12 +147,12 @@ fun ChatScreen(
                 Box {
                     GlassIconButton(
                         icon = Icons.Default.MoreVert,
-                        contentDescription = "更多",
+                        contentDescription = stringResource(R.string.chat_more),
                         onClick = { showMoreMenu = true }
                     )
                     DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
                         DropdownMenuItem(
-                            text = { Text("清空对话") },
+                            text = { Text(stringResource(R.string.chat_clear)) },
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp)) },
                             onClick = {
                                 app.agent.clearConversation()
@@ -154,7 +160,7 @@ fun ChatScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("复制全部") },
+                            text = { Text(stringResource(R.string.chat_copy_all)) },
                             leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp)) },
                             onClick = {
                                 val text = conversation.joinToString("\n") { "${it.role}: ${it.content}" }
@@ -197,7 +203,9 @@ fun ChatScreen(
                     value = input,
                     onValueChange = { input = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = if (settings.apiConfigured) "输入消息，与 AURA 对话…" else "请先在设置中配置 AI 服务",
+                    placeholder = if (settings.apiConfigured)
+                        stringResource(R.string.chat_input_hint)
+                    else stringResource(R.string.chat_api_not_configured),
                     maxLines = 4,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSend = {
@@ -211,7 +219,7 @@ fun ChatScreen(
                 Spacer(Modifier.width(8.dp))
                 GlassIconButton(
                     icon = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "发送",
+                    contentDescription = stringResource(R.string.chat_send),
                     size = 44.dp,
                     onClick = {
                         val text = input.trim()
@@ -241,18 +249,24 @@ private fun VideoGenDialog(app: AuraApp, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("双模型视频生成", fontWeight = FontWeight.SemiBold) },
+        title = { Text(stringResource(R.string.chat_video_title), fontWeight = FontWeight.SemiBold) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    "脚本模型：${vg.scriptModel.ifBlank { settings.apiModel.ifEmpty { "(未配置)" } }}",
+                    stringResource(
+                        R.string.chat_video_script_model,
+                        vg.scriptModel.ifBlank { settings.apiModel.ifEmpty { stringResource(R.string.common_unknown) } }
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "视频模型：${vg.videoModel.ifEmpty { "(未选择本地模型)" }}",
+                    stringResource(
+                        R.string.chat_video_model_line,
+                        vg.videoModel.ifEmpty { stringResource(R.string.chat_video_model_none) }
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp
@@ -261,7 +275,7 @@ private fun VideoGenDialog(app: AuraApp, onDismiss: () -> Unit) {
                 OutlinedTextField(
                     value = prompt,
                     onValueChange = { prompt = it },
-                    label = { Text("描述你想生成的视频") },
+                    label = { Text(stringResource(R.string.chat_video_prompt_label)) },
                     minLines = 2,
                     maxLines = 4,
                     modifier = Modifier.fillMaxWidth()
@@ -269,7 +283,7 @@ private fun VideoGenDialog(app: AuraApp, onDismiss: () -> Unit) {
                 if (vg.videoModel.isBlank()) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "提示：请先在「模型配置」中选择一个本地视频模型，再进行生成。",
+                        stringResource(R.string.chat_video_need_local_model),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         fontSize = 11.sp
@@ -288,11 +302,11 @@ private fun VideoGenDialog(app: AuraApp, onDismiss: () -> Unit) {
                 },
                 enabled = prompt.isNotBlank() && vg.videoModel.isNotBlank()
             ) {
-                Text("生成")
+                Text(stringResource(R.string.chat_video_generate_confirm))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }
@@ -329,7 +343,7 @@ private fun ChatBubble(msg: ChatMsg, streaming: Boolean) {
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = msg.toolName ?: "工具",
+                    text = msg.toolName ?: stringResource(R.string.chat_tool_default),
                     color = glass.accent,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold
@@ -379,7 +393,7 @@ private fun VideoResultCard(path: String, summary: String) {
             )
             Spacer(Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("视频产物", color = glass.accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.chat_video_output), color = glass.accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 Text(
                     text = summary,
                     color = glass.contentMuted,
@@ -418,14 +432,15 @@ private fun EmptyHint(apiConfigured: Boolean) {
                 Text("AURA", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = glass.content, letterSpacing = 4.sp)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    if (apiConfigured) "液态玻璃 · 智能对话" else "配置 AI 服务后开始对话",
+                    if (apiConfigured) stringResource(R.string.chat_empty_title)
+                    else stringResource(R.string.chat_empty_subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = glass.contentMuted
                 )
                 Spacer(Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    GlassChip(text = "写一段代码", selected = false, onClick = {})
-                    GlassChip(text = "解释一个概念", selected = false, onClick = {})
+                    GlassChip(text = stringResource(R.string.chat_hint_code), selected = false, onClick = {})
+                    GlassChip(text = stringResource(R.string.chat_hint_explain), selected = false, onClick = {})
                 }
             }
         }
@@ -477,7 +492,7 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                     ModelInfo(
                         id = f.name,
                         name = f.name,
-                        description = "本地已下载 · $mb MB"
+                        description = context.str(R.string.chat_model_local_downloaded, mb)
                     )
                 }
                 .sortedByDescending { it.name }
@@ -499,7 +514,7 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("模型配置", fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.chat_model_config_title), fontWeight = FontWeight.Bold) },
         text = {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = 550.dp)) {
                 Row(
@@ -520,7 +535,7 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                         ) {
                             Text("📥", fontSize = 16.sp)
                             Spacer(Modifier.width(6.dp))
-                            Text("本地模型", fontSize = 12.sp, fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal)
+                            Text(stringResource(R.string.chat_model_tab_local), fontSize = 12.sp, fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal)
                         }
                     }
                     Surface(
@@ -537,7 +552,7 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                         ) {
                             Text("🔌", fontSize = 16.sp)
                             Spacer(Modifier.width(6.dp))
-                            Text("API 服务商", fontSize = 12.sp, fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal)
+                            Text(stringResource(R.string.chat_model_tab_api), fontSize = 12.sp, fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal)
                         }
                     }
                 }
@@ -545,7 +560,7 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                 Spacer(Modifier.height(16.dp))
 
                 if (selectedTab == 0) {
-                    Text("选择下载源", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.chat_source_select), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(8.dp))
 
                     LazyColumn(modifier = Modifier.fillMaxWidth().height(300.dp)) {
@@ -570,7 +585,7 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                                     Spacer(Modifier.width(10.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(source.name, fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                                        Text(source.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                        Text(stringResource(modelSourceDescRes(source.name)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                                     }
                                 }
                             }
@@ -602,11 +617,11 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                                     if (isLoadingModels) {
                                         CircularProgressIndicator(modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(6.dp))
-                                        Text("刷新中...")
+                                        Text(stringResource(R.string.chat_refreshing))
                                     } else {
                                         Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(6.dp))
-                                        Text("刷新模型列表")
+                                        Text(stringResource(R.string.chat_refresh_models))
                                     }
                                 }
                             }
@@ -615,7 +630,7 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                         if (availableModels.isNotEmpty()) {
                             item {
                                 Spacer(Modifier.height(12.dp))
-                                Text("可用模型 (${availableModels.size})", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.chat_available_models, availableModels.size), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                                 Spacer(Modifier.height(4.dp))
                             }
                             items(availableModels) { model ->
@@ -653,10 +668,10 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                         }
                     }
                 } else {
-                    Text("配置 AI 服务商", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.chat_api_provider_config), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(8.dp))
 
-                    Text("快速选择", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.chat_quick_preset), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(6.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         providers.chunked(4).forEach { row ->
@@ -691,12 +706,12 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                     Spacer(Modifier.height(12.dp))
 
                     if (selectedProvider.isNotEmpty()) {
-                        Text("API 配置", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.chat_api_config), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(6.dp))
                         OutlinedTextField(
                             value = providerUrl,
                             onValueChange = { providerUrl = it },
-                            label = { Text("API 地址") },
+                            label = { Text(stringResource(R.string.settings_api_url)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -704,7 +719,7 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                         OutlinedTextField(
                             value = providerKey,
                             onValueChange = { providerKey = it },
-                            label = { Text("API Key (可选)") },
+                            label = { Text(stringResource(R.string.chat_api_key_optional)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -721,9 +736,9 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                                         }
                                         availableModels = models
                                         app.settings.update { it.copy(apiProviderUrl = providerUrl, apiProviderKey = providerKey, modelSource = "local") }
-                                        testResult = "✅ 连接成功，获取到 ${models.size} 个模型"
+                                        testResult = context.str(R.string.chat_test_ok, models.size)
                                     } catch (e: Exception) {
-                                        testResult = "❌ 连接失败: ${e.message}"
+                                        testResult = context.str(R.string.chat_test_failed, e.message)
                                         availableModels = emptyList()
                                     }
                                     isLoadingModels = false
@@ -735,9 +750,9 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                             if (isLoadingModels) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("测试中...")
+                                Text(stringResource(R.string.chat_test_testing))
                             } else {
-                                Text("🔌 测试连接")
+                                Text(stringResource(R.string.settings_api_test))
                             }
                         }
 
@@ -754,7 +769,7 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
 
                     if (availableModels.isNotEmpty()) {
                         Spacer(Modifier.height(12.dp))
-                        Text("可用模型 (${availableModels.size})", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.chat_available_models, availableModels.size), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(4.dp))
                         LazyColumn(modifier = Modifier.fillMaxWidth().height(150.dp)) {
                             items(availableModels) { model ->
@@ -782,7 +797,7 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                     if (scannedLocalModels.isNotEmpty()) {
                         Spacer(Modifier.height(12.dp))
                         Text(
-                            "本地已下载 (${scannedLocalModels.size})",
+                            stringResource(R.string.chat_local_downloaded_section, scannedLocalModels.size),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -832,13 +847,13 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                     // 双模型视频生成：指定脚本模型（API/自定义模型）
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "脚本模型（API / 自定义）",
+                        stringResource(R.string.chat_video_script_label),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "用于写视频分镜脚本，默认为当前主对话模型。",
+                        stringResource(R.string.chat_video_script_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp
@@ -876,13 +891,13 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                     // 双模型视频生成：指定本地视频模型（默认即当前选中本地模型）
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "视频生成模型（本地）",
+                        stringResource(R.string.chat_video_model_local_label),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "双模型视频生成：由脚本模型写分镜，本地视频模型生成视频。",
+                        stringResource(R.string.chat_video_dual_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp
@@ -918,7 +933,7 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(model.name, modifier = Modifier.weight(1f))
                                             Text(
-                                                "用作视频生成模型",
+                                                stringResource(R.string.chat_video_model_as_video),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
@@ -929,7 +944,7 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
                         }
                     } else {
                         Text(
-                            "尚未下载本地模型，请先从上方下载源选择并下载一个视频生成模型。",
+                            stringResource(R.string.chat_video_no_local),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp
@@ -939,7 +954,18 @@ fun UnifiedModelDialogV2(app: AuraApp, onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("完成") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_done)) }
         }
     )
+}
+
+
+@StringRes
+private fun modelSourceDescRes(name: String): Int = when (name) {
+    "HuggingFace" -> R.string.chat_source_hf_desc
+    "Ollama Library" -> R.string.chat_source_ollama_desc
+    "LM Studio" -> R.string.chat_source_lmstudio_desc
+    "vLLM" -> R.string.chat_source_vllm_desc
+    "Jan" -> R.string.chat_source_jan_desc
+    else -> R.string.common_unknown
 }

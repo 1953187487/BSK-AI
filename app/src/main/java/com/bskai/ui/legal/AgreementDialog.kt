@@ -43,14 +43,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bskai.AuraApp
+import com.bskai.R
 import com.bskai.data.AgreementSection
 import com.bskai.data.Agreements
 import com.bskai.data.DefaultApiUrlPresets
+import com.bskai.permission.DhizukuBridge
 import com.bskai.permission.ShizukuBridge
 import com.bskai.ui.glass.GlassButton
 import com.bskai.ui.glass.GlassPanel
@@ -111,7 +114,7 @@ fun OnboardingDialog(
                         apiUrl = apiUrl, apiKey = apiKey,
                         onUrlChange = { apiUrl = it }, onKeyChange = { apiKey = it }
                     )
-                    1 -> ShizukuStepContent(shizuku = app.shizuku)
+                    1 -> PrivilegeStepContent(shizuku = app.shizuku, dhizuku = app.dhizuku)
                     else -> AgreementStepContent(
                         agreedOpenSource = agreedOpenSource, agreedUserNotice = agreedUserNotice,
                         onToggleOpenSource = { agreedOpenSource = it },
@@ -128,13 +131,14 @@ fun OnboardingDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(onClick = { if (step > 0) step -= 1 }, enabled = step > 0) {
-                    Text(if (step == 0) "退出" else "上一步")
+                    Text(if (step == 0) stringResource(R.string.onboarding_exit)
+                        else stringResource(R.string.common_back))
                 }
                 GlassButton(
                     text = when (step) {
-                        0 -> "下一步"
-                        1 -> "下一步"
-                        else -> "同意并开始使用"
+                        0 -> stringResource(R.string.onboarding_next)
+                        1 -> stringResource(R.string.onboarding_next)
+                        else -> stringResource(R.string.onboarding_agree_start)
                     },
                     enabled = step < 2 || (agreedOpenSource && agreedUserNotice),
                     onClick = {
@@ -164,25 +168,25 @@ private fun ApiConfigStepContent(
     onUrlChange: (String) -> Unit, onKeyChange: (String) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Text("配置 AI 服务", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.onboarding_api_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(
-            "填写 AI 服务地址和密钥，本设置将被保存，稍后可在设置中更改。可直接跳过。",
+            stringResource(R.string.onboarding_api_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = apiUrl, onValueChange = onUrlChange,
-            label = { Text("API 地址") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.settings_api_url)) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("https://api.example.com/v1") }
         )
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = apiKey, onValueChange = onKeyChange,
-            label = { Text("API Key") }, singleLine = true, modifier = Modifier.fillMaxWidth()
+            label = { Text(stringResource(R.string.settings_api_key)) }, singleLine = true, modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(12.dp))
-        Text("快速选择:", style = MaterialTheme.typography.labelMedium)
+        Text(stringResource(R.string.chat_quick_preset), style = MaterialTheme.typography.labelMedium)
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             DefaultApiUrlPresets.forEach { preset ->
@@ -204,89 +208,104 @@ private fun ApiConfigStepContent(
 }
 
 @Composable
-private fun ShizukuStepContent(shizuku: ShizukuBridge) {
-    val state by shizuku.state.collectAsState()
+private fun PrivilegeStepContent(shizuku: ShizukuBridge, dhizuku: DhizukuBridge) {
+    val shizukuState by shizuku.state.collectAsState()
+    val dhizukuState by dhizuku.state.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Text("授权 Shizuku（Dhizuku）", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(
-            "授权后，终端与 IDE 将以 root 级权限运行；未授权时这些功能保持不可用。此步骤可跳过。",
+            stringResource(R.string.onboarding_privilege_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            stringResource(R.string.onboarding_privilege_desc_long),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(14.dp))
 
-        when (state) {
-            ShizukuBridge.State.GRANTED -> {
-                GlassPanel(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                    Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.CheckCircle, contentDescription = null,
-                            tint = Color(0xFF3DBE7B), modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text("已授权", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text(
-                                "终端与 IDE 已解锁 root 级执行能力",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
+        PrivilegeRow(
+            name = "Shizuku",
+            subtitle = stringResource(R.string.privilege_shizuku_desc),
+            granted = shizukuState == ShizukuBridge.State.GRANTED,
+            unavailable = shizukuState == ShizukuBridge.State.UNAVAILABLE,
+            onAction = {
+                if (shizukuState == ShizukuBridge.State.UNAVAILABLE) shizuku.refresh()
+                else shizuku.requestPermission()
             }
+        )
+        Spacer(Modifier.height(10.dp))
 
-            ShizukuBridge.State.NEED_PERMISSION -> {
-                GlassPanel(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                    Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Security, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("待授权", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text(
-                                "检测到 Shizuku / Dhizuku 服务，点击下方按钮完成授权",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    GlassButton(
-                        text = "立即授权",
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp).padding(bottom = 14.dp),
-                        onClick = { shizuku.requestPermission() }
+        PrivilegeRow(
+            name = "Dhizuku",
+            subtitle = stringResource(R.string.privilege_dhizuku_desc),
+            granted = dhizukuState == DhizukuBridge.State.GRANTED,
+            unavailable = dhizukuState == DhizukuBridge.State.UNAVAILABLE,
+            onAction = {
+                if (dhizukuState == DhizukuBridge.State.UNAVAILABLE) dhizuku.refresh()
+                else dhizuku.requestPermission()
+            }
+        )
+    }
+}
+
+@Composable
+private fun PrivilegeRow(
+    name: String,
+    subtitle: String,
+    granted: Boolean,
+    unavailable: Boolean,
+    onAction: () -> Unit
+) {
+    GlassPanel(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (granted) Icons.Default.CheckCircle else Icons.Default.Security,
+                    contentDescription = null,
+                    tint = if (granted) Color(0xFF3DBE7B)
+                    else if (unavailable) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = name,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-
-            else -> {
-                GlassPanel(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                    Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Outlined.Info, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("未检测到服务", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text(
-                                "请先安装并启动 Dhizuku 或 Shizuku 应用（可通过无线调试或 Root 启动），完成后点击重试。",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    GlassButton(
-                        text = "重试检测",
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp).padding(bottom = 14.dp),
-                        onClick = { shizuku.refresh() }
-                    )
-                }
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = when {
+                        granted -> stringResource(R.string.privilege_state_granted)
+                        unavailable -> stringResource(R.string.privilege_state_unavailable)
+                        else -> stringResource(R.string.privilege_state_need_permission)
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (granted) Color(0xFF3DBE7B) else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(10.dp))
+                GlassButton(
+                    text = if (granted) stringResource(R.string.privilege_open_settings)
+                    else if (unavailable) stringResource(R.string.privilege_redetect)
+                    else stringResource(R.string.privilege_authorize),
+                    onClick = onAction
+                )
             }
         }
     }
@@ -298,9 +317,9 @@ private fun AgreementStepContent(
     onToggleOpenSource: (Boolean) -> Unit, onToggleUserNotice: (Boolean) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Text("开源协议与用户须知", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.onboarding_agreement_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(
-            "请阅读并同意以下两份协议后继续使用 AURA。",
+            stringResource(R.string.onboarding_agreement_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -340,7 +359,7 @@ private fun AgreementCard(section: AgreementSection, checked: Boolean, onChecked
                     colors = CheckboxDefaults.colors(checkedColor = glass.accent)
                 )
                 Text(
-                    "我已阅读并同意",
+                    stringResource(R.string.agreement_accepted),
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (checked) glass.accent else glass.content
                 )

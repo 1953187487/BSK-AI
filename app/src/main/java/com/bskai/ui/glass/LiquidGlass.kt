@@ -47,9 +47,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
+import androidx.annotation.StringRes
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bskai.R
 import com.kyant.backdrop.liquidGlassBackdrop
 import com.kyant.backdrop.liquidGlassRim
 import com.kyant.backdrop.effects.LensStyle
@@ -162,9 +165,9 @@ fun GlassPanel(
     }
 }
 
-enum class GlassNavItem(val label: String, val icon: ImageVector) {
-    CHAT("AI 聊天", Icons.Outlined.Forum),
-    SETTINGS("设置", Icons.Outlined.Settings)
+enum class GlassNavItem(@StringRes val labelRes: Int, val icon: ImageVector) {
+    CHAT(R.string.nav_chat, Icons.Outlined.Forum),
+    SETTINGS(R.string.nav_settings, Icons.Outlined.Settings)
 }
 
 @Composable
@@ -206,12 +209,12 @@ fun GlassTopNav(
             ) {
                 Icon(
                     imageVector = item.icon,
-                    contentDescription = item.label,
+                    contentDescription = stringResource(item.labelRes),
                     tint = if (isSelected) colors.onAccent else colors.contentMuted,
                     modifier = Modifier.size(17.dp)
                 )
                 Text(
-                    text = item.label,
+                    text = stringResource(item.labelRes),
                     modifier = Modifier.padding(start = 7.dp),
                     color = if (isSelected) colors.onAccent else colors.contentMuted,
                     fontSize = 13.sp,
@@ -263,12 +266,12 @@ fun GlassBottomNav(
             ) {
                 Icon(
                     imageVector = item.icon,
-                    contentDescription = item.label,
+                    contentDescription = stringResource(item.labelRes),
                     tint = if (isSelected) colors.onAccent else colors.contentMuted,
                     modifier = Modifier.size(19.dp)
                 )
                 Text(
-                    text = item.label,
+                    text = stringResource(item.labelRes),
                     modifier = Modifier.padding(start = 8.dp),
                     color = if (isSelected) colors.onAccent else colors.contentMuted,
                     fontSize = 13.sp,

@@ -8,11 +8,21 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import rikka.shizuku.Shizuku
 
+/**
+ * Bridges the Shizuku IPC service for privileged command execution.
+ *
+ * State is exposed as a [StateFlow] for UI observation. This class registers
+ * Shizuku listeners once (the previous implementation registered the
+ * binder-received listener twice in [init], which could cause the state to
+ * be overwritten by a duplicate callback).
+ */
 class ShizukuBridge {
 
+    /** Shizuku authorization state. */
     enum class State { UNAVAILABLE, NEED_PERMISSION, GRANTED }
 
     private val _state = MutableStateFlow(detect())
+    /** Current Shizuku state, observable by the UI. */
     val state: StateFlow<State> = _state.asStateFlow()
 
     private val requestPermissionListener =
@@ -35,18 +45,28 @@ class ShizukuBridge {
             Shizuku.addRequestPermissionResultListener(requestPermissionListener)
             Shizuku.addBinderDeadListener(binderDeathListener)
             Shizuku.addBinderReceivedListener(binderReceivedListener)
-            Shizuku.addBinderReceivedListener(binderReceivedListener)
         } catch (t: Throwable) {
             Log.w(TAG, "Shizuku init failed", t)
         }
     }
 
+    /**
+     * Re-detects the Shizuku state and updates [state].
+     */
     fun refresh() {
         _state.value = detect()
     }
 
+    /**
+     * Whether Shizuku permission has been granted.
+     */
     fun isGranted(): Boolean = _state.value == State.GRANTED
 
+    /**
+     * Requests Shizuku permission from the user.
+     *
+     * @param requestCode request code for the permission result
+     */
     fun requestPermission(requestCode: Int = 1001) {
         try {
             if (!Shizuku.pingBinder()) {
@@ -65,12 +85,21 @@ class ShizukuBridge {
         }
     }
 
+    /**
+     * Call after receiving the permission result to refresh state.
+     */
     fun onPermissionResult() {
         _state.value = detect()
     }
 
+    /**
+     * Returns the Shizuku binder, or null when unavailable.
+     */
     fun binder(): IBinder? = try { Shizuku.getBinder() } catch (_: Throwable) { null }
 
+    /**
+     * Returns the Shizuku service version, or -1 when unavailable.
+     */
     fun version(): Int = try { Shizuku.getVersion() } catch (_: Throwable) { -1 }
 
     private fun detect(): State {
@@ -85,6 +114,9 @@ class ShizukuBridge {
         }
     }
 
+    /**
+     * Unregisters all Shizuku listeners. Call when the bridge is no longer needed.
+     */
     fun shutdown() {
         try { Shizuku.removeRequestPermissionResultListener(requestPermissionListener) } catch (_: Throwable) {}
         try { Shizuku.removeBinderDeadListener(binderDeathListener) } catch (_: Throwable) {}

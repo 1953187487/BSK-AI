@@ -1,8 +1,11 @@
 package com.bskai.agent.slash
 
 /**
- * /video <提示词>：双模型视频生成。
- * 脚本模型（API/自定义）写分镜，本地视频模型生成视频，产物落到对话流。
+ * /video <prompt>: dual-model video generation.
+ * The script model (API / custom) writes the shot breakdown, the local video
+ * model generates the video, and the artifact lands in the conversation flow.
+ *
+ * NOTE: user-facing strings are in Chinese and are i18n candidates.
  */
 class VideoGenCommand(
     private val generate: (String) -> Unit
@@ -12,6 +15,12 @@ class VideoGenCommand(
     override val description = "双模型视频生成：脚本模型写分镜 + 本地模型出片"
     override val placeholder = "/video <描述>"
 
+    /**
+     * Resolves the video generation command.
+     *
+     * @param arg video description prompt (empty = usage message)
+     * @return [SlashOutcome.LocalMessage] acknowledging the submission
+     */
     override fun resolve(arg: String): SlashOutcome {
         val prompt = arg.trim()
         if (prompt.isEmpty()) {
@@ -21,4 +30,3 @@ class VideoGenCommand(
         return SlashOutcome.LocalMessage("已提交视频生成任务：$prompt")
     }
 }
-

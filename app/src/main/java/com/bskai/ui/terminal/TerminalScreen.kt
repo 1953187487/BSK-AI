@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,22 +36,28 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bskai.BuildConfig
+import com.bskai.R
+import com.bskai.permission.DhizukuBridge
 import com.bskai.permission.ShizukuBridge
 import com.bskai.terminal.TerminalEngine
+import com.bskai.ui.glass.GlassButton
 import com.bskai.ui.glass.GlassChip
 import com.bskai.ui.glass.GlassIconButton
 import com.bskai.ui.glass.GlassPanel
@@ -69,16 +75,28 @@ private val TERM_RED = Color(0xFFF85149)
 @Composable
 fun TerminalScreen(
     engine: TerminalEngine,
-    shizuku: ShizukuBridge?
+    shizuku: ShizukuBridge?,
+    dhizuku: DhizukuBridge? = null
 ) {
     val backend by engine.backend.collectAsState()
     val shizukuState = shizuku?.state?.collectAsState()?.value ?: ShizukuBridge.State.UNAVAILABLE
-    val locked = shizukuState != ShizukuBridge.State.GRANTED
+    val dhizukuState = dhizuku?.state?.collectAsState()?.value ?: DhizukuBridge.State.UNAVAILABLE
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val history = remember { mutableStateListOf<HistoryLine>() }
     var input by remember { mutableStateOf("") }
+    var showAuth by remember { mutableStateOf(false) }
+    // Lets the user keep the sandboxed terminal open when neither privilege is granted.
+    var bypassed by rememberSaveable { mutableStateOf(false) }
     val clipboard = LocalClipboardManager.current
+    val noOutput = stringResource(R.string.terminal_no_output)
+    val bannerTitle = stringResource(R.string.terminal_banner_title, BuildConfig.APP_VERSION)
+    val bannerHelp = stringResource(R.string.terminal_banner_help)
+
+    val shizukuGranted = shizukuState == ShizukuBridge.State.GRANTED
+    val dhizukuGranted = dhizukuState == DhizukuBridge.State.GRANTED
+    val hasPrivilege = shizukuGranted || dhizukuGranted
+    val locked = !hasPrivilege && !bypassed
 
     fun run() {
         val cmd = input.trim()
@@ -87,16 +105,15 @@ fun TerminalScreen(
         history.add(HistoryLine(prompt = "$", command = cmd))
         scope.launch {
             val r = engine.execute(cmd)
+            val outputText = if (r.stdout.isNotEmpty()) r.stdout else r.stderr.ifEmpty {
+                noOutput
+            }
             history.add(HistoryLine(
                 prompt = r.backend.name.lowercase() + ":" + r.exitCode,
-                output = if (r.stdout.isNotEmpty()) r.stdout else r.stderr.ifEmpty { "(no output)" },
+                output = outputText,
                 isError = r.exitCode != 0
             ))
         }
-    }
-
-    fun clearHistory() {
-        history.clear()
     }
 
     fun copyAll() {
@@ -117,8 +134,31 @@ fun TerminalScreen(
     }
 
     if (locked) {
-        TerminalLockedView(state = shizukuState, shizuku = shizuku)
+        TerminalLockedView(
+            shizukuState = shizukuState,
+            dhizukuState = dhizukuState,
+            shizuku = shizuku,
+            dhizuku = dhizuku,
+            onGrant = { showAuth = true },
+            onLocalFallback = { bypassed = true }
+        )
         return
+    }
+
+    if (showAuth) {
+        AuthorizationDialog(
+            shizukuState = shizukuState,
+            dhizukuState = dhizukuState,
+            onShizuku = {
+                if (shizukuState == ShizukuBridge.State.UNAVAILABLE) shizuku?.refresh()
+                else shizuku?.requestPermission()
+            },
+            onDhizuku = {
+                if (dhizukuState == DhizukuBridge.State.UNAVAILABLE) dhizuku?.refresh()
+                else dhizuku?.requestPermission()
+            },
+            onDismiss = { showAuth = false }
+        )
     }
 
     Column(
@@ -126,63 +166,46 @@ fun TerminalScreen(
             .fillMaxSize()
             .imePadding()
     ) {
-        GlassPanel(
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        GlassPanel(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 TerminalEngine.Backend.entries.forEach { b ->
-                    val enabled = when (b) {
-                        TerminalEngine.Backend.LOCAL -> !locked
-                        TerminalEngine.Backend.SHIZUKU -> shizukuState == ShizukuBridge.State.GRANTED
-                        TerminalEngine.Backend.ROOT -> shizukuState == ShizukuBridge.State.GRANTED
-                    }
                     GlassChip(
-                        text = b.name,
+                        text = stringResource(backendLabel(b)),
                         selected = backend == b,
-                        enabled = enabled,
+                        enabled = isBackendUsable(b, shizukuGranted, dhizukuGranted),
                         onClick = { engine.setBackend(b) }
                     )
                 }
-                if (shizukuState == ShizukuBridge.State.NEED_PERMISSION) {
+                if (!hasPrivilege) {
                     GlassChip(
-                        text = "授权 Shizuku",
+                        text = stringResource(R.string.terminal_authorize),
                         selected = false,
-                        onClick = { shizuku?.requestPermission() }
-                    )
-                } else if (shizukuState == ShizukuBridge.State.UNAVAILABLE) {
-                    Text(
-                        text = "Shizuku 未安装",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TERM_MUTED
+                        onClick = { showAuth = true }
                     )
                 }
                 Spacer(Modifier.weight(1f))
                 GlassIconButton(
                     icon = Icons.Default.ContentCopy,
-                    contentDescription = "复制全部",
+                    contentDescription = stringResource(R.string.terminal_copy_all),
                     size = 34.dp,
                     onClick = { copyAll() }
                 )
                 GlassIconButton(
                     icon = Icons.Default.ClearAll,
-                    contentDescription = "清空",
+                    contentDescription = stringResource(R.string.terminal_clear),
                     size = 34.dp,
-                    onClick = { clearHistory() }
+                    onClick = { history.clear() }
                 )
             }
         }
 
         Spacer(Modifier.height(8.dp))
 
-        GlassPanel(
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.weight(1f).fillMaxWidth()
-        ) {
+        GlassPanel(shape = RoundedCornerShape(20.dp), modifier = Modifier.weight(1f).fillMaxWidth()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -191,15 +214,12 @@ fun TerminalScreen(
                         RoundedCornerShape(20.dp)
                     )
             ) {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize().padding(14.dp)
-                ) {
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(14.dp)) {
                     if (history.isEmpty()) {
                         item {
                             Column {
                                 Text(
-                                    text = "AURA Terminal v${BuildConfig.APP_VERSION}",
+                                    text = bannerTitle,
                                     style = TextStyle(
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 13.sp,
@@ -209,7 +229,7 @@ fun TerminalScreen(
                                 )
                                 Spacer(Modifier.height(6.dp))
                                 Text(
-                                    text = "LOCAL     应用沙盒权限\nSHIZUKU   Shizuku 提权（免 root）\nROOT      直接 root 执行\n\n危险命令自动拦截\nAI 可通过 run_shell 工具调用",
+                                    text = bannerHelp,
                                     style = TextStyle(
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 11.sp,
@@ -227,10 +247,7 @@ fun TerminalScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        GlassPanel(
-            shape = RoundedCornerShape(24.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        GlassPanel(shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -247,7 +264,7 @@ fun TerminalScreen(
                     value = input,
                     onValueChange = { input = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = "输入命令…",
+                    placeholder = stringResource(R.string.terminal_input_hint),
                     textStyle = TextStyle(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
@@ -259,7 +276,7 @@ fun TerminalScreen(
                 Spacer(Modifier.width(8.dp))
                 GlassIconButton(
                     icon = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "执行",
+                    contentDescription = stringResource(R.string.terminal_run),
                     size = 40.dp,
                     tint = TERM_GREEN,
                     onClick = { run() }
@@ -270,17 +287,37 @@ fun TerminalScreen(
 }
 
 @Composable
+private fun backendLabel(b: TerminalEngine.Backend): Int = when (b) {
+    TerminalEngine.Backend.LOCAL -> R.string.terminal_backend_local
+    TerminalEngine.Backend.SHIZUKU -> R.string.terminal_backend_shizuku
+    TerminalEngine.Backend.DHIZUKU -> R.string.terminal_backend_dhizuku
+    TerminalEngine.Backend.ROOT -> R.string.terminal_backend_root
+}
+
+private fun isBackendUsable(
+    b: TerminalEngine.Backend,
+    shizukuGranted: Boolean,
+    dhizukuGranted: Boolean
+): Boolean = when (b) {
+    TerminalEngine.Backend.LOCAL -> true
+    TerminalEngine.Backend.SHIZUKU -> shizukuGranted
+    TerminalEngine.Backend.DHIZUKU -> dhizukuGranted
+    TerminalEngine.Backend.ROOT -> true
+}
+
+@Composable
 private fun TerminalLockedView(
-    state: ShizukuBridge.State,
-    shizuku: ShizukuBridge?
+    shizukuState: ShizukuBridge.State,
+    dhizukuState: DhizukuBridge.State,
+    shizuku: ShizukuBridge?,
+    dhizuku: DhizukuBridge?,
+    onGrant: () -> Unit,
+    onLocalFallback: () -> Unit
 ) {
     val glass = rememberGlassColors()
     val accent = MaterialTheme.colorScheme.primary
 
-    GlassPanel(
-        shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.fillMaxSize()
-    ) {
+    GlassPanel(shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.fillMaxSize().padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -294,43 +331,109 @@ private fun TerminalLockedView(
             )
             Spacer(Modifier.height(14.dp))
             Text(
-                text = "终端暂未开放",
+                text = stringResource(R.string.terminal_locked_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = glass.content
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = when (state) {
-                    ShizukuBridge.State.NEED_PERMISSION ->
-                        "授权 Shizuku / Dhizuku 后即可解锁 root 级终端能力"
-                    ShizukuBridge.State.UNAVAILABLE ->
-                        "未检测到 Shizuku / Dhizuku，请先安装并启动相关应用"
-                    else -> "授权 Shizuku / Dhizuku 后即可使用终端"
-                },
+                text = stringResource(R.string.terminal_locked_desc),
                 style = MaterialTheme.typography.bodyMedium,
                 color = glass.contentMuted,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(16.dp))
 
-            GlassChip(
-                text = when (state) {
-                    ShizukuBridge.State.UNAVAILABLE -> "重新检测"
-                    else -> "去授权"
-                },
-                selected = false,
-                accent = accent,
-                onClick = {
-                    when (state) {
-                        ShizukuBridge.State.UNAVAILABLE -> shizuku?.refresh()
-                        else -> shizuku?.requestPermission()
-                    }
-                }
+            GlassButton(text = stringResource(R.string.terminal_authorize), onClick = onGrant)
+            Spacer(Modifier.height(10.dp))
+            GlassButton(
+                text = stringResource(R.string.terminal_local_fallback),
+                onClick = onLocalFallback
             )
         }
     }
 }
+
+@Composable
+private fun AuthorizationDialog(
+    shizukuState: ShizukuBridge.State,
+    dhizukuState: DhizukuBridge.State,
+    onShizuku: () -> Unit,
+    onDhizuku: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val glass = rememberGlassColors()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.terminal_authorize_title)) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(
+                    text = stringResource(R.string.terminal_authorize_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = glass.contentMuted
+                )
+                GlassPanel(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        AuthorizationRow(
+                            name = stringResource(R.string.terminal_backend_shizuku),
+                            stateText = stringResource(privilegeStateText(shizukuState)),
+                            actionText = stringResource(privilegeActionText(shizukuState)),
+                            onClick = onShizuku
+                        )
+                    }
+                }
+                GlassPanel(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        AuthorizationRow(
+                            name = stringResource(R.string.terminal_backend_dhizuku),
+                            stateText = stringResource(privilegeStateText(dhizukuState)),
+                            actionText = stringResource(privilegeActionText(dhizukuState)),
+                            onClick = onDhizuku
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = { GlassButton(text = stringResource(R.string.common_close), onClick = onDismiss) }
+    )
+}
+
+@Composable
+private fun AuthorizationRow(name: String, stateText: String, actionText: String, onClick: () -> Unit) {
+    val glass = rememberGlassColors()
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = glass.content)
+            Spacer(Modifier.height(2.dp))
+            Text(stateText, style = MaterialTheme.typography.bodySmall, color = glass.contentMuted)
+        }
+        Spacer(Modifier.width(10.dp))
+        GlassChip(text = actionText, selected = false, onClick = onClick)
+    }
+}
+
+private fun privilegeStateText(state: ShizukuBridge.State): Int = when (state) {
+    ShizukuBridge.State.UNAVAILABLE -> R.string.privilege_state_unavailable
+    ShizukuBridge.State.NEED_PERMISSION -> R.string.privilege_state_need_permission
+    ShizukuBridge.State.GRANTED -> R.string.privilege_state_granted
+}
+
+private fun privilegeStateText(state: DhizukuBridge.State): Int = when (state) {
+    DhizukuBridge.State.UNAVAILABLE -> R.string.privilege_state_unavailable
+    DhizukuBridge.State.NEED_PERMISSION -> R.string.privilege_state_need_permission
+    DhizukuBridge.State.GRANTED -> R.string.privilege_state_granted
+}
+
+private fun privilegeActionText(state: ShizukuBridge.State): Int =
+    if (state == ShizukuBridge.State.UNAVAILABLE) R.string.privilege_redetect
+    else R.string.privilege_authorize
+
+private fun privilegeActionText(state: DhizukuBridge.State): Int =
+    if (state == DhizukuBridge.State.UNAVAILABLE) R.string.privilege_redetect
+    else R.string.privilege_authorize
 
 @Composable
 private fun HistoryLineView(line: HistoryLine) {

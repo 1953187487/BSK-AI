@@ -24,11 +24,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.bskai.AuraApp
+import com.bskai.R
 import com.bskai.account.AuraApi
 import com.bskai.account.AuraClient
 import com.bskai.account.AuraHosts
@@ -45,7 +47,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AccountScreen(app: AuraApp) {
     var showOfficial by remember { mutableStateOf(false) }
-    var result by remember { mutableStateOf<String?>(null) }
+    var loginResult by remember { mutableStateOf<AuraTokenResponse?>(null) }
     var accessToken by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
@@ -57,12 +59,20 @@ fun AccountScreen(app: AuraApp) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("AURA 账户", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.account_title), style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(16.dp))
 
-        if (result != null) {
+        if (loginResult != null) {
             Card(modifier = Modifier.fillMaxWidth()) {
-                Text(result!!, modifier = Modifier.padding(16.dp))
+                Text(
+                    stringResource(
+                        R.string.account_login_success,
+                        loginResult!!.role.orEmpty(),
+                        if (loginResult!!.official == true) stringResource(R.string.common_yes)
+                        else stringResource(R.string.common_no)
+                    ),
+                    modifier = Modifier.padding(16.dp)
+                )
             }
             Spacer(Modifier.height(12.dp))
         }
@@ -70,18 +80,18 @@ fun AccountScreen(app: AuraApp) {
         if (showOfficial) {
             OfficialLoginForm(app = app) { tokens ->
                 accessToken = tokens.accessToken
-                result = "登录成功(role=${tokens.role}, official=${tokens.official})"
+                loginResult = tokens
             }
         } else {
             OutlinedButton(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { showOfficial = true },
             ) {
-                Text("官方登录(系统预置身份)")
+                Text(stringResource(R.string.account_official_login))
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                "QQ/微信 登录请在真实设备经 SDK 完成,此处仅做入口示意。",
+                stringResource(R.string.account_oauth_hint),
                 style = MaterialTheme.typography.bodySmall,
             )
         }
@@ -97,28 +107,30 @@ private fun OfficialLoginForm(app: AuraApp, onSuccess: (AuraTokenResponse) -> Un
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
+    val loginFailed = stringResource(R.string.account_login_failed)
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("官方登录(三者缺一不可)", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.account_official_login_fields), style = MaterialTheme.typography.titleMedium)
         TextField(
             value = id,
             onValueChange = { id = it },
-            label = { Text("ID") },
+            label = { Text(stringResource(R.string.account_field_id)) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         )
         TextField(
             value = accountName,
             onValueChange = { accountName = it },
-            label = { Text("账号名称") },
+            label = { Text(stringResource(R.string.account_field_name)) },
             singleLine = true,
         )
         TextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("密码") },
+            label = { Text(stringResource(R.string.account_field_password)) },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
         )
@@ -139,14 +151,14 @@ private fun OfficialLoginForm(app: AuraApp, onSuccess: (AuraTokenResponse) -> Un
                         )
                         onSuccess(resp)
                     } catch (e: Exception) {
-                        error = e.message ?: "登录失败"
+                        error = e.message ?: loginFailed
                     } finally {
                         busy = false
                     }
                 }
             },
         ) {
-            Text(if (busy) "校验中..." else "登 录")
+            Text(if (busy) stringResource(R.string.account_verifying) else stringResource(R.string.account_login))
         }
     }
 }

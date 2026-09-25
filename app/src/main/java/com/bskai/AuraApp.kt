@@ -18,6 +18,7 @@ import com.bskai.agent.tools.WriteFileTool
 import com.bskai.data.SettingsRepository
 import com.bskai.i18n.LocaleManager
 import com.bskai.music.MusicEngine
+import com.bskai.permission.DhizukuBridge
 import com.bskai.permission.ShizukuBridge
 import com.bskai.terminal.TerminalEngine
 import com.bskai.workspace.WorkspaceManager
@@ -33,6 +34,8 @@ class AuraApp : Application() {
     lateinit var videoGen: VideoGenCoordinator
         private set
     lateinit var shizuku: ShizukuBridge
+        private set
+    lateinit var dhizuku: DhizukuBridge
         private set
     lateinit var terminal: TerminalEngine
         private set
@@ -54,7 +57,12 @@ class AuraApp : Application() {
         settings = SettingsRepository(this)
         applyLocale()
         shizuku = ShizukuBridge()
-        terminal = TerminalEngine(shizuku)
+        dhizuku = DhizukuBridge()
+        // Dhizuku.init performs a synchronous provider call, keep it off the main thread
+        Thread {
+            dhizuku.init(this)
+        }.apply { isDaemon = true; start() }
+        terminal = TerminalEngine(shizuku, dhizuku)
         workspace = WorkspaceManager(this, settings)
         workspace.ensureDefault()
         music = MusicEngine(this)

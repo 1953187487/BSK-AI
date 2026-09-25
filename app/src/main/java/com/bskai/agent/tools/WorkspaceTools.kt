@@ -2,10 +2,14 @@ package com.bskai.agent.tools
 
 import com.bskai.workspace.WorkspaceManager
 
+/** 列出工作区目录内容。 */
 class ListFilesTool(private val workspace: WorkspaceManager) : Tool {
     override val name = "list_files"
-    override val description = "列出当前工作区根目录下的文件与文件夹。返回 JSON 数组，每项含 name/path/isDirectory/size。"
-    override val parametersSchema = """{"type":"object","properties":{"path":{"type":"string","description":"相对于工作区根的子路径，例如 'docs'；留空列出根目录"}}}"""
+    override val description = "列出当前工作区某目录下的文件与文件夹。返回 JSON 数组，每项含 name/path/isDirectory/size。"
+    override val requiresWorkspace = true
+    override val parametersSchema =
+        """{"type":"object","properties":{"path":{"type":"string","description":"相对于工作区根的子路径，例如 'docs'；留空列出根目录"}}}"""
+
     override suspend fun execute(argumentsJson: String): ToolResult {
         val path = parseString(argumentsJson, "path") ?: ""
         val nodes = workspace.listRelative(path)
@@ -24,10 +28,14 @@ class ListFilesTool(private val workspace: WorkspaceManager) : Tool {
     }
 }
 
+/** 读取工作区文本文件。 */
 class ReadFileTool(private val workspace: WorkspaceManager) : Tool {
     override val name = "read_file"
     override val description = "读取工作区中某个文本文件的全部内容。"
-    override val parametersSchema = """{"type":"object","properties":{"path":{"type":"string","description":"相对工作区根的文件路径"}},"required":["path"]}"""
+    override val requiresWorkspace = true
+    override val parametersSchema =
+        """{"type":"object","properties":{"path":{"type":"string","description":"相对工作区根的文件路径"}},"required":["path"]}"""
+
     override suspend fun execute(argumentsJson: String): ToolResult {
         val path = parseString(argumentsJson, "path")
             ?: return ToolResult(name, "缺少参数 path", true)
@@ -37,10 +45,14 @@ class ReadFileTool(private val workspace: WorkspaceManager) : Tool {
     }
 }
 
+/** 写入工作区文本文件。 */
 class WriteFileTool(private val workspace: WorkspaceManager) : Tool {
     override val name = "write_file"
     override val description = "在工作区创建或覆盖一个文本文件。"
-    override val parametersSchema = """{"type":"object","properties":{"path":{"type":"string","description":"相对工作区根的文件路径"},"content":{"type":"string","description":"要写入的文本内容"}},"required":["path","content"]}"""
+    override val requiresWorkspace = true
+    override val parametersSchema =
+        """{"type":"object","properties":{"path":{"type":"string","description":"相对工作区根的文件路径"},"content":{"type":"string","description":"要写入的文本内容"}},"required":["path","content"]}"""
+
     override suspend fun execute(argumentsJson: String): ToolResult {
         val path = parseString(argumentsJson, "path")
             ?: return ToolResult(name, "缺少参数 path", true)

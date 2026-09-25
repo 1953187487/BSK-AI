@@ -1,33 +1,46 @@
 package com.bskai.agent.tools
 
 import com.bskai.terminal.TerminalEngine
+import org.json.JSONObject
 
 /**
- * run_shell: 让 AI 在 AURA 内置终端里跑命令。
+ * run_shell: lets the AI run a command in AURA's built-in terminal.
  *
- * 安全审计：
- * - 危险命令（rm -rf /、mkfs、dd of=/dev/...、reboot、shutdown）直接拒绝
- * - 非 LOCAL 后端默认拒绝，需用户明确开启
- * - 单次超时 30 秒
+ * Security audit:
+ * - dangerous commands (rm -rf /, mkfs, dd of=/dev/..., reboot, shutdown) are rejected
+ * - non-LOCAL backends are rejected by default; user must explicitly enable them
+ * - single execution timeout of 30 seconds
  */
 class RunShellTool(private val engine: TerminalEngine) : Tool {
     override val name = "run_shell"
     override val description = "Run a shell command in AURA's built-in terminal. Returns stdout, stderr, exitCode."
-    override val parametersSchema = """{
-        "type": "object",
-        "properties": {
-            "command": {"type": "string", "description": "Shell command to execute (sh -c)"},
-            "working_dir": {"type": "string", "description": "Optional working directory"}
-        },
-        "required": ["command"]
-    }"""
+    override val parametersSchema = """
+{
+    "type": "object",
+    "properties": {
+        "command": {"type": "string", "description": "Shell command to execute (sh -c)"},
+        "working_dir": {"type": "string", "description": "Optional working directory"}
+    },
+    "required": ["command"]
+}
+""".trimIndent()
 
+    /**
+     * Executes the shell command described by [argumentsJson].
+     *
+     * @param argumentsJson JSON with `command` (required) and optional `working_dir`
+     * @return [ToolResult] containing the formatted execution output
+     */
     override suspend fun execute(argumentsJson: String): ToolResult {
-        val obj = try { org.json.JSONObject(argumentsJson) } catch (_: Exception) {
+        val obj = try {
+            JSONObject(argumentsJson)
+        } catch (_: Exception) {
             return ToolResult(name, "arguments must be JSON", isError = true)
         }
         val command = obj.optString("command", "").trim()
-        if (command.isEmpty()) return ToolResult(name, "command is required", isError = true)
+        if (command.isEmpty()) {
+            return ToolResult(name, "command is required", isError = true)
+        }
         if (isDangerous(command)) {
             return ToolResult(name, "拒绝执行危险命令：$command", isError = true)
         }
@@ -49,6 +62,12 @@ class RunShellTool(private val engine: TerminalEngine) : Tool {
         return ToolResult(name, body, isError = result.exitCode != 0)
     }
 
+    /**
+     * Detects destructive or dangerous commands that must never be executed.
+     *
+     * @param cmd the command string to inspect
+     * @return true if the command matches a banned pattern
+     */
     private fun isDangerous(cmd: String): Boolean {
         val lower = cmd.lowercase()
         val banned = listOf(

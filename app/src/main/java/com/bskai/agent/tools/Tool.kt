@@ -8,6 +8,14 @@ interface Tool {
     val name: String
     val description: String
     val parametersSchema: String
+
+    /**
+     * 是否依赖工作区权限（workspaceEnabled）。
+     * 内核会据此过滤工具暴露面：工作区关闭时不把该工具发给模型。
+     */
+    val requiresWorkspace: Boolean get() = false
+
+    /** 执行工具。参数为模型给出的 JSON 字符串；失败抛异常或返回 isError 结果。 */
     suspend fun execute(argumentsJson: String): ToolResult
 }
 
@@ -28,6 +36,10 @@ class ToolRegistry {
 
     fun all(): List<Tool> = tools.values.toList()
 
+    /**
+     * 生成 OpenAI tools 协议的完整 JSON 数组字符串（调试/日志用）。
+     * 运行时暴露面请使用 [definitions]。
+     */
     fun toolsJsonForLlm(): String {
         if (tools.isEmpty()) return "[]"
         val arr = org.json.JSONArray()
@@ -43,5 +55,14 @@ class ToolRegistry {
             arr.put(obj)
         }
         return arr.toString()
+    }
+
+    /** 供 LlmClient 使用的工具定义列表（name/description/parameters）。 */
+    fun definitions(): List<Map<String, Any>> = tools.values.map { tool ->
+        mapOf(
+            "name" to tool.name,
+            "description" to tool.description,
+            "parameters" to org.json.JSONObject(tool.parametersSchema)
+        )
     }
 }

@@ -15,13 +15,19 @@ import java.util.Locale
 import java.util.Date
 
 /**
- * 双模型视频生成协调器。
+ * Dual-model video generation coordinator.
  *
- * 流程：
- * 1. 由已配置的 API 服务商 / 自定义 API 模型（脚本模型）根据用户提示词写一段分镜脚本；
- * 2. 由本地已下载模型（视频模型）基于脚本在设备端生成视频，落地到 filesDir/videos。
+ * Pipeline:
+ * 1. A configured API provider / custom API model (script model) writes a shot script
+ *    from the user prompt.
+ * 2. A locally downloaded model (video model) generates the video on-device and
+ *    writes it to filesDir/videos.
  *
- * 产物通过 [VideoArtifact] 上报到对话流，由 UI 渲染为可播放卡片。
+ * The artifact is reported to the conversation flow via [VideoArtifact] and
+ * rendered as a playable card by the UI.
+ *
+ * NOTE: local video generation is a placeholder stub. Real on-device video
+ * inference is not yet implemented; see [generateLocalVideo] for details.
  */
 class VideoGenCoordinator(
     private val app: com.bskai.AuraApp,
@@ -30,9 +36,22 @@ class VideoGenCoordinator(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    /**
+     * Whether a video generation task is currently in progress.
+     * Observed by the UI to show progress state.
+     */
     val generating: kotlinx.coroutines.flow.MutableStateFlow<Boolean> =
         kotlinx.coroutines.flow.MutableStateFlow(false)
 
+    /**
+     * Starts a video generation pipeline for the given prompt.
+     *
+     * The pipeline runs on a background coroutine; callers can observe
+     * [generating] for progress. Results are pushed to the agent's
+     * conversation via [AgentEngine.notifyAssistant] and [AgentEngine.emitVideo].
+     *
+     * @param prompt user description of the desired video
+     */
     fun generateVideo(prompt: String) {
         scope.launch {
             generating.value = true
@@ -40,7 +59,7 @@ class VideoGenCoordinator(
                 val s = settings.settings.value
                 val vg = s.videoGen
 
-                // 校验：本地视频模型必须已下载
+                // Validate: local video model must be downloaded
                 val videoModel = vg.videoModel
                 if (videoModel.isBlank()) {
                     agent.notifyAssistant(
@@ -49,18 +68,18 @@ class VideoGenCoordinator(
                     return@launch
                 }
 
-                // 第一阶段：脚本模型写分镜脚本
+                // Phase 1: script model writes the shot script
                 val scriptModel = vg.scriptModel.ifBlank { s.apiModel }
                 val providerUrl = s.apiProviderUrl
                 val apiKey = s.apiProviderKey
                 val script = if (providerUrl.isNotBlank() && scriptModel.isNotBlank()) {
                     writeScript(providerUrl, apiKey, scriptModel, prompt)
                 } else {
-                    // 未配置脚本模型时退化为本地直出
+                    // No script model configured: fall back to local default
                     "（未配置脚本模型，使用默认分镜）\n" + defaultScript(prompt)
                 }
 
-                // 第二阶段：本地视频模型基于脚本生成视频
+                // Phase 2: local video model generates the video from the script
                 val videoFile = generateLocalVideo(videoModel, script)
 
                 val artifact = VideoArtifact(
@@ -78,6 +97,15 @@ class VideoGenCoordinator(
         }
     }
 
+    /**
+     * Writes a shot script using the configured script model.
+     *
+     * @param providerUrl API provider base URL
+     * @param apiKey API key
+     * @param scriptModel model name for script generation
+     * @param prompt user prompt
+     * @return the generated script text
+     */
     private suspend fun writeScript(
         providerUrl: String,
         apiKey: String?,
@@ -102,6 +130,12 @@ class VideoGenCoordinator(
         }
     }
 
+    /**
+     * Returns a default shot script when no script model is configured.
+     *
+     * @param prompt user prompt
+     * @return default script text
+     */
     private fun defaultScript(prompt: String): String = buildString {
         append("分镜脚本（针对：$prompt）\n")
         append("镜头1：$prompt 的主体特写，缓慢推近，2s\n")
@@ -110,6 +144,21 @@ class VideoGenCoordinator(
         append("配乐：轻快电子氛围")
     }
 
+    /**
+     * Placeholder for local video generation.
+     *
+     * Real on-device video inference is not yet implemented. This stub writes a
+     * metadata sidecar file next to the intended .mp4 output, containing the
+     * model name and script, so the pipeline can be exercised end-to-end without
+     * a real video encoder.
+     *
+     * The .mp4 file itself contains plain-text metadata; it is NOT a valid MP4.
+     * The corresponding sidecar file (with .meta suffix) holds structured metadata.
+     *
+     * @param videoModel name of the local video model
+     * @param script the shot script to render
+     * @return the file path where the (placeholder) video was written
+     */
     private suspend fun generateLocalVideo(videoModel: String, script: String): File =
         withContext(Dispatchers.IO) {
             val dir = File(app.applicationContext.filesDir, "videos")
@@ -117,11 +166,19 @@ class VideoGenCoordinator(
             val ts = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
             val target = File(dir, "video_${ts}_${videoModel}.mp4")
 
-            // 本地视频生成为离线推理占位实现：写入脚本作为生成元数据，
-            // 真实推理由本地视频模型运行时（如 on-device video model）承接。
-            target.writeText(
-                "AURA-LOCAL-VIDEO\nmodel=$videoModel\nsize=${target.length()}\n" +
+            // Placeholder: write metadata sidecar + stub .mp4 content.
+            // Real video generation (on-device inference) is not yet implemented.
+            val metaFile = File(dir, "video_${ts}_${videoModel}.meta")
+            metaFile.writeText(
+                "model=$videoModel\n" +
+                    "generated_at=${System.currentTimeMillis()}\n" +
                     "script:\n$script\n"
+            )
+            target.writeText(
+                "AURA-LOCAL-VIDEO-PLACEHOLDER\n" +
+                    "model=$videoModel\n" +
+                    "meta=${metaFile.name}\n" +
+                    "note=real video inference not yet implemented\n"
             )
             target
         }

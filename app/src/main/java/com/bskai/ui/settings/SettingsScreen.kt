@@ -63,11 +63,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
+import com.bskai.R
 import com.bskai.agent.LlmClient
 import com.bskai.data.ChatMode
 import com.bskai.data.DefaultApiUrlPresets
@@ -114,23 +116,27 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {
-            SettingsSection(title = "AI 配置") {
+            SettingsSection(title = stringResource(R.string.settings_section_ai)) {
                 SettingsItem(
                     icon = Icons.Default.Tune,
-                    title = "模型选择",
-                    subtitle = if (settings.modelSource == "local") "本地: ${settings.apiModel}" else settings.apiModel,
+                    title = stringResource(R.string.settings_model_select),
+                    subtitle = if (settings.modelSource == "local")
+                        stringResource(R.string.settings_model_local_prefix, settings.apiModel)
+                    else settings.apiModel,
                     onClick = { showLocalModelDialog = true }
                 )
                 SettingsItem(
                     icon = Icons.Default.Add,
-                    title = "自定义模型",
-                    subtitle = "管理自定义模型列表",
+                    title = stringResource(R.string.settings_custom_model),
+                    subtitle = stringResource(R.string.settings_custom_model_desc),
                     onClick = { showCustomModelDialog = true }
                 )
                 SettingsItem(
                     icon = Icons.Default.SwapHoriz,
-                    title = "思考模式",
-                    subtitle = if (settings.chatMode == ChatMode.DEV) "应用开发模式" else "深度 ${settings.thinkingLevel}/3",
+                    title = stringResource(R.string.settings_thinking_mode),
+                    subtitle = if (settings.chatMode == ChatMode.DEV)
+                        stringResource(R.string.settings_dev_mode)
+                    else stringResource(R.string.settings_thinking_level, settings.thinkingLevel),
                     onClick = {
                         val next = if (settings.chatMode == ChatMode.THINK) ChatMode.DEV else ChatMode.THINK
                         app.settings.update { it.copy(chatMode = next) }
@@ -140,16 +146,16 @@ fun SettingsScreen(
         }
 
         item {
-            SettingsSection(title = "外观") {
+            SettingsSection(title = stringResource(R.string.settings_section_appearance)) {
                 SettingsItem(
                     icon = Icons.Default.Palette,
-                    title = "主题风格",
+                    title = stringResource(R.string.settings_theme),
                     subtitle = settings.themeStyle.label,
                     onClick = { showThemeDialog = true }
                 )
                 SettingsItem(
                     icon = Icons.Default.Notifications,
-                    title = "语言",
+                    title = stringResource(R.string.settings_language_app),
                     subtitle = settings.selectedLanguage.uppercase(),
                     onClick = { showLanguageDialog = true }
                 )
@@ -157,57 +163,64 @@ fun SettingsScreen(
         }
 
         item {
-            SettingsSection(title = "工具") {
+            SettingsSection(title = stringResource(R.string.settings_section_tools)) {
                 SettingsItem(
                     icon = Icons.Default.Folder,
-                    title = "工作区",
-                    subtitle = if (settings.workspaceEnabled) "已启用" else "已禁用",
+                    title = stringResource(R.string.settings_section_workspace),
+                    subtitle = stringResource(
+                        if (settings.workspaceEnabled) R.string.settings_enabled else R.string.settings_disabled
+                    ),
                     onClick = { showWorkspaceDialog = true }
                 )
                 SettingsItem(
                     icon = Icons.Default.Security,
-                    title = "AI 工具调用",
-                    subtitle = if (settings.agentToolsEnabled) "已启用" else "已禁用",
+                    title = stringResource(R.string.settings_agent_tools_title),
+                    subtitle = stringResource(
+                        if (settings.agentToolsEnabled) R.string.settings_enabled else R.string.settings_disabled
+                    ),
                     onClick = { app.settings.update { it.copy(agentToolsEnabled = !it.agentToolsEnabled) } }
                 )
                 SettingsItem(
                     icon = Icons.Default.Terminal,
-                    title = "开发工具",
-                    subtitle = "管理终端环境中的开发工具",
+                    title = stringResource(R.string.settings_dev_tools),
+                    subtitle = stringResource(R.string.settings_dev_tools_desc),
                     onClick = { showDevToolsDialog = true }
                 )
             }
         }
 
         item {
-            SettingsSection(title = "视频生成") {
+            SettingsSection(title = stringResource(R.string.settings_section_video)) {
                 SettingsItem(
                     icon = Icons.Default.VideoLibrary,
-                    title = "双模型视频生成",
-                    subtitle = if (settings.videoGen.enabled) "已启用 · 脚本:${settings.videoGen.scriptModel.ifBlank { settings.apiModel.ifEmpty { "未选" } }} / 视频:${settings.videoGen.videoModel.ifEmpty { "未选" }}"
-                    else "已关闭 · 在模型配置中选择脚本模型与本地视频模型",
+                    title = stringResource(R.string.settings_video_dual),
+                    subtitle = if (settings.videoGen.enabled) stringResource(
+                        R.string.settings_video_on_desc,
+                        settings.videoGen.scriptModel.ifBlank { settings.apiModel.ifEmpty { stringResource(R.string.common_unknown) } },
+                        settings.videoGen.videoModel.ifEmpty { stringResource(R.string.common_unknown) }
+                    ) else stringResource(R.string.settings_video_off_desc),
                     onClick = { app.settings.update { it.copy(videoGen = it.videoGen.copy(enabled = !it.videoGen.enabled)) } }
                 )
             }
         }
 
         item {
-            SettingsSection(title = "更新") {
+            SettingsSection(title = stringResource(R.string.settings_section_update)) {
                 SettingsItem(
                     icon = Icons.Default.SystemUpdateAlt,
-                    title = "检查更新",
-                    subtitle = "当前: ${BuildConfig.APP_VERSION}",
+                    title = stringResource(R.string.settings_check_update),
+                    subtitle = stringResource(R.string.settings_current_version, BuildConfig.APP_VERSION),
                     onClick = { showUpdateDialog = true }
                 )
             }
         }
 
         item {
-            SettingsSection(title = "关于") {
+            SettingsSection(title = stringResource(R.string.settings_section_about)) {
                 SettingsItem(
                     icon = Icons.Default.Info,
-                    title = "关于 AURA",
-                    subtitle = "版本 ${BuildConfig.APP_VERSION}",
+                    title = stringResource(R.string.settings_about_aura),
+                    subtitle = stringResource(R.string.settings_version_label, BuildConfig.APP_VERSION),
                     onClick = { showAboutDialog = true }
                 )
             }
@@ -335,7 +348,7 @@ fun WorkspaceManageDialog(app: AuraApp, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("工作区管理", fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.workspace_manage), fontWeight = FontWeight.Bold) },
         text = {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
                 Row(
@@ -343,14 +356,18 @@ fun WorkspaceManageDialog(app: AuraApp, onDismiss: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("工作区列表", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.workspace_list), style = MaterialTheme.typography.labelLarge)
                     IconButton(onClick = { showNewDialog = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "新建")
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.workspace_new))
                     }
                 }
                 Spacer(Modifier.height(8.dp))
                 if (workspaces.isEmpty()) {
-                    Text("暂无工作区", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        stringResource(R.string.workspace_none),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 } else {
                     LazyColumn {
                         items(workspaces) { ws ->
@@ -376,7 +393,11 @@ fun WorkspaceManageDialog(app: AuraApp, onDismiss: () -> Unit) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(ws.name, fontWeight = FontWeight.Medium, fontSize = 13.sp)
                                         Text(
-                                            if (ws.kind == WorkspaceEntry.Kind.INTERNAL) "内部" else "外部",
+                                            stringResource(
+                                                if (ws.kind == WorkspaceEntry.Kind.INTERNAL)
+                                                    R.string.workspace_kind_internal
+                                                else R.string.workspace_kind_external
+                                            ),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 11.sp
@@ -393,7 +414,7 @@ fun WorkspaceManageDialog(app: AuraApp, onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("完成") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_done)) }
         }
     )
 
@@ -401,12 +422,12 @@ fun WorkspaceManageDialog(app: AuraApp, onDismiss: () -> Unit) {
         var name by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showNewDialog = false },
-            title = { Text("新建工作区") },
+            title = { Text(stringResource(R.string.workspace_new_title)) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("工作区名称") },
+                    label = { Text(stringResource(R.string.workspace_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -422,11 +443,11 @@ fun WorkspaceManageDialog(app: AuraApp, onDismiss: () -> Unit) {
                     },
                     enabled = name.isNotBlank()
                 ) {
-                    Text("创建")
+                    Text(stringResource(R.string.workspace_create))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showNewDialog = false }) { Text("取消") }
+                TextButton(onClick = { showNewDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             }
         )
     }

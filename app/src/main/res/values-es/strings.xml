@@ -1,24 +1,240 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AURA</string>
-    <string name="app_tagline">Tu asistente de voz inteligente</string>
-    <string name="nav_home">Inicio</string>
-    <string name="nav_voice">Voz</string>
-    <string name="nav_skills">Habilidades</string>
-    <string name="nav_settings">Ajustes</string>
-    <string name="btn_listen">Mantener para hablar</string>
-    <string name="btn_voice">Entrada de voz</string>
-    <string name="status_listening">Escuchando…</string>
-    <string name="status_processing">Procesando…</string>
-    <string name="status_error">Reconocimiento fallido, inténtalo de nuevo</string>
-    <string name="permission_required">Se requiere permiso para esta función</string>
-    <string name="perm_audio">Permiso de micrófono</string>
-    <string name="perm_storage">Permiso de almacenamiento</string>
-    <string name="perm_notification">Permiso de notificación</string>
-    <string name="service_running">AURA escuchando en segundo plano</string>
-    <string name="service_channel_name">Servicio de voz</string>
-    <string name="wake_word">Hola AURA</string>
-    <string name="version">Versión %s</string>
-    <string name="check_update">Buscar actualización</string>
-    <string name="auto_update">Actualización automática</string>
+    <string name="app_tagline">AI Assistant</string>
+
+    <!-- Navigation and tabs -->
+    <string name="nav_chat">AI Chat</string>
+    <string name="nav_settings">Settings</string>
+    <string name="tab_dialogs">Chat</string>
+    <string name="tab_terminal">Terminal</string>
+    <string name="tab_ide">IDE</string>
+
+    <!-- Common -->
+    <string name="common_cancel">Cancel</string>
+    <string name="common_confirm">Confirm</string>
+    <string name="common_ok">OK</string>
+    <string name="common_close">Close</string>
+    <string name="common_save">Save</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_copy">Copy</string>
+    <string name="common_copied">Copied</string>
+    <string name="common_retry">Retry</string>
+    <string name="common_done">Done</string>
+    <string name="common_back">Back</string>
+    <string name="common_open">Open</string>
+    <string name="common_install">Install</string>
+    <string name="common_download">Download</string>
+    <string name="common_refresh">Refresh</string>
+    <string name="common_loading">Loading…</string>
+    <string name="common_success">Success</string>
+    <string name="common_failed">Failed</string>
+    <string name="common_error">Something went wrong</string>
+    <string name="common_unknown">Unknown</string>
+    <string name="common_none">None</string>
+    <string name="common_default">Default</string>
+    <string name="common_version">Version %1$s</string>
+    <string name="common_yes">Yes</string>
+    <string name="common_no">No</string>
+
+    <!-- Privilege authorization -->
+    <string name="privilege_state_unavailable">Unavailable</string>
+    <string name="privilege_state_need_permission">Awaiting authorization</string>
+    <string name="privilege_state_granted">Authorized</string>
+    <string name="privilege_authorize">Authorize</string>
+    <string name="privilege_redetect">Re-detect</string>
+    <string name="privilege_title">Privileged execution</string>
+    <string name="privilege_desc">Once authorized, the terminal and IDE can run system-level commands. Authorization is managed by the third-party app and can be revoked anytime.</string>
+
+    <!-- Terminal -->
+    <string name="terminal_backend_local">Local</string>
+    <string name="terminal_backend_shizuku">Shizuku</string>
+    <string name="terminal_backend_dhizuku">Dhizuku</string>
+    <string name="terminal_backend_root">Root</string>
+    <string name="terminal_banner_title">AURA Terminal v%1$s</string>
+    <string name="terminal_banner_help">LOCAL     App sandbox permissions\nSHIZUKU   Shizuku privilege (no root)\nDHIZUKU   Dhizuku privilege (DeviceOwner)\nROOT      Direct root execution\n\nDangerous commands are auto-blocked\nAI can call the run_shell tool</string>
+    <string name="terminal_input_hint">Enter a command…</string>
+    <string name="terminal_run">Run</string>
+    <string name="terminal_clear">Clear</string>
+    <string name="terminal_copy_all">Copy all</string>
+    <string name="terminal_no_output">No output</string>
+    <string name="terminal_locked_title">Terminal locked</string>
+    <string name="terminal_locked_desc">Authorize Shizuku or Dhizuku to unlock privileged terminal commands, or start with local sandbox permissions.</string>
+    <string name="terminal_authorize">Authorize privilege</string>
+    <string name="terminal_local_fallback">Open with local permissions</string>
+    <string name="terminal_authorize_title">Privilege authorization</string>
+    <string name="terminal_authorize_desc">The two methods are independent. Pick one or both. Dhizuku uses the DeviceOwner route, Shizuku uses the ADB route.</string>
+    <string name="terminal_timeout">Command timed out</string>
+
+    <!-- IDE -->
+    <string name="ide_title">IDE</string>
+    <string name="ide_files">Files</string>
+    <string name="ide_new_file">New file</string>
+    <string name="ide_console">Console</string>
+    <string name="ide_build">Build</string>
+    <string name="ide_run">Run</string>
+    <string name="ide_dependencies">Dependencies</string>
+    <string name="ide_deps_download">Download dependencies</string>
+    <string name="ide_deps_downloading">Downloading dependencies…</string>
+    <string name="ide_deps_done">Dependencies ready</string>
+    <string name="ide_deps_failed">Failed to download dependencies</string>
+    <string name="ide_no_workspace">Workspace not enabled</string>
+    <string name="ide_no_workspace_desc">Enable workspace mode in the chat or in Settings first.</string>
+    <string name="ide_empty_hint">Create or open a file to start editing</string>
+    <string name="ide_unsaved">Unsaved</string>
+    <string name="ide_saved">Saved</string>
+    <string name="ide_delete_confirm">Delete this file?</string>
+    <string name="ide_file_name_hint">File name</string>
+
+    <!-- Chat -->
+    <string name="chat_input_hint">Message AURA, / for commands</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_stop">Stop</string>
+    <string name="chat_thinking">Thinking…</string>
+    <string name="chat_generating">Generating…</string>
+    <string name="chat_tool_running">Running tool…</string>
+    <string name="chat_empty_title">Hello, I am AURA</string>
+    <string name="chat_empty_subtitle">LLM-powered assistant with terminal, IDE and workspace support</string>
+    <string name="chat_conversation_cleared">Conversation cleared</string>
+    <string name="chat_copy_copied">Copied to clipboard</string>
+    <string name="chat_slash_title">Slash commands</string>
+    <string name="chat_slash_empty">No matching command</string>
+    <string name="chat_model_dialog_title">Select model</string>
+    <string name="chat_model_section_local">Local models</string>
+    <string name="chat_model_section_remote">Remote API models</string>
+    <string name="chat_model_downloaded">Downloaded</string>
+    <string name="chat_model_not_downloaded">Not downloaded</string>
+    <string name="chat_model_downloading">Downloading…</string>
+    <string name="chat_model_download_done">Download complete</string>
+    <string name="chat_model_download_failed">Download failed</string>
+    <string name="chat_api_not_configured">No API configured. Add a key in Settings first.</string>
+    <string name="chat_workspace_on">Workspace enabled</string>
+    <string name="chat_workspace_off">Workspace disabled</string>
+    <string name="chat_workspace_need_authorize">Workspace tools need authorization. Authorize the terminal first.</string>
+
+    <!-- Video generation -->
+    <string name="video_title">Video generation (Beta)</string>
+    <string name="video_prompt_hint">Describe the video you want to generate</string>
+    <string name="video_submit">Start generating</string>
+    <string name="video_generating">Generating video…</string>
+    <string name="video_done">Video generated</string>
+    <string name="video_failed">Video generation failed</string>
+    <string name="video_not_enabled">Video generation is off. Enable it in Settings first.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_api">API configuration</string>
+    <string name="settings_section_model">Model</string>
+    <string name="settings_section_agent">Agent</string>
+    <string name="settings_section_privilege">Privileged execution</string>
+    <string name="settings_section_workspace">Workspace</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_language">Language</string>
+    <string name="settings_section_video">Video generation</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_api_url">API URL</string>
+    <string name="settings_api_key">API key</string>
+    <string name="settings_api_model">Model name</string>
+    <string name="settings_api_test">Test connection</string>
+    <string name="settings_api_testing">Testing…</string>
+    <string name="settings_api_test_ok">Connection succeeded</string>
+    <string name="settings_api_test_failed">Connection failed</string>
+    <string name="settings_api_configured">Configured</string>
+    <string name="settings_api_not_configured">Not configured</string>
+    <string name="settings_theme">Theme style</string>
+    <string name="theme_liquid">Liquid glass</string>
+    <string name="theme_classic">Classic</string>
+    <string name="settings_language_app">App language</string>
+    <string name="settings_language_follow_system">Follow system</string>
+    <string name="settings_agent_tools">Tool calls</string>
+    <string name="settings_agent_tools_desc">Allow AI to call terminal and workspace tools</string>
+    <string name="settings_agent_workspace">Workspace mode</string>
+    <string name="settings_workspace_current">Current workspace</string>
+    <string name="settings_workspace_open">Open workspace</string>
+    <string name="settings_video_enabled">Enable video generation</string>
+    <string name="settings_video_model">Script model</string>
+    <string name="settings_video_local_model">Generation model</string>
+    <string name="settings_privilege_shizuku">Shizuku status</string>
+    <string name="settings_privilege_dhizuku">Dhizuku status</string>
+    <string name="settings_check_update">Check for updates</string>
+    <string name="settings_agreement">Terms of service</string>
+    <string name="settings_privacy">Privacy policy</string>
+    <string name="settings_open_source">Open source licenses</string>
+    <string name="settings_account">Account</string>
+    <string name="settings_data">Data management</string>
+    <string name="settings_clear_conversation">Clear conversation</string>
+    <string name="settings_export">Export settings</string>
+    <string name="settings_import">Import settings</string>
+
+    <!-- Agreements -->
+    <string name="agreement_title">Terms of service and privacy policy</string>
+    <string name="agreement_accept">Agree and continue</string>
+    <string name="agreement_exit">Disagree and exit</string>
+    <string name="agreement_session_title">Session notice</string>
+    <string name="agreement_session_ack">Acknowledged</string>
+    <string name="agreement_open_source_title">Open source attribution</string>
+    <string name="agreement_scroll_to_bottom">Please read the full text to continue</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title">First run setup</string>
+    <string name="onboarding_step_api">Configure API</string>
+    <string name="onboarding_step_privilege">Authorize privilege</string>
+    <string name="onboarding_step_agreement">Agreement</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_finish">Get started</string>
+    <string name="onboarding_api_skip_desc">You can skip this and configure it later in Settings.</string>
+    <string name="onboarding_privilege_desc">The terminal and IDE need Shizuku or Dhizuku authorization to run system-level commands.</string>
+
+    <!-- What\'s new -->
+    <string name="whatsnew_title">What\'s new</string>
+    <string name="whatsnew_updated">Updated to v%1$s</string>
+    <string name="whatsnew_start">Get started</string>
+    <string name="whatsnew_item_nav">Bottom navigation</string>
+    <string name="whatsnew_item_nav_desc">AI chat and settings moved to the bottom navigation bar. The top navigation is gone for easier reach.</string>
+    <string name="whatsnew_item_glass">Liquid glass rendering engine</string>
+    <string name="whatsnew_item_glass_desc">Refraction and highlight rendering ported from the open source AndroidLiquidGlass (Kyant0), upgrading the glass look app-wide.</string>
+    <string name="whatsnew_item_privilege">Shizuku / Dhizuku authorization</string>
+    <string name="whatsnew_item_privilege_desc">Dual privilege authorization flow. Either one unlocks system-level terminal and IDE features.</string>
+    <string name="whatsnew_item_models">Model list refresh fix</string>
+    <string name="whatsnew_item_models_desc">Downloaded local models now refresh correctly and show up in the model list.</string>
+    <string name="whatsnew_item_deps">Merged dependency download</string>
+    <string name="whatsnew_item_deps_desc">Dev tool and IDE dependency downloads are now one flow, improving install success rate.</string>
+    <string name="whatsnew_item_video">Video generation (Beta)</string>
+    <string name="whatsnew_item_video_desc">Chat can generate video: the configured model writes the script, the local model renders it.</string>
+    <string name="whatsnew_item_i18n">Multi-language UI</string>
+    <string name="whatsnew_item_i18n_desc">Main UI now supports Chinese and English and follows the system language.</string>
+
+    <!-- Update check -->
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_latest">You are up to date</string>
+    <string name="update_available">New version v%1$s available</string>
+    <string name="update_download">Download update</string>
+    <string name="update_downloading">Downloading…</string>
+    <string name="update_install">Install</string>
+    <string name="update_download_failed">Download failed</string>
+    <string name="update_skip">Skip this version</string>
+    <string name="update_check_failed">Failed to check for updates</string>
+
+    <!-- Music -->
+    <string name="music_title">Music</string>
+    <string name="music_play">Play</string>
+    <string name="music_pause">Pause</string>
+    <string name="music_next">Next</string>
+    <string name="music_prev">Previous</string>
+    <string name="music_empty">Nothing is playing</string>
+    <string name="music_playlist">Playlist</string>
+    <string name="music_local">No local music found</string>
+
+    <!-- Account -->
+    <string name="account_title">Account</string>
+    <string name="account_guest">Not signed in</string>
+    <string name="account_login">Sign in</string>
+    <string name="account_logout">Sign out</string>
+    <string name="account_local_only">Local account, stored on this device only</string>
+
+    <!-- Service -->
+    <string name="service_running">AURA running in background</string>
+    <string name="service_channel_name">Background service</string>
+    <string name="permission_required">Permission required for this feature</string>
 </resources>

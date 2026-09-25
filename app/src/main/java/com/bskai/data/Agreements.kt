@@ -2,11 +2,18 @@ package com.bskai.data
 
 import com.bskai.BuildConfig
 
+/** 协议区块：标题 + 正文。 */
 data class AgreementSection(
     val title: String,
     val body: String
 )
 
+/**
+ * 协议文本统一维护处。
+ *
+ * 2.1.1 起，启动协议仅保留两份：《开源软件许可协议》与《用户须知》。
+ * 用户须知中的版本占位符 {VERSION} / {BUILD} 通过 [renderUserNotice] 注入。
+ */
 object Agreements {
 
     val openSource: AgreementSection = AgreementSection(
@@ -17,19 +24,19 @@ object Agreements {
 • Kotlin / Kotlin Coroutines（Apache-2.0）
 • Jetpack Compose / Material 3（Apache-2.0）
 • AndroidX / Lifecycle / Navigation（Apache-2.0）
-• OkHttp（Apache-2.0）
+• OkHttp / Retrofit / Gson（Apache-2.0 / BSD-3）
 • Media3 ExoPlayer（Apache-2.0）
-• AndroidLiquidGlass by Kyant0（Apache-2.0，https://github.com/Kyant0/AndroidLiquidGlass ，本版本 2.1.1 的液态玻璃折射与高光渲染基于该项目移植实现）
+• AndroidLiquidGlass by Kyant0（Apache-2.0，https://github.com/Kyant0/AndroidLiquidGlass ，本版本的液态玻璃折射与高光渲染基于该项目移植实现）
 • Shizuku / Sui（MIT）
 • org.json（JSON.org License）
 
 在遵守上述许可证的前提下，你可以自由地使用、学习、修改和分发本软件，但须保留原始的版权声明与许可证文本。
 
-二次开发（二改）归属要求：任何基于 AURA 的衍生作品，必须在二改项目的仓库介绍（README）与应用内保留原作者署名及以下链接：
+二次开发（二改）归属要求：任何基于 AURA 的衍生作品，必须在二改项目的仓库介绍（README）与应用内关于页中保留原作者署名及以下链接：
 • 原作者主页：https://github.com/1953187487
 • 原仓库地址：https://github.com/1953187487/BSK-AI
 
-本软件按"原样"提供，不附带任何明示或默示的担保。作者不对因使用本软件产生的任何直接或间接损失承担责任。"""
+本软件按“原样”提供，不附带任何明示或默示的担保。作者不对因使用本软件产生的任何直接或间接损失承担责任。"""
     )
 
     val userNotice: AgreementSection = AgreementSection(
@@ -37,7 +44,7 @@ object Agreements {
         body = """欢迎使用 AURA {VERSION}。请在使用前仔细阅读以下条款：
 
 1. 版本说明
-   当前版本为 AURA {VERSION}（build {BUILD}）。本版本采用全链路液态玻璃 UI（基于开源项目 AndroidLiquidGlass 移植实现），导航结构更新为底部导航栏（AI 聊天 / 设置），系统公告已并入本用户须知，不再单独弹出。
+   当前版本为 AURA {VERSION}（build {BUILD}）。本版本采用全链路液态玻璃 UI（基于开源项目 AndroidLiquidGlass 移植实现），顶部胶囊导航仅保留「AI 聊天 / 设置」入口，终端与 IDE 集成至对话页顶部分段控件。系统公告已并入本用户须知，不再单独弹出。
 
 2. AI 对话与模型服务
    AURA 本身不采集、上传或存储你的对话内容。当你主动配置并连接第三方 AI 服务（OpenAI、DeepSeek、Ollama 等）时，你输入的对话文本会发送至该服务提供商。请仅在信任的服务商处填写 API 地址与密钥。
@@ -61,8 +68,14 @@ object Agreements {
    如有问题或建议，请联系：1953187487@qq.com"""
     )
 
-    fun renderUserNotice(version: String = BuildConfig.APP_VERSION): String =
-        userNotice.body
-            .replace("{VERSION}", version)
-            .replace("{BUILD}", BuildConfig.BUILD_NUMBER.toString())
+    /** 渲染用户须知，注入当前版本号与 build 号。 */
+    fun renderUserNotice(
+        version: String = BuildConfig.APP_VERSION,
+        build: Int = BuildConfig.BUILD_NUMBER
+    ): String = userNotice.body
+        .replace("{VERSION}", version)
+        .replace("{BUILD}", build.toString())
+
+    /** 开源协议（无占位符，直接渲染）。 */
+    fun renderOpenSource(): String = openSource.body
 }

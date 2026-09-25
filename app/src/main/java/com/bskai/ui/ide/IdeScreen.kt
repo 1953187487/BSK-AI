@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -58,6 +59,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bskai.AuraApp
+import com.bskai.R
 import com.bskai.terminal.AndroidDependencyManager
 import com.bskai.ui.glass.GlassButton
 import com.bskai.ui.glass.GlassChip
@@ -69,6 +71,9 @@ import com.bskai.workspace.WorkspaceEntry
 import com.bskai.workspace.WorkspaceNode
 import kotlinx.coroutines.launch
 import java.io.File
+import com.bskai.ui.devToolCategoryLabelRes
+import com.bskai.ui.devToolDescRes
+import com.bskai.ui.devToolNameRes
 
 private val OUT_BG = Color(0xCC0A0E18)
 private val OUT_TEXT = Color(0xFFE6EDF3)
@@ -80,6 +85,9 @@ fun IdeScreen(app: AuraApp) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val glass = rememberGlassColors()
+    val buildStart = stringResource(R.string.ide_build_start)
+    val buildDone = stringResource(R.string.ide_build_done)
+    val buildNoWorkspace = stringResource(R.string.ide_build_no_workspace)
 
     var currentProject by remember { mutableStateOf<WorkspaceEntry?>(null) }
     var projectFiles by remember { mutableStateOf<List<WorkspaceNode>>(emptyList()) }
@@ -118,28 +126,28 @@ fun IdeScreen(app: AuraApp) {
                         color = glass.content
                     )
                     Text(
-                        currentProject?.name ?: "未选择项目",
+                        currentProject?.name ?: stringResource(R.string.ide_no_project),
                         fontSize = 11.sp,
                         color = glass.contentMuted
                     )
                 }
                 GlassIconButton(
                     icon = Icons.Default.Add,
-                    contentDescription = "新建项目",
+                    contentDescription = stringResource(R.string.ide_new_project),
                     size = 34.dp,
                     onClick = { showNewProjectDialog = true }
                 )
                 Spacer(Modifier.width(6.dp))
                 GlassIconButton(
                     icon = Icons.Default.Download,
-                    contentDescription = "依赖管理",
+                    contentDescription = stringResource(R.string.ide_deps_title),
                     size = 34.dp,
                     onClick = { showDependencyDialog = true }
                 )
                 Spacer(Modifier.width(6.dp))
                 GlassIconButton(
                     icon = Icons.Default.Refresh,
-                    contentDescription = "刷新",
+                    contentDescription = stringResource(R.string.common_refresh),
                     size = 34.dp,
                     onClick = {
                         if (currentProject != null) {
@@ -151,7 +159,7 @@ fun IdeScreen(app: AuraApp) {
                 Box(contentAlignment = Alignment.Center) {
                     GlassIconButton(
                         icon = if (isBuilding) Icons.Default.Build else Icons.Default.PlayArrow,
-                        contentDescription = "构建 APK",
+                        contentDescription = stringResource(R.string.ide_build_apk),
                         size = 40.dp,
                         onClick = {
                             if (isBuilding) return@GlassIconButton
@@ -165,12 +173,12 @@ fun IdeScreen(app: AuraApp) {
                                     } else null
                                 }
                                 if (projectDir != null) {
-                                    outputLog += "开始构建...\n"
+                                    outputLog += buildStart
                                     val result = app.terminal.execute("cd $projectDir && ./gradlew assembleDebug 2>&1")
                                     outputLog += result.stdout + "\n" + result.stderr
-                                    outputLog += "\n构建完成，退出码: ${result.exitCode}\n"
+                                    outputLog += "\n" + buildDone.format(result.exitCode) + "\n"
                                 } else {
-                                    outputLog = "请先选择或创建一个内部工作区项目。"
+                                    outputLog = buildNoWorkspace
                                 }
                                 isBuilding = false
                             }
@@ -189,7 +197,7 @@ fun IdeScreen(app: AuraApp) {
         Spacer(Modifier.height(8.dp))
 
         GlassSegmented(
-            options = listOf("文件", "输出"),
+            options = listOf(stringResource(R.string.ide_tab_files), stringResource(R.string.ide_tab_output)),
             selected = currentTab,
             onSelect = { currentTab = it },
             modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -327,7 +335,7 @@ private fun IdeFileBrowserTab(
                             color = glass.content
                         )
                         GlassButton(
-                            text = "保存",
+                            text = stringResource(R.string.common_save),
                             onClick = { onFileSave(selectedFile!!, fileContent) }
                         )
                     }
@@ -347,7 +355,7 @@ private fun IdeFileBrowserTab(
                 } else {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            "选择文件开始编辑",
+                            stringResource(R.string.ide_empty_editor),
                             color = glass.contentMuted,
                             fontSize = 12.sp
                         )
@@ -371,7 +379,7 @@ private fun IdeOutputTab(outputLog: String) {
         ) {
             Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
                 Text(
-                    "构建输出",
+                    stringResource(R.string.ide_build_output),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = OUT_GREEN,
@@ -381,7 +389,7 @@ private fun IdeOutputTab(outputLog: String) {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item {
                         Text(
-                            outputLog.ifEmpty { "暂无输出" },
+                            outputLog.ifEmpty { stringResource(R.string.ide_no_output) },
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
                             color = if (outputLog.isEmpty()) OUT_MUTED else OUT_TEXT,
@@ -400,15 +408,15 @@ private fun IdeNewProjectDialog(onDismiss: () -> Unit, onCreate: (String) -> Uni
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("新建项目") },
+        title = { Text(stringResource(R.string.ide_new_project)) },
         text = {
             Column {
-                Text("项目名称", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.ide_project_name_label), style = MaterialTheme.typography.labelMedium)
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("项目名") },
+                    label = { Text(stringResource(R.string.ide_project_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -419,11 +427,11 @@ private fun IdeNewProjectDialog(onDismiss: () -> Unit, onCreate: (String) -> Uni
                 onClick = { if (name.isNotBlank()) onCreate(name) },
                 enabled = name.isNotBlank()
             ) {
-                Text("创建")
+                Text(stringResource(R.string.workspace_create))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }
@@ -442,7 +450,7 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = { if (!installing) onDismiss() },
-        title = { Text("依赖管理") },
+        title = { Text(stringResource(R.string.ide_deps_title)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
                 Row(
@@ -451,7 +459,7 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
                 ) {
                     categories.forEach { cat ->
                         GlassChip(
-                            text = cat,
+                            text = stringResource(devToolCategoryLabelRes(cat)),
                             selected = selectedCategory == cat,
                             onClick = { selectedCategory = cat }
                         )
@@ -468,7 +476,7 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
                             .background(OUT_BG, RoundedCornerShape(8.dp))
                     ) {
                         Text(
-                            installOutput.ifEmpty { "安装中..." },
+                            installOutput.ifEmpty { stringResource(R.string.ide_deps_installing) },
                             fontFamily = FontFamily.Monospace,
                             fontSize = 10.sp,
                             color = OUT_TEXT,
@@ -481,7 +489,7 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
                             modifier = Modifier.fillMaxWidth().background(OUT_BG, RoundedCornerShape(8.dp)).padding(8.dp)
                         ) {
                             Text(
-                                "本地模式仅检测。安装需授权 Shizuku/ROOT（终端权限），请授权后回到此页重试。",
+                                stringResource(R.string.devtools_local_hint_long),
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 10.sp,
                                 color = OUT_TEXT,
@@ -512,7 +520,7 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
                             ) {
                                 Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("一键安装 Android 依赖")
+                                Text(stringResource(R.string.ide_deps_install_all))
                             }
                             Spacer(Modifier.height(8.dp))
                         }
@@ -529,8 +537,13 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
                                     Icon(Icons.Default.Build, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(8.dp))
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(dep.name, fontWeight = FontWeight.Medium, fontSize = 12.sp)
-                                        Text(dep.description + " · " + dep.category, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                        Text(stringResource(devToolNameRes(dep)), fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                                        Text(
+                                            "${stringResource(devToolDescRes(dep))} · ${stringResource(devToolCategoryLabelRes(dep.category))}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 10.sp
+                                        )
                                     }
                                     OutlinedButton(
                                         enabled = currentBackend != "local",
@@ -549,7 +562,7 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
                                             }
                                         }
                                     ) {
-                                        Text("安装", fontSize = 10.sp)
+                                        Text(stringResource(R.string.devtools_install), fontSize = 10.sp)
                                     }
                                 }
                             }
@@ -560,7 +573,7 @@ private fun IdeDependencyDialog(app: AuraApp, onDismiss: () -> Unit) {
         },
         confirmButton = {
             if (!installing) {
-                TextButton(onClick = onDismiss) { Text("关闭") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
             }
         }
     )

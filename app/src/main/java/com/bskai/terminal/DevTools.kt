@@ -5,34 +5,47 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * 应用开发依赖统一管理。
+ * Unified management of application development dependencies.
  *
- * 合并自原 DevTools（基础/Android 工具）与 AndroidDependencyManager（IDE 依赖），
- * 作为设置界面与 IDE 界面共用的唯一依赖数据源。
+ * Merged from the former DevTools (basic / Android tools) and
+ * AndroidDependencyManager (IDE dependencies), serving as the single
+ * dependency data source shared by the Settings and IDE screens.
  *
- * 安装策略针对 Android 环境做了修正，修复"安装失败"问题：
- * - 通过 shizuku / root 后端下载预编译二进制到应用私有目录（可写），
- *   并把该目录加入 PATH，再校验命令是否可用。
- * - LOCAL 后端下应用无包管理器，仅做检测，不强制安装。
+ * Installation strategy is corrected for Android environments (fixes
+ * the "install failed" issue):
+ * - shizuku / root backends download pre-compiled binaries into the
+ *   app-private directory (writable), add that directory to PATH,
+ *   then verify the command is available.
+ * - The LOCAL backend has no package manager in the app, so only
+ *   detection is performed; installation is not forced.
  */
 object DevTools {
 
+    /**
+     * Metadata for a single development tool.
+     *
+     * @property name display name
+     * @property command the CLI command to check
+     * @property description short description
+     * @property category grouping label
+     * @property installCmds backend-to-install-commands map;
+     *        the local backend only performs detection
+     */
     data class ToolInfo(
         val name: String,
         val command: String,
         val description: String,
         val category: String,
-        /** shizuku/root 后端的安装命令；local 后端仅做检测。 */
         val installCmds: Map<String, List<String>>
     )
 
-    // 私有安装目录：二进制落地处，加入 PATH
+    // Private install directory: where binaries land; added to PATH
     const val BIN_DIR = "/data/local/tmp/bskai-bin"
 
     private val pathVar = "PATH"
     private val bashPrefix = "PATH=$BIN_DIR:/system/bin:/vendor/bin:/usr/bin:/bin:$pathVar"
 
-    // 基础开发工具
+    // Basic development tools
     val basicTools = listOf(
         ToolInfo("git", "git", "版本控制", "基础", mapOf(
             "shizuku" to listOf(
@@ -68,7 +81,7 @@ object DevTools {
         ))
     )
 
-    // Android 开发依赖
+    // Android development dependencies
     val androidTools = listOf(
         ToolInfo("aapt2", "aapt2", "Android 资源打包工具", "Android", mapOf(
             "shizuku" to listOf("$bashPrefix command -v aapt2 2>/dev/null || find /opt/android-sdk /data /system -name aapt2 2>/dev/null | head -1"),
@@ -112,15 +125,28 @@ object DevTools {
         ))
     )
 
+    /** Combined list of basic and Android tools. */
     val commonTools: List<ToolInfo> = basicTools + androidTools
 
     /**
-     * 检查工具是否已安装。
+     * Checks whether a tool is installed.
+     *
+     * Strategy: check the exit code first. Only when the exit code is 0
+     * do we fall back to a stdout heuristic to detect "needs X environment"
+     * messages that some install commands emit instead of installing.
+     *
+     * @param command CLI command name to check
+     * @param engine terminal engine to run the check through
+     * @return true when the command is available
      */
     suspend fun isInstalled(command: String, engine: TerminalEngine): Boolean {
         return try {
             val result = engine.execute("$bashPrefix command -v $command")
-            result.exitCode == 0 && result.stdout.isNotBlank() &&
+            // Primary signal: exit code
+            if (result.exitCode != 0) return false
+            // Secondary heuristic (only on zero exit): some tools print
+            // "needs Termux / NDK pre-install" instead of resolving a path.
+            result.stdout.isNotBlank() &&
                 !result.stdout.contains("需", ignoreCase = true)
         } catch (e: Exception) {
             false
@@ -128,7 +154,10 @@ object DevTools {
     }
 
     /**
-     * 检查所有工具安装状态。
+     * Checks installation status of all tools.
+     *
+     * @param engine terminal engine to run checks through
+     * @return map of command name to installed-state
      */
     suspend fun checkAll(engine: TerminalEngine): Map<String, Boolean> {
         val result = mutableMapOf<String, Boolean>()
@@ -139,8 +168,13 @@ object DevTools {
     }
 
     /**
-     * 获取安装命令（根据当前后端）。
-     * LOCAL 后端不执行安装，返回空列表以明确"需 shizuku/root"。
+     * Returns the install commands for a tool under the given backend.
+     * LOCAL backend does not perform installs; returns an empty list to
+     * make "needs shizuku/root" explicit.
+     *
+     * @param tool the tool to look up
+     * @param backend backend name ("shizuku", "root", "local")
+     * @return list of install commands (empty for local)
      */
     fun getInstallCommand(tool: ToolInfo, backend: String): List<String> {
         if (backend.equals("local", ignoreCase = true)) return emptyList()
@@ -148,9 +182,16 @@ object DevTools {
     }
 
     /**
-     * 一键安装所有 Android 开发依赖。
+     * One-click install of all Android development dependencies.
+     *
+     * @param engine terminal engine to run installs through
+     * @param onProgress callback (toolName, index, total) for progress UI
+     * @return true when all install commands exited 0
      */
-    suspend fun installAllAndroid(engine: TerminalEngine, onProgress: (String, Int, Int) -> Unit): Boolean {
+    suspend fun installAllAndroid(
+        engine: TerminalEngine,
+        onProgress: (String, Int, Int) -> Unit
+    ): Boolean {
         val backend = engine.backend.value.name.lowercase()
         val target = if (backend.equals("root", ignoreCase = true)) "root" else "shizuku"
         val total = androidTools.size

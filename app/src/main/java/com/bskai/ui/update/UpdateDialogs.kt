@@ -45,10 +45,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bskai.BuildConfig
+import com.bskai.R
 import com.bskai.update.DownloadStatus
 import com.bskai.update.GitHubApi
 import com.bskai.update.RemoteRelease
@@ -102,9 +104,9 @@ fun CombinedUpdateDialog(
                 Icon(Icons.Default.Update, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
                 Column {
-                    Text("更新中心", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.update_center), fontWeight = FontWeight.SemiBold)
                     Text(
-                        text = "当前：${BuildConfig.APP_VERSION} · 协议：$currentVersionSigned",
+                        text = stringResource(R.string.update_current_line, BuildConfig.APP_VERSION, currentVersionSigned),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -117,14 +119,15 @@ fun CombinedUpdateDialog(
                     Tab(
                         selected = tab == 0, onClick = { tab = 0 },
                         text = {
-                            val label = if (result.hasUpdate) "最新 (有更新)" else "最新"
+                            val label = if (result.hasUpdate) stringResource(R.string.update_latest_available)
+                            else stringResource(R.string.update_latest)
                             Text(label, fontWeight = if (result.hasUpdate) FontWeight.SemiBold else FontWeight.Normal)
                         },
                         icon = { Icon(Icons.Default.Update, contentDescription = null) }
                     )
                     Tab(
                         selected = tab == 1, onClick = { tab = 1 },
-                        text = { Text("历史版本 (${result.releases.size})") },
+                        text = { Text(stringResource(R.string.update_history, result.releases.size)) },
                         icon = { Icon(Icons.Default.History, contentDescription = null) }
                     )
                 }
@@ -146,11 +149,12 @@ fun CombinedUpdateDialog(
                 }) {
                     Icon(Icons.Default.InstallMobile, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("立即安装")
+                    Text(stringResource(R.string.update_install_now))
                 }
             } else {
                 TextButton(onClick = onDismiss) {
-                    Text(if (status is DownloadStatus.Downloading) "隐藏" else "关闭")
+                    Text(if (status is DownloadStatus.Downloading) stringResource(R.string.update_hide)
+                    else stringResource(R.string.common_close))
                 }
             }
         }
@@ -167,13 +171,13 @@ private fun LatestTab(
 ) {
     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
         if (target == null) {
-            Text("暂未获取到版本信息", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.update_no_info), style = MaterialTheme.typography.bodyMedium)
             return
         }
         Text("${target.name} · ${target.versionName}", fontWeight = FontWeight.Medium)
         Text(
-            text = "发布：${target.publishedAtLabel()} · ${formatSize(target.sizeBytes)}" +
-                if (target.isPrerelease) " · 测试版" else "",
+            text = stringResource(R.string.update_release_line, target.publishedAtLabel(), formatSize(target.sizeBytes)) +
+                if (target.isPrerelease) stringResource(R.string.update_prerelease_suffix) else "",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -185,7 +189,7 @@ private fun LatestTab(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "有新版本可用",
+                    text = stringResource(R.string.update_new_version),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary
@@ -198,7 +202,7 @@ private fun LatestTab(
                 Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("下载更新")
+                    Text(stringResource(R.string.update_download))
                 }
             }
             is DownloadStatus.Downloading -> {
@@ -209,15 +213,15 @@ private fun LatestTab(
                 Spacer(Modifier.height(4.dp))
                 Text("${status.percent}%", style = MaterialTheme.typography.labelSmall)
                 Spacer(Modifier.height(4.dp))
-                TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("取消") }
+                TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.common_cancel)) }
             }
             is DownloadStatus.Done -> {
-                Text("下载完成，点击下方按钮安装", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.update_downloaded), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
             }
             is DownloadStatus.Failed -> {
-                Text("下载失败: ${status.message}", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.update_failed, status.message), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(4.dp))
-                Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) { Text("重试") }
+                Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.common_retry)) }
             }
         }
     }
@@ -240,7 +244,7 @@ private fun HistoryTab(releases: List<RemoteRelease>) {
                                 shape = RoundedCornerShape(4.dp),
                                 color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
                             ) {
-                                Text("测试版", fontSize = 10.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                Text(stringResource(R.string.update_prerelease), fontSize = 10.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                             }
                         }
                     }

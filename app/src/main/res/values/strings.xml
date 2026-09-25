@@ -1,24 +1,460 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AURA</string>
-    <string name="app_tagline">你的智能语音助手</string>
-    <string name="nav_home">首页</string>
-    <string name="nav_voice">语音</string>
-    <string name="nav_skills">技能</string>
+    <string name="app_tagline">AI 助手</string>
+
+    <!-- 导航与标签 -->
+    <string name="nav_chat">AI 聊天</string>
     <string name="nav_settings">设置</string>
-    <string name="btn_listen">按住说话</string>
-    <string name="btn_voice">语音输入</string>
-    <string name="status_listening">正在聆听...</string>
-    <string name="status_processing">正在处理...</string>
-    <string name="status_error">识别失败，请重试</string>
+    <string name="tab_dialogs">对话</string>
+    <string name="tab_terminal">终端</string>
+    <string name="tab_ide">IDE</string>
+
+    <!-- 通用 -->
+    <string name="common_cancel">取消</string>
+    <string name="common_confirm">确认</string>
+    <string name="common_ok">确定</string>
+    <string name="common_close">关闭</string>
+    <string name="common_save">保存</string>
+    <string name="common_delete">删除</string>
+    <string name="common_copy">复制</string>
+    <string name="common_copied">已复制</string>
+    <string name="common_retry">重试</string>
+    <string name="common_done">完成</string>
+    <string name="common_back">返回</string>
+    <string name="common_open">打开</string>
+    <string name="common_install">安装</string>
+    <string name="common_download">下载</string>
+    <string name="common_refresh">刷新</string>
+    <string name="common_loading">加载中…</string>
+    <string name="common_success">成功</string>
+    <string name="common_failed">失败</string>
+    <string name="common_error">出错了</string>
+    <string name="common_unknown">未知</string>
+    <string name="common_none">无</string>
+    <string name="common_default">默认</string>
+    <string name="common_version">版本 %s</string>
+    <string name="common_yes">是</string>
+    <string name="common_no">否</string>
+
+    <!-- 特权授权 -->
+    <string name="privilege_state_unavailable">不可用</string>
+    <string name="privilege_state_need_permission">待授权</string>
+    <string name="privilege_state_granted">已授权</string>
+    <string name="privilege_authorize">授权</string>
+    <string name="privilege_redetect">重新检测</string>
+    <string name="privilege_title">特权执行</string>
+    <string name="privilege_desc">授权后可在终端与 IDE 中使用系统级命令，授权由第三方应用独立管理，可随时撤回。</string>
+
+    <!-- 终端 -->
+    <string name="terminal_backend_local">本地</string>
+    <string name="terminal_backend_shizuku">Shizuku</string>
+    <string name="terminal_backend_dhizuku">Dhizuku</string>
+    <string name="terminal_backend_root">Root</string>
+    <string name="terminal_banner_title">AURA Terminal v%1$s</string>
+    <string name="terminal_banner_help">LOCAL     应用沙盒权限\nSHIZUKU   Shizuku 提权（免 root）\nDHIZUKU   Dhizuku 提权（DeviceOwner）\nROOT      直接 root 执行\n\n危险命令自动拦截\nAI 可通过 run_shell 工具调用</string>
+    <string name="terminal_input_hint">输入命令…</string>
+    <string name="terminal_run">执行</string>
+    <string name="terminal_clear">清空</string>
+    <string name="terminal_copy_all">复制全部</string>
+    <string name="terminal_no_output">无输出</string>
+    <string name="terminal_locked_title">终端暂未开放</string>
+    <string name="terminal_locked_desc">授权 Shizuku 或 Dhizuku 后可解锁提权终端能力，也可以先用本地沙盒权限试试。</string>
+    <string name="terminal_authorize">授权提权</string>
+    <string name="terminal_local_fallback">以本地权限打开</string>
+    <string name="terminal_authorize_title">提权授权</string>
+    <string name="terminal_authorize_desc">两种方式互不影响，可任选其一或同时授权。Dhizuku 基于 DeviceOwner 方案，Shizuku 基于 ADB 方案。</string>
+    <string name="terminal_timeout">命令执行超时</string>
+
+    <!-- IDE -->
+    <string name="ide_title">IDE</string>
+    <string name="ide_files">文件</string>
+    <string name="ide_new_file">新建文件</string>
+    <string name="ide_console">控制台</string>
+    <string name="ide_build">构建</string>
+    <string name="ide_run">运行</string>
+    <string name="ide_dependencies">依赖</string>
+    <string name="ide_deps_download">下载依赖</string>
+    <string name="ide_deps_downloading">正在下载依赖…</string>
+    <string name="ide_deps_done">依赖已就绪</string>
+    <string name="ide_deps_failed">依赖下载失败</string>
+    <string name="ide_no_workspace">未开启工作区</string>
+    <string name="ide_no_workspace_desc">请先在对话中开启工作区模式，或在设置中启用工作区。</string>
+    <string name="ide_empty_hint">新建或打开一个文件开始编辑</string>
+    <string name="ide_unsaved">未保存</string>
+    <string name="ide_saved">已保存</string>
+    <string name="ide_delete_confirm">删除该文件？</string>
+    <string name="ide_file_name_hint">文件名</string>
+
+    <!-- 对话 -->
+    <string name="chat_input_hint">向 AURA 发送消息，输入 / 使用命令</string>
+    <string name="chat_send">发送</string>
+    <string name="chat_stop">停止</string>
+    <string name="chat_thinking">思考中…</string>
+    <string name="chat_generating">正在生成…</string>
+    <string name="chat_tool_running">正在执行工具…</string>
+    <string name="chat_empty_title">你好，我是 AURA</string>
+    <string name="chat_empty_subtitle">基于大模型的智能助手，支持终端、IDE 与工作区协作</string>
+    <string name="chat_conversation_cleared">会话已清空</string>
+    <string name="chat_copy_copied">已复制到剪贴板</string>
+    <string name="chat_slash_title">斜杠命令</string>
+    <string name="chat_slash_empty">没有匹配的命令</string>
+    <string name="chat_model_dialog_title">选择模型</string>
+    <string name="chat_model_section_local">本地模型</string>
+    <string name="chat_model_section_remote">远程 API 模型</string>
+    <string name="chat_model_downloaded">已下载</string>
+    <string name="chat_model_not_downloaded">未下载</string>
+    <string name="chat_model_downloading">正在下载…</string>
+    <string name="chat_model_download_done">下载完成</string>
+    <string name="chat_model_download_failed">下载失败</string>
+    <string name="chat_api_not_configured">尚未配置 API，请先在设置中添加密钥</string>
+    <string name="chat_workspace_on">工作区已开启</string>
+    <string name="chat_workspace_off">工作区已关闭</string>
+    <string name="chat_workspace_need_authorize">工作区工具需要授权，请先到终端授权提权。</string>
+
+    <!-- 视频生成 -->
+    <string name="video_title">视频生成（Beta）</string>
+    <string name="video_prompt_hint">描述你想生成的视频内容</string>
+    <string name="video_submit">开始生成</string>
+    <string name="video_generating">正在生成视频…</string>
+    <string name="video_done">视频已生成</string>
+    <string name="video_failed">视频生成失败</string>
+    <string name="video_not_enabled">视频生成未启用，请先到设置中开启。</string>
+
+    <!-- 设置 -->
+    <string name="settings_title">设置</string>
+    <string name="settings_section_api">API 配置</string>
+    <string name="settings_section_model">模型</string>
+    <string name="settings_section_agent">智能体</string>
+    <string name="settings_section_privilege">特权执行</string>
+    <string name="settings_section_workspace">工作区</string>
+    <string name="settings_section_appearance">外观</string>
+    <string name="settings_section_language">语言</string>
+    <string name="settings_section_video">视频生成</string>
+    <string name="settings_section_about">关于</string>
+    <string name="settings_api_url">API 地址</string>
+    <string name="settings_api_key">API 密钥</string>
+    <string name="settings_api_model">模型名称</string>
+    <string name="settings_api_test">测试连接</string>
+    <string name="settings_api_testing">正在测试…</string>
+    <string name="settings_api_test_ok">连接成功</string>
+    <string name="settings_api_test_failed">连接失败</string>
+    <string name="settings_api_configured">已配置</string>
+    <string name="settings_api_not_configured">未配置</string>
+    <string name="settings_theme">主题风格</string>
+    <string name="theme_liquid">液态玻璃</string>
+    <string name="theme_classic">经典</string>
+    <string name="settings_language_app">应用语言</string>
+    <string name="settings_language_follow_system">跟随系统</string>
+    <string name="settings_agent_tools">工具调用</string>
+    <string name="settings_agent_tools_desc">允许 AI 调用终端与工作区工具</string>
+    <string name="settings_agent_workspace">工作区模式</string>
+    <string name="settings_workspace_current">当前工作区</string>
+    <string name="settings_workspace_open">打开工作区</string>
+    <string name="settings_video_enabled">启用视频生成</string>
+    <string name="settings_video_model">脚本模型</string>
+    <string name="settings_video_local_model">生成模型</string>
+    <string name="settings_privilege_shizuku">Shizuku 状态</string>
+    <string name="settings_privilege_dhizuku">Dhizuku 状态</string>
+    <string name="settings_check_update">检查更新</string>
+    <string name="settings_agreement">用户协议</string>
+    <string name="settings_privacy">隐私政策</string>
+    <string name="settings_open_source">开源许可</string>
+    <string name="settings_account">账号</string>
+    <string name="settings_data">数据管理</string>
+    <string name="settings_clear_conversation">清空对话</string>
+    <string name="settings_export">导出设置</string>
+    <string name="settings_import">导入设置</string>
+
+    <!-- 协议 -->
+    <string name="agreement_title">用户协议与隐私政策</string>
+    <string name="agreement_accept">同意并继续</string>
+    <string name="agreement_exit">不同意并退出</string>
+    <string name="agreement_session_title">本次会话提醒</string>
+    <string name="agreement_session_ack">我已知悉</string>
+    <string name="agreement_open_source_title">开源组件声明</string>
+    <string name="agreement_scroll_to_bottom">请阅读全部内容后继续</string>
+
+    <!-- 引导 -->
+    <string name="onboarding_title">首次启动引导</string>
+    <string name="onboarding_step_api">配置 API</string>
+    <string name="onboarding_step_privilege">授权提权</string>
+    <string name="onboarding_step_agreement">协议确认</string>
+    <string name="onboarding_skip">跳过</string>
+    <string name="onboarding_next">下一步</string>
+    <string name="onboarding_finish">开始使用</string>
+    <string name="onboarding_api_skip_desc">可以先跳过，稍后在设置中配置。</string>
+    <string name="onboarding_privilege_desc">终端与 IDE 需要 Shizuku 或 Dhizuku 授权才能执行系统级命令。</string>
+
+    <!-- 版本更新 -->
+    <string name="whatsnew_title">本次更新</string>
+    <string name="whatsnew_updated">已更新至 v%1$s</string>
+    <string name="whatsnew_start">开始体验</string>
+    <string name="whatsnew_item_nav">底部导航栏</string>
+    <string name="whatsnew_item_nav_desc">AI 聊天与设置移动至底部导航栏，顶部导航已移除，操作更顺手。</string>
+    <string name="whatsnew_item_glass">液态玻璃渲染引擎</string>
+    <string name="whatsnew_item_glass_desc">基于开源项目 AndroidLiquidGlass（Kyant0）移植的折射与高光渲染，全局液态玻璃质感全面升级。</string>
+    <string name="whatsnew_item_privilege">Shizuku / Dhizuku 授权</string>
+    <string name="whatsnew_item_privilege_desc">新增 Shizuku 与 Dhizuku 双提权授权流程，终端与 IDE 可任选其一解锁系统级能力。</string>
+    <string name="whatsnew_item_models">模型列表刷新修复</string>
+    <string name="whatsnew_item_models_desc">已下载的本地模型现在会正确刷新并显示在模型列表中。</string>
+    <string name="whatsnew_item_deps">依赖下载合并</string>
+    <string name="whatsnew_item_deps_desc">开发工具与 IDE 的依赖下载已合并为同一流程，安装成功率提升。</string>
+    <string name="whatsnew_item_video">视频生成（Beta）</string>
+    <string name="whatsnew_item_video_desc">AI 聊天新增视频生成模式：配置模型负责撰写脚本，本地模型负责生成视频。</string>
+    <string name="whatsnew_item_i18n">多语言界面</string>
+    <string name="whatsnew_item_i18n_desc">主界面全面支持中英文切换，跟随系统语言自动适配。</string>
+
+    <!-- 更新检查 -->
+    <string name="update_checking">正在检查更新…</string>
+    <string name="update_available">发现新版本 v%1$s</string>
+    <string name="update_downloading">正在下载…</string>
+    <string name="update_install">安装</string>
+    <string name="update_download_failed">下载失败</string>
+    <string name="update_skip">忽略该版本</string>
+    <string name="update_check_failed">检查更新失败</string>
+
+    <!-- 音乐 -->
+    <string name="music_title">音乐</string>
+    <string name="music_empty">没有正在播放的音乐</string>
+    <string name="music_local">未找到本地音乐</string>
+
+    <!-- 账号 -->
+    <string name="account_guest">未登录</string>
+    <string name="account_logout">退出登录</string>
+    <string name="account_local_only">本地账号，仅在本机存储</string>
+
+    <!-- 服务 -->
+    <string name="service_running">AURA 后台运行中</string>
+    <string name="service_channel_name">后台服务</string>
     <string name="permission_required">需要权限才能使用此功能</string>
-    <string name="perm_audio">录音权限</string>
-    <string name="perm_storage">存储权限</string>
-    <string name="perm_notification">通知权限</string>
-    <string name="service_running">AURA 后台监听中</string>
-    <string name="service_channel_name">语音服务</string>
-    <string name="wake_word">小爱同学 / 小欧</string>
-    <string name="version">版本 %s</string>
-    <string name="check_update">检查更新</string>
-    <string name="auto_update">自动更新</string>
+
+    <!-- Settings screen additions -->
+    <string name="settings_section_ai">AI 配置</string>
+    <string name="settings_model_select">模型选择</string>
+    <string name="settings_model_local_prefix">本地: %1$s</string>
+    <string name="settings_custom_model">自定义模型</string>
+    <string name="settings_custom_model_desc">管理自定义模型列表</string>
+    <string name="settings_thinking_mode">思考模式</string>
+    <string name="settings_dev_mode">应用开发模式</string>
+    <string name="settings_thinking_level">深度 %1$s/3</string>
+    <string name="settings_section_tools">工具</string>
+    <string name="settings_agent_tools_title">AI 工具调用</string>
+    <string name="settings_dev_tools">开发工具</string>
+    <string name="settings_dev_tools_desc">管理终端环境中的开发工具</string>
+    <string name="settings_video_dual">双模型视频生成</string>
+    <string name="settings_video_on_desc">已启用 · 脚本: %1$s / 视频: %2$s</string>
+    <string name="settings_video_off_desc">已关闭 · 在模型配置中选择脚本模型与本地视频模型</string>
+    <string name="settings_section_update">更新</string>
+    <string name="settings_current_version">当前: %1$s</string>
+    <string name="settings_about_aura">关于 AURA</string>
+    <string name="settings_version_label">版本 %1$s</string>
+    <string name="workspace_manage">工作区管理</string>
+    <string name="workspace_list">工作区列表</string>
+    <string name="workspace_new">新建</string>
+    <string name="workspace_none">暂无工作区</string>
+    <string name="workspace_kind_internal">内部</string>
+    <string name="workspace_kind_external">外部</string>
+    <string name="workspace_done">完成</string>
+    <string name="workspace_new_title">新建工作区</string>
+    <string name="workspace_name">工作区名称</string>
+    <string name="workspace_create">创建</string>
+
+    <!-- Dialogs / dev tools -->
+    <string name="update_check">检查更新</string>
+    <string name="common_add">添加</string>
+    <string name="common_installed">已安装</string>
+    <string name="about_description">AURA 是一款集成 AI 对话、终端、IDE、音乐播放的 Android 应用。</string>
+    <string name="about_feedback">反馈邮箱: 1953187487@qq.com</string>
+    <string name="custom_model_title">自定义模型</string>
+    <string name="custom_model_name">模型名称</string>
+    <string name="custom_model_none">暂无自定义模型</string>
+    <string name="custom_model_presets">预设模型</string>
+    <string name="settings_language">选择语言</string>
+    <string name="settings_theme_select">主题风格</string>
+    <string name="theme_label_aurora">极光</string>
+    <string name="theme_label_neon">霓虹</string>
+    <string name="theme_label_glass">玻璃</string>
+    <string name="theme_label_liquid">液态玻璃</string>
+    <string name="theme_desc_aurora">蓝紫渐变，呼吸感背景</string>
+    <string name="theme_desc_neon">赛博粉青，深底亮字</string>
+    <string name="theme_desc_glass">磨砂半透，圆角厚边</string>
+    <string name="theme_desc_liquid">iOS 风格液态玻璃质感</string>
+    <string name="devtools_title">开发工具与依赖</string>
+    <string name="devtools_subtitle">管理终端环境中的开发工具与 IDE 依赖</string>
+    <string name="devtools_local_hint">本地模式仅检测，安装需授权 Shizuku/ROOT。</string>
+    <string name="devtools_all">全部</string>
+    <string name="devtools_install_now">正在安装: %1$s</string>
+    <string name="devtools_installing">安装中...</string>
+    <string name="devtools_install_all">一键安装全部依赖</string>
+    <string name="devtools_install">安装</string>
+    <string name="devtools_local_unsupported">本地模式不支持安装，请授权 Shizuku/ROOT 后重试。</string>
+    <string name="devtools_tool_name">%1$s (%2$s)</string>
+    <string name="devtools_cat_all">全部</string>
+    <string name="devtools_cat_base">基础</string>
+    <string name="devtools_cat_android">Android</string>
+    <string name="devtools_cat_language">语言</string>
+    <string name="devtools_cat_build">编译</string>
+    <string name="devtools_cat_network">网络</string>
+    <string name="devtools_cat_editor">编辑</string>
+    <string name="devtool_name_fallback">工具</string>
+    <string name="devtool_desc_fallback">开发工具</string>
+    <string name="devtool_name_git">Git</string>
+    <string name="devtool_desc_git">版本控制</string>
+    <string name="devtool_name_python3">Python 3</string>
+    <string name="devtool_desc_python3">Python 运行时</string>
+    <string name="devtool_name_node">Node.js</string>
+    <string name="devtool_desc_node">Node.js 运行时</string>
+    <string name="devtool_name_curl">curl</string>
+    <string name="devtool_desc_curl">数据传输</string>
+    <string name="devtool_name_wget">wget</string>
+    <string name="devtool_desc_wget">文件下载</string>
+    <string name="devtool_name_vim">Vim</string>
+    <string name="devtool_desc_vim">文本编辑器</string>
+    <string name="devtool_name_nano">nano</string>
+    <string name="devtool_desc_nano">简易编辑器</string>
+    <string name="devtool_name_aapt2">aapt2</string>
+    <string name="devtool_desc_aapt2">Android 资源打包工具</string>
+    <string name="devtool_name_d8">d8</string>
+    <string name="devtool_desc_d8">DEX 编译器</string>
+    <string name="devtool_name_apksigner">apksigner</string>
+    <string name="devtool_desc_apksigner">APK 签名工具</string>
+    <string name="devtool_name_zipalign">zipalign</string>
+    <string name="devtool_desc_zipalign">APK 对齐工具</string>
+    <string name="devtool_name_adb">adb</string>
+    <string name="devtool_desc_adb">Android 调试桥</string>
+    <string name="devtool_name_clang">Clang</string>
+    <string name="devtool_desc_clang">C/C++ 编译器</string>
+    <string name="devtool_name_cmake">CMake</string>
+    <string name="devtool_desc_cmake">跨平台构建</string>
+    <string name="devtool_name_make">Make</string>
+    <string name="devtool_desc_make">构建工具</string>
+    <string name="devtool_name_java">Java 17</string>
+    <string name="devtool_desc_java">Java 17 运行时</string>
+    <string name="devtool_name_termux">Termux 工具链</string>
+    <string name="devtool_desc_termux">推荐安装通道</string>
+    <string name="settings_enabled">已启用</string>
+    <string name="settings_disabled">已关闭</string>
+    <!-- Account -->
+    <string name="account_title">AURA 账户</string>
+    <string name="account_official_login">官方登录（系统预置身份）</string>
+    <string name="account_official_login_fields">官方登录（三者缺一不可）</string>
+    <string name="account_oauth_hint">QQ/微信 登录请在真实设备经 SDK 完成，此处仅做入口示意。</string>
+    <string name="account_login_success">登录成功（role=%1$s, official=%2$s）</string>
+    <string name="account_login_failed">登录失败</string>
+    <string name="account_login">登 录</string>
+    <string name="account_verifying">校验中...</string>
+    <string name="account_field_id">ID</string>
+    <string name="account_field_name">账号名称</string>
+    <string name="account_field_password">密码</string>
+    <string name="agreement_accepted">我已阅读并同意</string>
+
+    <!-- Chat -->
+    <string name="chat_select_model">选择模型</string>
+    <string name="chat_mode_dev">开发模式</string>
+    <string name="chat_thinking_level">深度 %1$s/3</string>
+    <string name="chat_video_generate">生成视频</string>
+    <string name="chat_more">更多</string>
+    <string name="chat_clear">清空对话</string>
+    <string name="chat_copy_all">复制全部</string>
+    <string name="chat_tool_default">工具</string>
+    <string name="chat_hint_code">写一段代码</string>
+    <string name="chat_hint_explain">解释一个概念</string>
+    <string name="chat_video_title">双模型视频生成</string>
+    <string name="chat_video_script_model">脚本模型：%1$s</string>
+    <string name="chat_video_model_line">视频模型：%1$s</string>
+    <string name="chat_video_model_none">（未选择本地模型）</string>
+    <string name="chat_video_prompt_label">描述你想生成的视频</string>
+    <string name="chat_video_need_local_model">提示：请先在「模型配置」中选择一个本地视频模型，再进行生成。</string>
+    <string name="chat_video_generate_confirm">生成</string>
+    <string name="chat_video_output">视频产物</string>
+    <string name="chat_model_config_title">模型配置</string>
+    <string name="chat_model_tab_local">本地模型</string>
+    <string name="chat_model_tab_api">API 服务商</string>
+    <string name="chat_model_local_downloaded">本地已下载 · %1$s MB</string>
+    <string name="chat_source_select">选择下载源</string>
+    <string name="chat_refreshing">刷新中...</string>
+    <string name="chat_refresh_models">刷新模型列表</string>
+    <string name="chat_available_models">可用模型 (%1$s)</string>
+    <string name="chat_api_provider_config">配置 AI 服务商</string>
+    <string name="chat_quick_preset">快速选择</string>
+    <string name="chat_api_config">API 配置</string>
+    <string name="chat_api_key_optional">API Key (可选)</string>
+    <string name="chat_test_testing">测试中...</string>
+    <string name="chat_test_ok">✅ 连接成功，获取到 %1$s 个模型</string>
+    <string name="chat_test_failed">❌ 连接失败: %1$s</string>
+    <string name="chat_local_downloaded_section">本地已下载 (%1$s)</string>
+    <string name="chat_video_script_label">脚本模型（API / 自定义）</string>
+    <string name="chat_video_script_desc">用于写视频分镜脚本，默认为当前主对话模型。</string>
+    <string name="chat_video_model_local_label">视频生成模型（本地）</string>
+    <string name="chat_video_dual_desc">双模型视频生成：由脚本模型写分镜，本地视频模型生成视频。</string>
+    <string name="chat_video_model_as_video">用作视频生成模型</string>
+    <string name="chat_video_no_local">尚未下载本地模型，请先从上方下载源选择并下载一个视频生成模型。</string>
+    <string name="chat_source_hf_desc">HuggingFace 模型仓库</string>
+    <string name="chat_source_ollama_desc">Ollama 官方模型库</string>
+    <string name="chat_source_lmstudio_desc">LM Studio 模型市场</string>
+    <string name="chat_source_vllm_desc">vLLM 本地推理</string>
+    <string name="chat_source_jan_desc">Jan 本地模型</string>
+
+    <!-- Onboarding privilege -->
+    <string name="onboarding_exit">退出</string>
+    <string name="onboarding_agree_start">同意并开始使用</string>
+    <string name="onboarding_api_title">配置 AI 服务</string>
+    <string name="onboarding_api_desc">填写 AI 服务地址和密钥，本设置将被保存，稍后可在设置中更改。可直接跳过。</string>
+    <string name="onboarding_privilege_title">授权 Shizuku / Dhizuku</string>
+    <string name="onboarding_privilege_desc_long">授权后，终端与 IDE 可以执行系统级命令；未授权时保持本地沙盒权限。两种方式互不影响，任选其一或同时授权，此步骤可跳过。</string>
+    <string name="privilege_shizuku_desc">基于 ADB 调试通道的临时提权，可随时关闭</string>
+    <string name="privilege_dhizuku_desc">基于 DeviceOwner 的提权方案，由 Dhizuku 应用激活后共享</string>
+    <string name="privilege_open_settings">打开设置</string>
+    <string name="onboarding_agreement_title">开源协议与用户须知</string>
+    <string name="onboarding_agreement_desc">请阅读并同意以下两份协议后继续使用 AURA。</string>
+
+    <!-- IDE -->
+    <string name="ide_no_project">未选择项目</string>
+    <string name="ide_new_project">新建项目</string>
+    <string name="ide_project_name_label">项目名称</string>
+    <string name="ide_project_name">项目名</string>
+    <string name="ide_deps_title">依赖管理</string>
+    <string name="ide_tab_files">文件</string>
+    <string name="ide_tab_output">输出</string>
+    <string name="ide_empty_editor">选择文件开始编辑</string>
+    <string name="ide_build_apk">构建 APK</string>
+    <string name="ide_build_start">开始构建...</string>
+    <string name="ide_build_done">构建完成，退出码: %1$s</string>
+    <string name="ide_build_no_workspace">请先选择或创建一个内部工作区项目。</string>
+    <string name="ide_build_output">构建输出</string>
+    <string name="ide_no_output">暂无输出</string>
+    <string name="ide_deps_installing">安装中...</string>
+    <string name="ide_deps_install_all">一键安装 Android 依赖</string>
+    <string name="devtools_local_hint_long">本地模式仅检测。安装需授权 Shizuku/ROOT（终端权限），请授权后回到此页重试。</string>
+
+    <!-- Music -->
+    <string name="music_now_playing">正在播放</string>
+    <string name="music_idle">未在播放</string>
+    <string name="music_pick_song">选择一首歌曲</string>
+    <string name="music_playlist">播放列表</string>
+    <string name="music_playlist_empty">播放列表为空</string>
+    <string name="music_prev">上一首</string>
+    <string name="music_next">下一首</string>
+    <string name="music_pause">暂停</string>
+    <string name="music_play">播放</string>
+    <string name="music_shuffle">随机播放</string>
+    <string name="music_repeat_mode">循环模式</string>
+
+    <!-- Update center -->
+    <string name="update_center">更新中心</string>
+    <string name="update_current_line">当前：%1$s · 协议：%2$s</string>
+    <string name="update_latest">最新</string>
+    <string name="update_latest_available">最新 (有更新)</string>
+    <string name="update_history">历史版本 (%1$s)</string>
+    <string name="update_install_now">立即安装</string>
+    <string name="update_hide">隐藏</string>
+    <string name="update_no_info">暂未获取到版本信息</string>
+    <string name="update_release_line">发布：%1$s · %2$s</string>
+    <string name="update_prerelease_suffix"> · 测试版</string>
+    <string name="update_prerelease">测试版</string>
+    <string name="update_new_version">有新版本可用</string>
+    <string name="update_download">下载更新</string>
+    <string name="update_downloaded">下载完成，点击下方按钮安装</string>
+    <string name="update_failed">下载失败: %1$s</string>
 </resources>

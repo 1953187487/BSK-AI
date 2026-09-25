@@ -45,13 +45,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.annotation.StringRes
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bskai.AuraApp
 import com.bskai.BuildConfig
+import com.bskai.R
 import com.bskai.data.Agreements
 import com.bskai.data.DefaultModelPresets
 import com.bskai.data.ThemeStyle
@@ -60,6 +63,11 @@ import com.bskai.terminal.DevTools
 import com.bskai.terminal.TerminalEngine
 import com.bskai.update.UpdateCheckResult
 import kotlinx.coroutines.launch
+import com.bskai.ui.devToolCategoryLabelRes
+import com.bskai.ui.devToolDescRes
+import com.bskai.ui.devToolNameRes
+import com.bskai.ui.themeDescRes
+import com.bskai.ui.themeLabelRes
 
 @Composable
 fun UpdateCenterDialog(onDismiss: () -> Unit) {
@@ -79,14 +87,14 @@ fun UpdateCenterDialog(onDismiss: () -> Unit) {
     if (loading) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("检查更新") },
+            title = { Text(stringResource(R.string.update_check)) },
             text = {
                 Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             },
             confirmButton = {
-                TextButton(onClick = onDismiss) { Text("取消") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
             }
         )
         return
@@ -111,7 +119,7 @@ fun AboutAuraDialog(onDismiss: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
-                Text("关于 AURA", fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_about_aura), fontWeight = FontWeight.SemiBold)
             }
         },
         text = {
@@ -125,18 +133,18 @@ fun AboutAuraDialog(onDismiss: () -> Unit) {
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "AURA 是一款集成 AI 对话、终端、IDE、音乐播放的 Android 应用。",
+                    stringResource(R.string.about_description),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "开源地址: github.com/1953187487/BSK-AI",
+                    "github.com/1953187487/BSK-AI",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "反馈邮箱: 1953187487@qq.com",
+                    stringResource(R.string.about_feedback),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -150,7 +158,7 @@ fun AboutAuraDialog(onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("关闭") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
         }
     )
 }
@@ -162,7 +170,7 @@ fun CustomModelManagerDialog(app: AuraApp, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("自定义模型", fontWeight = FontWeight.SemiBold) },
+        title = { Text(stringResource(R.string.custom_model_title), fontWeight = FontWeight.SemiBold) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -173,7 +181,7 @@ fun CustomModelManagerDialog(app: AuraApp, onDismiss: () -> Unit) {
                     OutlinedTextField(
                         value = newModel,
                         onValueChange = { newModel = it },
-                        label = { Text("模型名称") },
+                        label = { Text(stringResource(R.string.custom_model_name)) },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
@@ -186,12 +194,12 @@ fun CustomModelManagerDialog(app: AuraApp, onDismiss: () -> Unit) {
                             }
                         }
                     ) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = "添加")
+                        Icon(Icons.Default.CheckCircle, contentDescription = stringResource(R.string.common_add))
                     }
                 }
                 Spacer(Modifier.height(12.dp))
                 if (settings.customModelList.isEmpty()) {
-                    Text("暂无自定义模型", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.custom_model_none), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
                     LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
                         items(settings.customModelList) { model ->
@@ -211,7 +219,7 @@ fun CustomModelManagerDialog(app: AuraApp, onDismiss: () -> Unit) {
                                             app.settings.update { it.copy(customModelList = updated) }
                                         }
                                     ) {
-                                        Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error)
+                                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.common_delete), tint = MaterialTheme.colorScheme.error)
                                     }
                                 }
                             }
@@ -219,7 +227,7 @@ fun CustomModelManagerDialog(app: AuraApp, onDismiss: () -> Unit) {
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                Text("预设模型", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.custom_model_presets), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(4.dp))
                 DefaultModelPresets.forEach { model ->
                     Surface(
@@ -237,7 +245,7 @@ fun CustomModelManagerDialog(app: AuraApp, onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("完成") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_done)) }
         }
     )
 }
@@ -249,7 +257,7 @@ fun LanguageSelectDialog(current: String, onSelect: (String) -> Unit, onDismiss:
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择语言", fontWeight = FontWeight.SemiBold) },
+        title = { Text(stringResource(R.string.settings_language), fontWeight = FontWeight.SemiBold) },
         text = {
             LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
                 items(languages) { lang ->
@@ -280,7 +288,7 @@ fun LanguageSelectDialog(current: String, onSelect: (String) -> Unit, onDismiss:
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }
@@ -289,7 +297,7 @@ fun LanguageSelectDialog(current: String, onSelect: (String) -> Unit, onDismiss:
 fun ThemeSelectDialog(current: ThemeStyle, onSelect: (ThemeStyle) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("主题风格", fontWeight = FontWeight.SemiBold) },
+        title = { Text(stringResource(R.string.settings_theme_select), fontWeight = FontWeight.SemiBold) },
         text = {
             Column {
                 ThemeStyle.entries.forEach { style ->
@@ -305,9 +313,9 @@ fun ThemeSelectDialog(current: ThemeStyle, onSelect: (ThemeStyle) -> Unit, onDis
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(style.label, fontWeight = FontWeight.Medium)
+                                Text(stringResource(themeLabelRes(style)), fontWeight = FontWeight.Medium)
                                 Text(
-                                    style.description,
+                                    stringResource(themeDescRes(style)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -326,7 +334,7 @@ fun ThemeSelectDialog(current: ThemeStyle, onSelect: (ThemeStyle) -> Unit, onDis
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }
@@ -344,6 +352,11 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
     val filteredTools = if (selectedCategory == "全部") DevTools.commonTools
     else DevTools.commonTools.filter { it.category == selectedCategory }
 
+    val allLabel = stringResource(R.string.devtools_all)
+    val installingLabel = stringResource(R.string.devtools_installing)
+    val installingTitle = stringResource(R.string.devtools_install_now)
+    val localUnsupported = stringResource(R.string.devtools_local_unsupported)
+
     LaunchedEffect(Unit) {
         loading = true
         toolStatus = DevTools.checkAll(engine)
@@ -358,7 +371,7 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Terminal, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
-                Text("开发工具与依赖", fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.devtools_title), fontWeight = FontWeight.SemiBold)
             }
         },
         text = {
@@ -376,14 +389,14 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            "本地模式仅检测，安装需授权 Shizuku/ROOT。",
+                            stringResource(R.string.devtools_local_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 if (installing != null) {
-                    Text("正在安装: $installing", fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.devtools_install_now, installing.orEmpty()), fontWeight = FontWeight.Medium)
                     Spacer(Modifier.height(8.dp))
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(8.dp))
@@ -392,7 +405,7 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                         color = Color(0xFF0D1117)
                     ) {
                         Text(
-                            installOutput.ifEmpty { "安装中..." },
+                            installOutput.ifEmpty { installingLabel },
                             style = MaterialTheme.typography.bodySmall,
                             fontFamily = FontFamily.Monospace,
                             color = Color(0xFFE6EDF3),
@@ -416,7 +429,7 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                             ) {
                                 Text(
-                                    cat,
+                                    stringResource(devToolCategoryLabelRes(cat)),
                                     fontSize = 10.sp,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
@@ -425,7 +438,7 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "管理终端环境中的开发工具与 IDE 依赖",
+                        stringResource(R.string.devtools_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -433,7 +446,7 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                     if (currentBackend != "local") {
                         Button(
                             onClick = {
-                                installing = "全部"
+                                installing = allLabel
                                 installOutput = ""
                                 scope.launch {
                                     val target = currentBackend
@@ -453,13 +466,16 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                         ) {
                             Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("一键安装全部依赖")
+                            Text(stringResource(R.string.devtools_install_all))
                         }
                         Spacer(Modifier.height(8.dp))
                     }
                     LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
                         items(filteredTools) { tool ->
                             val installed = toolStatus[tool.command] == true
+                            val toolLabel = stringResource(devToolNameRes(tool))
+                            val toolDesc = stringResource(devToolDescRes(tool))
+                            val catLabel = stringResource(devToolCategoryLabelRes(tool.category))
                             Surface(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                                 shape = RoundedCornerShape(8.dp),
@@ -479,24 +495,33 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                                     )
                                     Spacer(Modifier.width(8.dp))
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(tool.name + " (" + tool.command + ")", fontWeight = FontWeight.Medium, fontSize = 12.sp)
-                                        Text(tool.description + " · " + tool.category, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                        Text(
+                                            stringResource(R.string.devtools_tool_name, toolLabel, tool.command),
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = 12.sp
+                                        )
+                                        Text(
+                                            "$toolDesc · $catLabel",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 10.sp
+                                        )
                                     }
                                     if (installed) {
                                         OutlinedButton(onClick = { }, enabled = false) {
-                                            Text("已安装", fontSize = 10.sp)
+                                            Text(stringResource(R.string.common_installed), fontSize = 10.sp)
                                         }
                                     } else {
                                         OutlinedButton(
                                             enabled = currentBackend != "local",
                                             onClick = {
-                                                installing = tool.name
+                                                installing = toolLabel
                                                 installOutput = ""
                                                 scope.launch {
                                                     val target = currentBackend
                                                     val cmds = DevTools.getInstallCommand(tool, target)
                                                     if (cmds.isEmpty()) {
-                                                        installOutput = "本地模式不支持安装，请授权 Shizuku/ROOT 后重试。"
+                                                        installOutput = localUnsupported
                                                     }
                                                     for (cmd in cmds) {
                                                         val r = engine.execute(cmd)
@@ -508,7 +533,7 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                                                 }
                                             }
                                         ) {
-                                            Text("安装", fontSize = 10.sp)
+                                            Text(stringResource(R.string.devtools_install), fontSize = 10.sp)
                                         }
                                     }
                                 }
@@ -529,9 +554,9 @@ fun DevToolsDialog(engine: TerminalEngine, onDismiss: () -> Unit) {
                         }
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Text("刷新")
+                        Text(stringResource(R.string.common_refresh))
                     }
-                    TextButton(onClick = onDismiss) { Text("关闭") }
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_close)) }
                 }
             }
         }

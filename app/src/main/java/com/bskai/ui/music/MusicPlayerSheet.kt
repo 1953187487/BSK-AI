@@ -45,11 +45,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bskai.AuraApp
+import com.bskai.R
 import com.bskai.music.Track
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,9 +82,9 @@ fun MusicPlayerSheet(app: AuraApp, onDismiss: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("正在播放", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.music_now_playing), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "关闭")
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close))
                 }
             }
 
@@ -103,14 +105,14 @@ fun MusicPlayerSheet(app: AuraApp, onDismiss: () -> Unit) {
 
             // Track info
             Text(
-                text = currentTrack?.title ?: "未在播放",
+                text = currentTrack?.title ?: stringResource(R.string.music_idle),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = currentTrack?.artist ?: "选择一首歌曲",
+                text = currentTrack?.artist ?: stringResource(R.string.music_pick_song),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -144,12 +146,12 @@ fun MusicPlayerSheet(app: AuraApp, onDismiss: () -> Unit) {
                 IconButton(onClick = { app.music.toggleShuffle() }) {
                     Icon(
                         Icons.Default.Shuffle,
-                        contentDescription = "随机播放",
+                        contentDescription = stringResource(R.string.music_shuffle),
                         tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 IconButton(onClick = { app.music.skipToPrevious() }) {
-                    Icon(Icons.Default.SkipPrevious, contentDescription = "上一首", modifier = Modifier.size(32.dp))
+                    Icon(Icons.Default.SkipPrevious, contentDescription = stringResource(R.string.music_prev), modifier = Modifier.size(32.dp))
                 }
                 IconButton(
                     onClick = { app.music.togglePlayPause() },
@@ -160,13 +162,13 @@ fun MusicPlayerSheet(app: AuraApp, onDismiss: () -> Unit) {
                 ) {
                     Icon(
                         if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "暂停" else "播放",
+                        contentDescription = if (isPlaying) stringResource(R.string.music_pause) else stringResource(R.string.music_play),
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(32.dp)
                     )
                 }
                 IconButton(onClick = { app.music.skipToNext() }) {
-                    Icon(Icons.Default.SkipNext, contentDescription = "下一首", modifier = Modifier.size(32.dp))
+                    Icon(Icons.Default.SkipNext, contentDescription = stringResource(R.string.music_next), modifier = Modifier.size(32.dp))
                 }
                 IconButton(onClick = {
                     val modes = com.bskai.music.RepeatMode.entries
@@ -176,7 +178,7 @@ fun MusicPlayerSheet(app: AuraApp, onDismiss: () -> Unit) {
                 }) {
                     Icon(
                         if (repeatMode == com.bskai.music.RepeatMode.ONE) Icons.Default.RepeatOne else Icons.Default.Repeat,
-                        contentDescription = "循环模式",
+                        contentDescription = stringResource(R.string.music_repeat_mode),
                         tint = if (repeatMode != com.bskai.music.RepeatMode.OFF) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -185,7 +187,7 @@ fun MusicPlayerSheet(app: AuraApp, onDismiss: () -> Unit) {
             Spacer(Modifier.height(20.dp))
 
             // Queue
-            Text("播放列表", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth())
+            Text(stringResource(R.string.music_playlist), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             LazyColumn(modifier = Modifier.fillMaxWidth().height(200.dp)) {
                 if (queue.isEmpty() && currentTrack == null) {
@@ -197,7 +199,7 @@ fun MusicPlayerSheet(app: AuraApp, onDismiss: () -> Unit) {
                         ) {
                             Text(text = "🎶", fontSize = 48.sp)
                             Spacer(Modifier.height(12.dp))
-                            Text("播放列表为空", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.music_playlist_empty), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
