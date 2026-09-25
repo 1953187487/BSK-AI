@@ -40,7 +40,7 @@ Entries discovered by the Agent during task execution should follow this format:
   - v3.0.0 起(品牌更名 灵犀 LingXi,包名 com.lingxi.ai)签名密钥 /workspace/lingxi-release.keystore,需 `export LINGXI_KEYSTORE=/workspace/lingxi-release.keystore`,alias=lingxi,密码 lingxi2026;RSA 4096 / PKCS12 / SHA384withRSA,有效至 2056,CN=LingXi,OU=Dev,O=LingXi
   - 缺 export 时 validateSigningRelease 报 Keystore file not found;`keytool -list -keystore <ks> -storepass <pw>` 校验密钥,`apksigner verify --print-certs` 与 `aapt dump badging` 校验 APK
   - APK 名 LingXi-<version>-release.apk;`cp app/build/outputs/apk/release/app-release.apk LingXi-3.0.0-release.apk` 后入库(gitignore 仅排除 *.keystore/*.jks)
-  - 签名密钥严禁入库,已在 .gitignore 加入 `*.keystore` 与 `*.jks`
+  - 签名密钥严禁入库,已在 .gitignore 加入 `*.keystore` 与 `*.jks`;但历史 commit 1466a5c 已把 aura-release.keystore 提交进仓库(gitignore 不影响已跟踪文件),需用户自行决定是否轮换该旧密钥并清理历史
   - 本环境 cgroup 内存受限,gradle.properties 的 -Xmx3500m 会导致 assembleRelease 在 optimizeReleaseResources 卡死(RSS 顶满内存上限后 CPU 跌到个位数百分比)。改用 `./gradlew assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx2880m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8"`,约 3 分钟完成
   - 编译校验:`./gradlew :app:compileReleaseKotlin` 约 1.5 分钟;资源问题(重复字符串键)在 :app:mergeReleaseResources 才暴露
   - GitHub 凭据来自 git credential helper: `TOK=$(printf "protocol=https\nhost=github.com\n" | git credential fill | sed -n 's/^password=//p')`,export GH_TOKEN 后即可用 gh api/gh release
